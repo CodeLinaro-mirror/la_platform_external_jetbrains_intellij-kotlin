@@ -208,6 +208,9 @@ class DistributionJARsBuilder {
      * @return predicate to test if a given plugin should be auto-published
      */
     private fun loadPluginAutoPublishList(buildContext: BuildContext): Predicate<PluginLayout> {
+      // Google: we don't want to auto-publish any plugins, and the file
+      // plugins-autoupload.txt exists in the IJ Ultimate repo only.
+      if (true) return Predicate<PluginLayout> { false }
       val file = getPluginAutoUploadFile(buildContext.paths.buildDependenciesCommunityRoot)
       val config = readPluginAutoUploadFile(file)
 
