@@ -486,8 +486,11 @@ fun zipSourcesOfModules(modules: Collection<String>, targetFile: Path, includeLi
       val debugMapping = ArrayList<String>()
       for (moduleName in modules) {
         val module = context.findRequiredModule(moduleName)
-        if (moduleName.startsWith("intellij.platform.") && context.findModule("$moduleName.impl") != null) {
+        // Google: we want sources for the libs of all modules specified, not just intellij.platform modules.
+        // To upstream this, create a new overload for 'zipSourcesOfModules' which accepts an explicit list of libraries.
+        if (true || moduleName.startsWith("intellij.platform.") && context.findModule("$moduleName.impl") != null) {
           val libraries = JpsJavaExtensionService.dependencies(module).productionOnly().compileOnly().recursivelyExportedOnly().libraries
+            .filter { lib -> lib.name.startsWith("kotlinc.") } // Google: we only want kotlinc libs for now.
           includedLibraries.addAll(libraries)
           libraries.mapTo(debugMapping) { "${it.name} for $moduleName" }
         }
