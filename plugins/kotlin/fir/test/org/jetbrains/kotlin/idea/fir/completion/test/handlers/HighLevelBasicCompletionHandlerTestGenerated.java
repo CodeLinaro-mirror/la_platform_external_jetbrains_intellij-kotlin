@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 package org.jetbrains.kotlin.idea.fir.completion.test.handlers;
 
@@ -51,6 +51,11 @@ public class HighLevelBasicCompletionHandlerTestGenerated extends AbstractHighLe
     @TestMetadata("ClassNameForMethodWithPackageConflict2.kt")
     public void testClassNameForMethodWithPackageConflict2() throws Exception {
         runTest("../completion/tests/testData/handlers/basic/ClassNameForMethodWithPackageConflict2.kt");
+    }
+
+    @TestMetadata("ClassNameWithAliasConfict.kt")
+    public void testClassNameWithAliasConfict() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/ClassNameWithAliasConfict.kt");
     }
 
     @TestMetadata("ClassNameWithPackageConflict.kt")
@@ -118,6 +123,31 @@ public class HighLevelBasicCompletionHandlerTestGenerated extends AbstractHighLe
         runTest("../completion/tests/testData/handlers/basic/InterfaceNameBeforeRunBug.kt");
     }
 
+    @TestMetadata("JavaClassName.kt")
+    public void testJavaClassName() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/JavaClassName.kt");
+    }
+
+    @TestMetadata("JavaClassNameWithAliasConfict.kt")
+    public void testJavaClassNameWithAliasConfict() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/JavaClassNameWithAliasConfict.kt");
+    }
+
+    @TestMetadata("JavaClassNameWithConflict.kt")
+    public void testJavaClassNameWithConflict() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/JavaClassNameWithConflict.kt");
+    }
+
+    @TestMetadata("JavaClassNameWithConflict2.kt")
+    public void testJavaClassNameWithConflict2() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/JavaClassNameWithConflict2.kt");
+    }
+
+    @TestMetadata("JavaClassNameWithKotlinNestedClassConflict.kt")
+    public void testJavaClassNameWithKotlinNestedClassConflict() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/JavaClassNameWithKotlinNestedClassConflict.kt");
+    }
+
     @TestMetadata("JavaSAM.kt")
     public void testJavaSAM() throws Exception {
         runTest("../completion/tests/testData/handlers/basic/JavaSAM.kt");
@@ -161,6 +191,11 @@ public class HighLevelBasicCompletionHandlerTestGenerated extends AbstractHighLe
     @TestMetadata("LocalFunction.kt")
     public void testLocalFunction() throws Exception {
         runTest("../completion/tests/testData/handlers/basic/LocalFunction.kt");
+    }
+
+    @TestMetadata("NestedClassNameWithFileLevelConflict.kt")
+    public void testNestedClassNameWithFileLevelConflict() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/NestedClassNameWithFileLevelConflict.kt");
     }
 
     @TestMetadata("NestedTypeArg.kt")
@@ -246,6 +281,26 @@ public class HighLevelBasicCompletionHandlerTestGenerated extends AbstractHighLe
     @TestMetadata("SyntheticExtension.kt")
     public void testSyntheticExtension() throws Exception {
         runTest("../completion/tests/testData/handlers/basic/SyntheticExtension.kt");
+    }
+
+    @TestMetadata("TypeAliasConfict.kt")
+    public void testTypeAliasConfict() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/TypeAliasConfict.kt");
+    }
+
+    @TestMetadata("TypeAliasConfict1.kt")
+    public void testTypeAliasConfict1() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/TypeAliasConfict1.kt");
+    }
+
+    @TestMetadata("TypeAliasConfict2.kt")
+    public void testTypeAliasConfict2() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/TypeAliasConfict2.kt");
+    }
+
+    @TestMetadata("TypeAliasConfict3.kt")
+    public void testTypeAliasConfict3() throws Exception {
+        runTest("../completion/tests/testData/handlers/basic/TypeAliasConfict3.kt");
     }
 
     @TestMetadata("TypeInferedFromWrapperType.kt")
@@ -769,6 +824,11 @@ public class HighLevelBasicCompletionHandlerTestGenerated extends AbstractHighLe
         @TestMetadata("TabReplace3.kt")
         public void testTabReplace3() throws Exception {
             runTest("../completion/tests/testData/handlers/basic/parameterNameAndType/TabReplace3.kt");
+        }
+
+        @TestMetadata("TypeAlias.kt")
+        public void testTypeAlias() throws Exception {
+            runTest("../completion/tests/testData/handlers/basic/parameterNameAndType/TypeAlias.kt");
         }
 
         @TestMetadata("TypeParameter.kt")

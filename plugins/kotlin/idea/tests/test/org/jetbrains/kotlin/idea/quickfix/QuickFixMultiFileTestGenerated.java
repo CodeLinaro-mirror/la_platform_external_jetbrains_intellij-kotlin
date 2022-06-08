@@ -722,6 +722,34 @@ public abstract class QuickFixMultiFileTestGenerated extends AbstractQuickFixMul
         }
 
         @RunWith(JUnit3RunnerWithInners.class)
+        @TestMetadata("testData/quickfix/autoImports/invisible")
+        public static class Invisible extends AbstractQuickFixMultiFileTest {
+            private void runTest(String testDataFilePath) throws Exception {
+                KotlinTestUtils.runTest(this::doTestWithExtraFile, this, testDataFilePath);
+            }
+
+            @TestMetadata("annotation.before.Main.kt")
+            public void testAnnotation() throws Exception {
+                runTest("testData/quickfix/autoImports/invisible/annotation.before.Main.kt");
+            }
+
+            @TestMetadata("class.before.Main.kt")
+            public void testClass() throws Exception {
+                runTest("testData/quickfix/autoImports/invisible/class.before.Main.kt");
+            }
+
+            @TestMetadata("fun.before.Main.kt")
+            public void testFun() throws Exception {
+                runTest("testData/quickfix/autoImports/invisible/fun.before.Main.kt");
+            }
+
+            @TestMetadata("property.before.Main.kt")
+            public void testProperty() throws Exception {
+                runTest("testData/quickfix/autoImports/invisible/property.before.Main.kt");
+            }
+        }
+
+        @RunWith(JUnit3RunnerWithInners.class)
         @TestMetadata("testData/quickfix/autoImports/kt21515")
         public static class Kt21515 extends AbstractQuickFixMultiFileTest {
             private void runTest(String testDataFilePath) throws Exception {
@@ -2168,6 +2196,19 @@ public abstract class QuickFixMultiFileTestGenerated extends AbstractQuickFixMul
         @TestMetadata("paramTypeInOverrides.before.Main.kt")
         public void testParamTypeInOverrides() throws Exception {
             runTest("testData/quickfix/typeMismatch/paramTypeInOverrides.before.Main.kt");
+        }
+
+        @RunWith(JUnit3RunnerWithInners.class)
+        @TestMetadata("testData/quickfix/typeMismatch/definitelyNonNullableTypes")
+        public static class DefinitelyNonNullableTypes extends AbstractQuickFixMultiFileTest {
+            private void runTest(String testDataFilePath) throws Exception {
+                KotlinTestUtils.runTest(this::doTestWithExtraFile, this, testDataFilePath);
+            }
+
+            @TestMetadata("changeParameterTypeIsDisabledWhenDnnFeatureIsOff.test")
+            public void testChangeParameterTypeIsDisabledWhenDnnFeatureIsOff() throws Exception {
+                runTest("testData/quickfix/typeMismatch/definitelyNonNullableTypes/changeParameterTypeIsDisabledWhenDnnFeatureIsOff.test");
+            }
         }
 
         @RunWith(JUnit3RunnerWithInners.class)

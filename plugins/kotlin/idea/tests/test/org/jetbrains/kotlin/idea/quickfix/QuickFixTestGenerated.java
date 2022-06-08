@@ -422,6 +422,29 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
     }
 
     @RunWith(JUnit3RunnerWithInners.class)
+    @TestMetadata("testData/quickfix/addConversionCall")
+    public static class AddConversionCall extends AbstractQuickFixTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, this, testDataFilePath);
+        }
+
+        @TestMetadata("toByte.kt")
+        public void testToByte() throws Exception {
+            runTest("testData/quickfix/addConversionCall/toByte.kt");
+        }
+
+        @TestMetadata("toByteExtraParenthesis.kt")
+        public void testToByteExtraParenthesis() throws Exception {
+            runTest("testData/quickfix/addConversionCall/toByteExtraParenthesis.kt");
+        }
+
+        @TestMetadata("toShort.kt")
+        public void testToShort() throws Exception {
+            runTest("testData/quickfix/addConversionCall/toShort.kt");
+        }
+    }
+
+    @RunWith(JUnit3RunnerWithInners.class)
     @TestMetadata("testData/quickfix/addCrossinline")
     public static class AddCrossinline extends AbstractQuickFixTest {
         private void runTest(String testDataFilePath) throws Exception {
@@ -562,6 +585,49 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
         @TestMetadata("interface.kt")
         public void testInterface() throws Exception {
             runTest("testData/quickfix/addDefaultConstructor/interface.kt");
+        }
+    }
+
+    @RunWith(JUnit3RunnerWithInners.class)
+    @TestMetadata("testData/quickfix/addElseBranchToIf")
+    public static class AddElseBranchToIf extends AbstractQuickFixTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, this, testDataFilePath);
+        }
+
+        @TestMetadata("error.kt")
+        public void testError() throws Exception {
+            runTest("testData/quickfix/addElseBranchToIf/error.kt");
+        }
+
+        @TestMetadata("errorWithBlock.kt")
+        public void testErrorWithBlock() throws Exception {
+            runTest("testData/quickfix/addElseBranchToIf/errorWithBlock.kt");
+        }
+
+        @TestMetadata("inElvis.kt")
+        public void testInElvis() throws Exception {
+            runTest("testData/quickfix/addElseBranchToIf/inElvis.kt");
+        }
+
+        @TestMetadata("inElvisBlock.kt")
+        public void testInElvisBlock() throws Exception {
+            runTest("testData/quickfix/addElseBranchToIf/inElvisBlock.kt");
+        }
+
+        @TestMetadata("inElvisWithoutThen.kt")
+        public void testInElvisWithoutThen() throws Exception {
+            runTest("testData/quickfix/addElseBranchToIf/inElvisWithoutThen.kt");
+        }
+
+        @TestMetadata("withoutCloseParenthesisInCondition.kt")
+        public void testWithoutCloseParenthesisInCondition() throws Exception {
+            runTest("testData/quickfix/addElseBranchToIf/withoutCloseParenthesisInCondition.kt");
+        }
+
+        @TestMetadata("withoutCondition.kt")
+        public void testWithoutCondition() throws Exception {
+            runTest("testData/quickfix/addElseBranchToIf/withoutCondition.kt");
         }
     }
 
@@ -6192,6 +6258,11 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
         public void testExposedTypeParameterBound() throws Exception {
             runTest("testData/quickfix/decreaseVisibility/exposedTypeParameterBound.kt");
         }
+
+        @TestMetadata("exposedTypeParameterBoundNested.kt")
+        public void testExposedTypeParameterBoundNested() throws Exception {
+            runTest("testData/quickfix/decreaseVisibility/exposedTypeParameterBoundNested.kt");
+        }
     }
 
     @RunWith(JUnit3RunnerWithInners.class)
@@ -7585,11 +7656,6 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
             runTest("testData/quickfix/experimental/experimentalUnused.kt");
         }
 
-        @TestMetadata("experimentalUnused2.kt")
-        public void testExperimentalUnused2() throws Exception {
-            runTest("testData/quickfix/experimental/experimentalUnused2.kt");
-        }
-
         @TestMetadata("forbiddenTargetsExpression.kt")
         public void testForbiddenTargetsExpression() throws Exception {
             runTest("testData/quickfix/experimental/forbiddenTargetsExpression.kt");
@@ -7673,11 +7739,6 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
         @TestMetadata("override.kt")
         public void testOverride() throws Exception {
             runTest("testData/quickfix/experimental/override.kt");
-        }
-
-        @TestMetadata("overrideAnnotationRemove.kt")
-        public void testOverrideAnnotationRemove() throws Exception {
-            runTest("testData/quickfix/experimental/overrideAnnotationRemove.kt");
         }
 
         @TestMetadata("propertyInConstructor.kt")
@@ -8277,6 +8338,11 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
             runTest("testData/quickfix/increaseVisibility/exposedTypeParameterBound.kt");
         }
 
+        @TestMetadata("exposedTypeParameterBoundNested.kt")
+        public void testExposedTypeParameterBoundNested() throws Exception {
+            runTest("testData/quickfix/increaseVisibility/exposedTypeParameterBoundNested.kt");
+        }
+
         @TestMetadata("invalidSealedClassInheritance.kt")
         public void testInvalidSealedClassInheritance() throws Exception {
             runTest("testData/quickfix/increaseVisibility/invalidSealedClassInheritance.kt");
@@ -8285,6 +8351,11 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
         @TestMetadata("overriddenProtectedMemberToPublicSingleFile.kt")
         public void testOverriddenProtectedMemberToPublicSingleFile() throws Exception {
             runTest("testData/quickfix/increaseVisibility/overriddenProtectedMemberToPublicSingleFile.kt");
+        }
+
+        @TestMetadata("privateInFileExposesPrivateInFile.kt")
+        public void testPrivateInFileExposesPrivateInFile() throws Exception {
+            runTest("testData/quickfix/increaseVisibility/privateInFileExposesPrivateInFile.kt");
         }
 
         @TestMetadata("privateMemberToInternalSingleFile.kt")
@@ -10925,6 +10996,21 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
         @TestMetadata("basic.kt")
         public void testBasic() throws Exception {
             runTest("testData/quickfix/removeNoConstructor/basic.kt");
+        }
+
+        @TestMetadata("functionType.kt")
+        public void testFunctionType() throws Exception {
+            runTest("testData/quickfix/removeNoConstructor/functionType.kt");
+        }
+
+        @TestMetadata("functionType2.kt")
+        public void testFunctionType2() throws Exception {
+            runTest("testData/quickfix/removeNoConstructor/functionType2.kt");
+        }
+
+        @TestMetadata("suspend.kt")
+        public void testSuspend() throws Exception {
+            runTest("testData/quickfix/removeNoConstructor/suspend.kt");
         }
     }
 
@@ -15124,6 +15210,11 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
             KotlinTestUtils.runTest(this::doTest, this, testDataFilePath);
         }
 
+        @TestMetadata("addElseBranchBooleanWarning.kt")
+        public void testAddElseBranchBooleanWarning() throws Exception {
+            runTest("testData/quickfix/when/addElseBranchBooleanWarning.kt");
+        }
+
         @TestMetadata("addElseBranchEnumStatement.kt")
         public void testAddElseBranchEnumStatement() throws Exception {
             runTest("testData/quickfix/when/addElseBranchEnumStatement.kt");
@@ -15132,6 +15223,11 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
         @TestMetadata("addElseBranchSealed.kt")
         public void testAddElseBranchSealed() throws Exception {
             runTest("testData/quickfix/when/addElseBranchSealed.kt");
+        }
+
+        @TestMetadata("addElseBranchSealedWarning.kt")
+        public void testAddElseBranchSealedWarning() throws Exception {
+            runTest("testData/quickfix/when/addElseBranchSealedWarning.kt");
         }
 
         @TestMetadata("addRemainingBranchesBlankLine.kt")
@@ -15219,6 +15315,11 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
             runTest("testData/quickfix/when/addRemainingBranchesSealedStatement.kt");
         }
 
+        @TestMetadata("addRemainingBranchesSealedWarning.kt")
+        public void testAddRemainingBranchesSealedWarning() throws Exception {
+            runTest("testData/quickfix/when/addRemainingBranchesSealedWarning.kt");
+        }
+
         @TestMetadata("breakInWhen.kt")
         public void testBreakInWhen() throws Exception {
             runTest("testData/quickfix/when/breakInWhen.kt");
@@ -15292,6 +15393,19 @@ public abstract class QuickFixTestGenerated extends AbstractQuickFixTest {
         @TestMetadata("twoElseBranchesInWhen.kt")
         public void testTwoElseBranchesInWhen() throws Exception {
             runTest("testData/quickfix/when/twoElseBranchesInWhen.kt");
+        }
+    }
+
+    @RunWith(JUnit3RunnerWithInners.class)
+    @TestMetadata("testData/quickfix/wrapWhenExpressionInParentheses")
+    public static class WrapWhenExpressionInParentheses extends AbstractQuickFixTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, this, testDataFilePath);
+        }
+
+        @TestMetadata("logicalExpressionInWhen.kt")
+        public void testLogicalExpressionInWhen() throws Exception {
+            runTest("testData/quickfix/wrapWhenExpressionInParentheses/logicalExpressionInWhen.kt");
         }
     }
 

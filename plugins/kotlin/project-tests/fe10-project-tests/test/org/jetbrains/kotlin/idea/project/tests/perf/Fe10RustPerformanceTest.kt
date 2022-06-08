@@ -2,22 +2,19 @@
 package org.jetbrains.kotlin.idea.project.tests.perf
 
 import org.jetbrains.kotlin.idea.AbstractFE10ProjectBasedTests
-import org.jetbrains.kotlin.idea.base.KotlinPluginKind
-import org.jetbrains.kotlin.idea.base.assertKotlinPluginKind
 import org.jetbrains.kotlin.idea.base.project.test.ProjectBasedTestPreferences
 import org.jetbrains.kotlin.idea.base.project.test.projects.RustProject
 
 class Fe10RustPerformanceTest : AbstractFE10ProjectBasedTests() {
-    override val testPrefix: String = "FE10"
-    override val warmUpOnHelloWorldProject: Boolean = true
+    override val isBenchmark: Boolean = true
 
     fun testRustPlugin() {
         val profile = ProjectBasedTestPreferences(
             warmUpIterations = 5,
             iterations = 10,
-            checkForValidity = false,
+            checkForValidity = true,
         )
 
-        test("Rust Plugin", RustProject.project, RustProject.actions, profile)
+        test(RustProject.project, RustProject.actions, profile)
     }
 }

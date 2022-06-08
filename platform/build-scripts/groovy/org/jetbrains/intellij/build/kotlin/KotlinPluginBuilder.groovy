@@ -103,6 +103,7 @@ class KotlinPluginBuilder {
     "kotlin.uast.uast-kotlin-idea",
     "kotlin.i18n",
     "kotlin.project-model",
+    "kotlin.fe10-analyze.safe-analyze-utils"
   ]
   private static List<String> LIBRARIES = [
     "kotlinc.android-extensions-compiler-plugin",
@@ -111,7 +112,7 @@ class KotlinPluginBuilder {
     "kotlinc.sam-with-receiver-compiler-plugin",
     "kotlinc.kotlinx-serialization-compiler-plugin",
     "kotlinc.parcelize-compiler-plugin",
-    "kotlin-script-runtime",
+    "kotlinc.kotlin-script-runtime",
     "kotlinc.kotlin-scripting-compiler-impl",
     "kotlinc.kotlin-scripting-common",
     "kotlinc.kotlin-scripting-jvm",
@@ -212,9 +213,6 @@ class KotlinPluginBuilder {
         })
       }
 
-      String jpsPluginJar = "jps/kotlin-jps-plugin.jar"
-      withModule("kotlin.jps-plugin", jpsPluginJar)
-
       String kotlincKotlinCompilerCommon = "kotlinc.kotlin-compiler-common"
       withProjectLibrary(kotlincKotlinCompilerCommon, ProjectLibraryData.PackMode.STANDALONE_SEPARATE)
 
@@ -241,16 +239,34 @@ class KotlinPluginBuilder {
       withProjectLibrary("kotlinc.kotlin-compiler-fe10")
       withProjectLibrary("kotlinc.kotlin-compiler-ir")
 
-      withModule("kotlin.jps-common", "kotlin-jps-common.jar")
       withModule("kotlin.common", "kotlin-common.jar")
 
       withProjectLibrary("kotlinc.kotlin-reflect", ProjectLibraryData.PackMode.STANDALONE_MERGED)
       withProjectLibrary("kotlinc.kotlin-stdlib", ProjectLibraryData.PackMode.STANDALONE_MERGED)
+      withProjectLibrary("kotlinc.kotlin-jps-common")
       withProjectLibrary("javaslang")
       withProjectLibrary("kotlinx-collections-immutable-jvm")
       withProjectLibrary("javax-inject")
       withProjectLibrary("kotlinx-coroutines-jdk8")
       withProjectLibrary("completion-ranking-kotlin")
+
+      // in kt-213-master withProjectLibrary("kotlinc.kotlin-jps-plugin-classpath", "jps/kotlin-jps-plugin.jar") copying
+      // library to the jps/kotlin-jps-plugin.jar/kotlin-jps-plugin-classpath-dev-11.jar. This is a workaround
+      withGeneratedResources(new ResourcesGenerator() {
+        @Override
+        File generateResources(BuildContext context) {
+          def jpsPluginLib = "kotlinc.kotlin-jps-plugin-classpath"
+          JpsLibrary library = context.project.libraryCollection.findLibrary(jpsPluginLib)
+          List<File> jars = library.getFiles(JpsOrderRootType.COMPILED)
+          if (jars.size() != 1) {
+            throw new IllegalStateException("$jpsPluginLib is expected to have only one jar")
+          }
+          def result = context.paths.tempDir.resolve("kotlin-jps-plugin.jar")
+
+          Files.copy(jars[0].toPath(), result.toAbsolutePath())
+          result.toFile()
+        }
+      }, "lib/jps")
 
       withGeneratedResources(new ResourcesGenerator() {
         @Override

@@ -35,13 +35,15 @@ fun generateKotlincLibraries(kotlincArtifactsMode: KotlincArtifactsMode, version
         kotlincForIdeWithStandardNaming("kotlinc.noarg-compiler-plugin", version),
         kotlincForIdeWithStandardNaming("kotlinc.parcelize-compiler-plugin", version),
         kotlincForIdeWithStandardNaming("kotlinc.sam-with-receiver-compiler-plugin", version),
+        kotlincForIdeWithStandardNaming("kotlinc.kotlin-jps-common", version),
+        singleJarMvnLib("kotlinc.kotlin-jps-plugin-classpath", "$ktGroup:kotlin-jps-plugin-classpath:$version", transitive = false),
         singleJarMvnLib("kotlinc.compiler-components-for-jps", "$ktGroup:compiler-components-for-jps:$version", transitive = false),
         singleJarMvnLib("kotlinc.kotlin-scripting-common", "$ktGroup:kotlin-scripting-common:$version", transitive = false),
         singleJarMvnLib("kotlinc.kotlin-scripting-compiler-impl", "$ktGroup:kotlin-scripting-compiler-impl:$version", transitive = false),
         singleJarMvnLib("kotlinc.kotlin-scripting-compiler", "$ktGroup:kotlin-scripting-compiler:$version", transitive = false),
         singleJarMvnLib("kotlinc.kotlin-scripting-jvm", "$ktGroup:kotlin-scripting-jvm:$version", transitive = false),
         singleJarMvnLib("kotlinc.kotlin-reflect", "$ktGroup:kotlin-reflect:$version", excludes = listOf(MavenId(ktGroup, "kotlin-stdlib"))),
-        singleJarMvnLib("kotlin-script-runtime", "$ktGroup:kotlin-script-runtime:$version"),
+        singleJarMvnLib("kotlinc.kotlin-script-runtime", "$ktGroup:kotlin-script-runtime:$version"),
         run {
             val mavenIds = listOf(
                 MavenId.fromCoordinates("$ktGroup:kotlin-stdlib-jdk8:$version"),

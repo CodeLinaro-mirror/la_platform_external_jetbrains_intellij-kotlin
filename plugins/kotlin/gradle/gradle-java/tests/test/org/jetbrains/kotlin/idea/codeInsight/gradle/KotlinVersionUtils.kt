@@ -7,22 +7,22 @@ import org.jetbrains.kotlin.idea.codeInsight.gradle.GradleKotlinTestUtils.Kotlin
 import org.jetbrains.kotlin.idea.codeInsight.gradle.MultiplePluginVersionGradleImportingTestCase.KotlinVersionRequirement
 
 val KotlinVersion.isSnapshot: Boolean
-    get() = this.classifier != null && this.classifier.lowercase() == "snapshot"
+    get() = this.classifier != null && this.classifier.toLowerCase() == "snapshot"
 
 val KotlinVersion.isDev: Boolean
-    get() = this.classifier != null && this.classifier.lowercase().contains("dev")
+    get() = this.classifier != null && this.classifier.toLowerCase().contains("dev")
 
 val KotlinVersion.isMilestone: Boolean
-    get() = this.classifier != null && this.classifier.lowercase().contains("m")
+    get() = this.classifier != null && this.classifier.toLowerCase().contains("m")
 
 val KotlinVersion.isAlpha: Boolean
-    get() = this.classifier != null && this.classifier.lowercase().contains("alpha")
+    get() = this.classifier != null && this.classifier.toLowerCase().contains("alpha")
 
 val KotlinVersion.isBeta: Boolean
-    get() = this.classifier != null && this.classifier.lowercase().contains("beta")
+    get() = this.classifier != null && this.classifier.toLowerCase().contains("beta")
 
 val KotlinVersion.isRC: Boolean
-    get() = this.classifier != null && this.classifier.lowercase().contains("rc")
+    get() = this.classifier != null && this.classifier.toLowerCase().contains("rc")
 
 val KotlinVersion.isWildcard: Boolean
     get() = this.classifier != null &&

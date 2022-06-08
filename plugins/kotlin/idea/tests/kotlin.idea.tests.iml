@@ -67,7 +67,7 @@
     <orderEntry type="module" module-name="intellij.spellchecker" scope="TEST" />
     <orderEntry type="module" module-name="kotlin.uast.uast-kotlin" scope="TEST" />
     <orderEntry type="module" module-name="kotlin.formatter" scope="TEST" />
-    <orderEntry type="module" module-name="kotlin.jps-common" scope="TEST" />
+    <orderEntry type="library" scope="TEST" name="kotlinc.kotlin-jps-common" level="project" />
     <orderEntry type="module" module-name="kotlin.jvm-debugger.util" scope="TEST" />
     <orderEntry type="module" module-name="kotlin.jvm-debugger.evaluation" scope="TEST" />
     <orderEntry type="module" module-name="kotlin.j2k.services" scope="TEST" />
@@ -88,7 +88,7 @@
     <orderEntry type="module" module-name="intellij.java.compiler.impl" scope="TEST" />
     <orderEntry type="module" module-name="intellij.grazie.tests" scope="TEST" />
     <orderEntry type="module" module-name="kotlin.jvm-run-configurations" scope="TEST" />
-    <orderEntry type="library" name="kotlin-script-runtime" level="project" />
+    <orderEntry type="library" name="kotlinc.kotlin-script-runtime" level="project" />
     <orderEntry type="module" module-name="intellij.platform.codeStyle.impl" />
   </component>
 </module>

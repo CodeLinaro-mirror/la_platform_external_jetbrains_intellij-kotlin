@@ -7,11 +7,11 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiNameIdentifierOwner
 import com.intellij.psi.PsiParameter
+import org.jetbrains.annotations.ApiStatus
 import org.jetbrains.kotlin.asJava.elements.KtLightElement
 import org.jetbrains.kotlin.asJava.elements.KtLightMethod
 import org.jetbrains.kotlin.asJava.elements.isGetter
 import org.jetbrains.kotlin.asJava.elements.isSetter
-import org.jetbrains.kotlin.idea.util.actionUnderSafeAnalyzeBlock
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.utils.SmartList
 import org.jetbrains.uast.*
 import org.jetbrains.uast.kotlin.psi.UastKotlinPsiParameter
 
+@ApiStatus.Internal
 open class KotlinUMethod(
     psi: PsiMethod,
     final override val sourcePsi: KtDeclaration?,
@@ -61,7 +62,9 @@ open class KotlinUMethod(
     override fun getNameIdentifier() = UastLightIdentifier(psi, kotlinOrigin)
 
     override val uAnnotations: List<UAnnotation> by lz {
-        psi.actionUnderSafeAnalyzeBlock({ psi.annotations }, { emptyArray<PsiAnnotation>() })
+        // NB: we can't use sourcePsi.annotationEntries directly due to annotation use-site targets. The given `psi` as a light element,
+        // which spans regular function, property accessors, etc., is already built with targeted annotation.
+        baseResolveProviderService.getPsiAnnotations(psi)
             .mapNotNull { (it as? KtLightElement<*, *>)?.kotlinOrigin as? KtAnnotationEntry }
             .map { baseResolveProviderService.baseKotlinConverter.convertAnnotation(it, this) }
     }
