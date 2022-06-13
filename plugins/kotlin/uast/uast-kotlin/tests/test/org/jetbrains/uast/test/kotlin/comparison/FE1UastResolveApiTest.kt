@@ -10,7 +10,6 @@ import org.jetbrains.uast.UFile
 import org.jetbrains.uast.test.common.kotlin.UastResolveApiTestBase
 import org.jetbrains.uast.test.kotlin.env.AbstractFE1UastTest
 import org.junit.runner.RunWith
-import java.io.File
 
 @RunWith(JUnit3RunnerWithInners::class)
 class FE1UastResolveApiTest : AbstractFE1UastTest() {
@@ -20,7 +19,6 @@ class FE1UastResolveApiTest : AbstractFE1UastTest() {
 
     @TestMetadata("uast-kotlin-fir/testData/declaration")
     @TestDataPath("/")
-    @RunWith(JUnit3RunnerWithInners::class)
     class Declaration : AbstractFE1UastTest(), UastResolveApiTestBase {
         override var testDataDir = KotlinRoot.DIR.resolve("uast/uast-kotlin-fir/testData/declaration")
 
@@ -43,6 +41,24 @@ class FE1UastResolveApiTest : AbstractFE1UastTest() {
         @TestMetadata("retention.kt")
         fun testRetention() {
             doTest("retention", ::checkCallbackForRetention)
+        }
+    }
+
+    @TestMetadata("uast-kotlin-fir/testData/type")
+    @TestDataPath("/")
+    @RunWith(JUnit3RunnerWithInners::class)
+    class Type : AbstractFE1UastTest(), UastResolveApiTestBase {
+        override var testDataDir = KotlinRoot.DIR_PATH.resolve("uast/uast-kotlin-fir/testData/type").toFile()
+
+        override val isFirUastPlugin: Boolean = false
+
+        override fun check(testName: String, file: UFile) {
+            // Bogus
+        }
+
+        @TestMetadata("threadSafe.kt")
+        fun testThreadSafe() {
+            doTest("threadSafe", ::checkThreadSafe)
         }
     }
 

@@ -144,7 +144,7 @@ class CodeFragmentCompiler(private val executionContext: ExecutionContext, priva
         ).apply {
             if (fragmentCompilerBackend == FragmentCompilerBackend.JVM_IR) {
                 val mangler = JvmDescriptorMangler(MainFunctionDetector(bindingContext, compilerConfiguration.languageVersionSettings))
-                val evaluatorFragmentInfo = EvaluatorFragmentInfo.createWithFragmentParameterInfo(
+                val evaluatorFragmentInfo = EvaluatorFragmentInfo(
                     codegenInfo.classDescriptor,
                     codegenInfo.methodDescriptor,
                     codegenInfo.parameters.map { EvaluatorFragmentParameterInfo(it.targetDescriptor, it.isLValue) }
@@ -207,7 +207,8 @@ class CodeFragmentCompiler(private val executionContext: ExecutionContext, priva
                                 }
                             }
                         },
-                        evaluatorFragmentInfoForPsi2Ir = evaluatorFragmentInfo
+                        evaluatorFragmentInfoForPsi2Ir = evaluatorFragmentInfo,
+                        shouldStubAndNotLinkUnboundSymbols = true
                     )
                 )
             }

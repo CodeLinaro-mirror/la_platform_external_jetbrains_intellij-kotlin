@@ -21,8 +21,9 @@
       <arg line="setupJdks setupKotlinCompiler"/>
     </exec>
     <propertyset id="intellij.build.properties">
-      <!-- Google: Allow passing the Kotlin plugin kind through Ant. -->
+      <!-- Google: Allow passing Kotlin plugin build properties through Ant. -->
       <propertyref name="kotlin.plugin.kind"/>
+      <propertyref name="jps.kotlin.home"/>
       <propertyref name="build.number"/>
       <propertyref name="compile.parallel"/>
       <propertyref name="compile.parallel.max.threads"/>

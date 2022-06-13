@@ -20,25 +20,23 @@ import org.jetbrains.kotlin.idea.intentions.reflectToRegularFunctionType
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.idea.util.approximateWithResolvableType
 import org.jetbrains.kotlin.idea.util.getResolutionScope
+import org.jetbrains.kotlin.idea.util.module
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.*
-import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import org.jetbrains.kotlin.psi.psiUtil.getQualifiedExpressionForSelectorOrThis
 import org.jetbrains.kotlin.psi.psiUtil.getStrictParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
 import org.jetbrains.kotlin.resolve.bindingContextUtil.getTargetFunction
+import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getParameterForArgument
 import org.jetbrains.kotlin.resolve.calls.util.getParentResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getResolvedCall
 import org.jetbrains.kotlin.resolve.calls.util.getValueArgumentForExpression
-import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.constants.IntegerValueTypeConstant
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
-import org.jetbrains.kotlin.resolve.descriptorUtil.module
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.ErrorsJvm
 import org.jetbrains.kotlin.types.KotlinType
-import org.jetbrains.kotlin.types.TypeProjection
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.TypeUtils.NO_EXPECTED_TYPE
 import org.jetbrains.kotlin.types.isDefinitelyNotNullType
@@ -147,7 +145,6 @@ class QuickFixFactoryForTypeMismatchError : KotlinIntentionActionsFactory() {
             }
         }
 
-
         actions.addAll(WrapWithCollectionLiteralCallFix.create(expectedType, expressionType, diagnosticElement))
 
         ConvertCollectionFix.getConversionTypeOrNull(expressionType, expectedType)?.let {
@@ -203,7 +200,13 @@ class QuickFixFactoryForTypeMismatchError : KotlinIntentionActionsFactory() {
 
         // Suggest replacing the parameter type `T` with its expected definitely non-nullable subtype `T & Any`.
         // Types that contain DNN types as arguments (like `(Mutable)Collection<T & Any>`) are currently not supported.
-        if (diagnosticElement is KtReferenceExpression && expectedType.isDefinitelyNotNullType) {
+        // The "Change parameter type" action is generated only if the `DefinitelyNonNullableTypes` language feature is enabled:
+        // if it is disabled, the `T & Any` intersection type is resolved as just `T`, so the fix would not have any effect.
+        if (
+            diagnosticElement is KtReferenceExpression &&
+            expectedType.isDefinitelyNotNullType &&
+            diagnosticElement.module?.languageVersionSettings?.supportsFeature(LanguageFeature.DefinitelyNonNullableTypes) == true
+        ) {
             val descriptor = context[BindingContext.REFERENCE_TARGET, diagnosticElement]?.safeAs<CallableDescriptor>()
             when (val declaration = QuickFixUtil.safeGetDeclaration(descriptor)) {
                 is KtParameter -> {
@@ -233,7 +236,6 @@ class QuickFixFactoryForTypeMismatchError : KotlinIntentionActionsFactory() {
         val expressionParent = diagnosticElement.parent
 
         // Mismatch in returned expression:
-
         val function = if (expressionParent is KtReturnExpression)
             expressionParent.getTargetFunction(context)
         else
@@ -271,9 +273,7 @@ class QuickFixFactoryForTypeMismatchError : KotlinIntentionActionsFactory() {
                 || KotlinBuiltIns.isPrimitiveArray(expectedType)
             ) {
                 actions.add(AddArrayOfTypeFix(diagnosticElement, expectedType))
-                if (diagnosticElement.languageVersionSettings.supportsFeature(LanguageFeature.ArrayLiteralsInAnnotations)) {
-                    actions.add(WrapWithArrayLiteralFix(diagnosticElement))
-                }
+                actions.add(WrapWithArrayLiteralFix(diagnosticElement))
             }
         }
 

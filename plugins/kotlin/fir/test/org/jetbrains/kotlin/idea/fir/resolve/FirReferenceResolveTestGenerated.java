@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 package org.jetbrains.kotlin.idea.fir.resolve;
 
@@ -371,6 +371,16 @@ public class FirReferenceResolveTestGenerated extends AbstractFirReferenceResolv
     @TestMetadata("SeveralOverrides.kt")
     public void testSeveralOverrides() throws Exception {
         runTest("../idea/tests/testData/resolve/references/SeveralOverrides.kt");
+    }
+
+    @TestMetadata("SuperTypePrimaryConstructor.kt")
+    public void testSuperTypePrimaryConstructor() throws Exception {
+        runTest("../idea/tests/testData/resolve/references/SuperTypePrimaryConstructor.kt");
+    }
+
+    @TestMetadata("SuperTypeSecondaryConstructor.kt")
+    public void testSuperTypeSecondaryConstructor() throws Exception {
+        runTest("../idea/tests/testData/resolve/references/SuperTypeSecondaryConstructor.kt");
     }
 
     @TestMetadata("SyntheticProperty.kt")
