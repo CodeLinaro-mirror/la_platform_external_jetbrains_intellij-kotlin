@@ -290,9 +290,15 @@ class QuickFixRegistrar : QuickFixContributor {
         SENSELESS_NULL_IN_WHEN.registerFactory(RemoveWhenBranchFix, RemoveWhenConditionFix)
         BREAK_OR_CONTINUE_IN_WHEN.registerFactory(AddLoopLabelFix)
         NO_ELSE_IN_WHEN.registerFactory(AddWhenElseBranchFix, AddWhenRemainingBranchesFix)
+        NO_ELSE_IN_WHEN_WARNING.registerFactory(AddWhenElseBranchFix, AddWhenRemainingBranchesFix)
         NON_EXHAUSTIVE_WHEN.registerFactory(AddWhenElseBranchFix, AddWhenRemainingBranchesFix)
         NON_EXHAUSTIVE_WHEN_ON_SEALED_CLASS.registerFactory(AddWhenElseBranchFix, AddWhenRemainingBranchesFix)
         NON_EXHAUSTIVE_WHEN_STATEMENT.registerFactory(AddWhenElseBranchFix, AddWhenRemainingBranchesFix)
+
+        INVALID_IF_AS_EXPRESSION.registerFactory(AddIfElseBranchFix)
+        INVALID_IF_AS_EXPRESSION_WARNING.registerFactory(AddIfElseBranchFix)
+
+        INTEGER_OPERATOR_RESOLVE_WILL_CHANGE.registerFactory(AddConversionCallFix)
 
         NO_TYPE_ARGUMENTS_ON_RHS.registerFactory(AddStarProjectionsFixFactory)
 
@@ -613,6 +619,7 @@ class QuickFixRegistrar : QuickFixContributor {
 
         NO_CONSTRUCTOR.registerFactory(RemoveNoConstructorFix)
         NO_CONSTRUCTOR.registerFactory(AddDefaultConstructorFix)
+        NO_CONSTRUCTOR_WARNING.registerFactory(RemoveNoConstructorFix)
 
         ANNOTATION_USED_AS_ANNOTATION_ARGUMENT.registerFactory(RemoveAtFromAnnotationArgument)
 
@@ -728,11 +735,13 @@ class QuickFixRegistrar : QuickFixContributor {
         OVERRIDE_DEPRECATION.registerFactory(AddAnnotationWithArgumentsFix.CopyDeprecatedAnnotation)
 
         NULLABLE_TYPE_PARAMETER_AGAINST_NOT_NULL_TYPE_PARAMETER.registerFactory(MakeUpperBoundNonNullableFix)
+        WRONG_TYPE_PARAMETER_NULLABILITY_FOR_JAVA_OVERRIDE.registerFactory(MakeUpperBoundNonNullableFix)
         WRONG_NULLABILITY_FOR_JAVA_OVERRIDE.registerFactory(MakeUpperBoundNonNullableFix)
         TYPE_MISMATCH.registerFactory(MakeUpperBoundNonNullableFix)
         TYPE_MISMATCH_WARNING.registerFactory(MakeUpperBoundNonNullableFix)
         NOTHING_TO_OVERRIDE.registerFactory(MakeUpperBoundNonNullableFix)
 
         WRONG_NULLABILITY_FOR_JAVA_OVERRIDE.registerFactory(ChangeMemberFunctionSignatureFix)
+        CONFUSING_BRANCH_CONDITION.registerFactory(ConfusingExpressionInWhenBranchFix)
     }
 }

@@ -108,11 +108,12 @@ final class KotlinPluginBuilder {
     "kotlin.i18n",
     "kotlin.project-model",
     "kotlin.features-trainer",
+    "kotlin.fe10-analyze.safe-analyze-utils"
     )
 
   @SuppressWarnings('SpellCheckingInspection')
   private static final List<String> LIBRARIES = List.of(
-    "kotlin-script-runtime",
+    "kotlinc.kotlin-script-runtime",
     "kotlinc.kotlin-scripting-compiler-impl",
     "kotlinc.kotlin-scripting-common",
     "kotlinc.kotlin-scripting-jvm",
