@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.idea.core.copied
 import org.jetbrains.kotlin.idea.core.replaced
 import org.jetbrains.kotlin.lexer.KtSingleValueToken
 import org.jetbrains.kotlin.load.java.JvmAbi
+import org.jetbrains.kotlin.load.java.propertyNameByGetMethodName
 import org.jetbrains.kotlin.load.java.propertyNameBySetMethodName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
@@ -30,13 +31,11 @@ class SyntheticPropertyAccessorReferenceDescriptorImpl(
     getter: Boolean
 ) : SyntheticPropertyAccessorReference(expression, getter), KtDescriptorsBasedReference {
 
-    override fun isReferenceTo(element: PsiElement): Boolean {
+    override fun canBeReferenceTo(element: PsiElement): Boolean {
         if (element !is PsiMethod || !isAccessorName(element.name)) return false
         if (!getter && expression.readWriteAccess(true) == ReferenceAccess.READ) return false
-        return additionalIsReferenceToChecker(element)
+        return true
     }
-
-    override fun additionalIsReferenceToChecker(element: PsiElement): Boolean = matchesTarget(element)
 
     override fun getTargetDescriptors(context: BindingContext): Collection<DeclarationDescriptor> {
         val descriptors = expression.getReferenceTargets(context)
@@ -92,15 +91,13 @@ class SyntheticPropertyAccessorReferenceDescriptorImpl(
 
         val newNameAsName = Name.identifier(newElementName)
         val newName = if (getter) {
-            SyntheticJavaPropertyDescriptor.propertyNameByGetMethodName(newNameAsName)
+            propertyNameByGetMethodName(newNameAsName)
         } else {
             //TODO: it's not correct
             //TODO: setIsY -> setIsIsY bug
             propertyNameBySetMethodName(
                 newNameAsName,
-                withIsPrefix = expression.getReferencedNameAsName().asString().startsWith(
-                    "is"
-                )
+                withIsPrefix = expression.getReferencedNameAsName().asString().startsWith("is")
             )
         }
         // get/set becomes ordinary method
@@ -172,6 +169,10 @@ class SyntheticPropertyAccessorReferenceDescriptorImpl(
         }
 
         return renameByPropertyName(newName.identifier)
+    }
+
+    override fun isReferenceToImportAlias(alias: KtImportAlias): Boolean {
+        return super<KtDescriptorsBasedReference>.isReferenceToImportAlias(alias)
     }
 
     override val resolvesByNames: Collection<Name>

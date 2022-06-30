@@ -3,6 +3,7 @@
 package org.jetbrains.kotlin.idea.caches
 
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -17,12 +18,12 @@ import com.intellij.util.Processor
 import com.intellij.util.Processors
 import com.intellij.util.containers.ContainerUtil
 import com.intellij.util.indexing.IdFilter
+import org.jetbrains.kotlin.analysis.decompiler.psi.KotlinBuiltInFileType
 import org.jetbrains.kotlin.asJava.LightClassUtil
 import org.jetbrains.kotlin.asJava.defaultImplsChild
 import org.jetbrains.kotlin.asJava.finder.JavaElementFinder
 import org.jetbrains.kotlin.asJava.getAccessorLightMethods
 import org.jetbrains.kotlin.fileClasses.javaFileFacadeFqName
-import org.jetbrains.kotlin.idea.decompiler.builtIns.KotlinBuiltInFileType
 import org.jetbrains.kotlin.idea.stubindex.*
 import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.load.java.getPropertyNamesCandidatesByAccessorName
@@ -138,7 +139,7 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
             override fun isSearchInModuleContent(aModule: Module) = true
             override fun compare(file1: VirtualFile, file2: VirtualFile) = 0
             override fun isSearchInLibraries() = true
-            override fun contains(file: VirtualFile) = file.fileType != KotlinBuiltInFileType
+            override fun contains(file: VirtualFile) = !FileTypeRegistry.getInstance().isFileOfType(file, KotlinBuiltInFileType)
         }
         return KotlinSourceFilterScope.sourceAndClassFiles(scope, project).intersectWith(noBuiltInsScope)
     }

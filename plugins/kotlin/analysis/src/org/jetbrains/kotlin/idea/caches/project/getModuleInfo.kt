@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.caches.project
 
@@ -11,10 +11,10 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import org.jetbrains.kotlin.analysis.decompiled.light.classes.KtLightClassForDecompiledDeclaration
 import org.jetbrains.kotlin.analyzer.ModuleInfo
 import org.jetbrains.kotlin.asJava.classes.KtLightClassForFacade
 import org.jetbrains.kotlin.asJava.elements.KtLightElement
-import org.jetbrains.kotlin.idea.caches.lightClasses.KtLightClassForDecompiledDeclaration
 import org.jetbrains.kotlin.idea.core.isInTestSourceContentKotlinAware
 import org.jetbrains.kotlin.idea.core.script.ScriptRelatedModuleNameFile
 import org.jetbrains.kotlin.idea.core.script.ScriptConfigurationManager
@@ -159,7 +159,7 @@ private fun <T> PsiElement.collectInfos(
     val containingFile =
         containingFile ?: return c.onFailure("Analyzing element of type ${this::class.java} with no containing file\nText:\n$text")
 
-    val containingKtFile = (this as? KtElement)?.containingFile as? KtFile
+    val containingKtFile = containingFile as? KtFile
     containingKtFile?.analysisContext?.let {
         return it.collectInfos(c)
     }
@@ -319,8 +319,8 @@ private fun OrderEntry.toIdeaModuleInfo(
 /**
  * @see [org.jetbrains.kotlin.types.typeUtil.closure].
  */
-fun <T> Collection<T>.lazyClosure(f: (T) -> Collection<T>): Sequence<T> = sequence<T> {
-    if (size == 0) return@sequence
+fun <T> Collection<T>.lazyClosure(f: (T) -> Collection<T>): Sequence<T> = sequence {
+    if (isEmpty()) return@sequence
     var sizeBeforeIteration = 0
 
     yieldAll(this@lazyClosure)

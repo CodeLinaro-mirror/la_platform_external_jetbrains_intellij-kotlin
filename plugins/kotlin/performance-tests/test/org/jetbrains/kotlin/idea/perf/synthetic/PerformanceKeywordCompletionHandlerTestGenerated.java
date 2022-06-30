@@ -1,4 +1,4 @@
-// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.perf.synthetic;
 
@@ -91,6 +91,11 @@ public class PerformanceKeywordCompletionHandlerTestGenerated extends AbstractPe
     @TestMetadata("IfLParenth.kt")
     public void testIfLParenth() throws Exception {
         runTest("../completion/tests/testData/handlers/keywords/IfLParenth.kt");
+    }
+
+    @TestMetadata("IfLParenth.fir.kt")
+    public void testIfLParenth_fir() throws Exception {
+        runTest("../completion/tests/testData/handlers/keywords/IfLParenth.fir.kt");
     }
 
     @TestMetadata("IfParansOnNextLine.kt")

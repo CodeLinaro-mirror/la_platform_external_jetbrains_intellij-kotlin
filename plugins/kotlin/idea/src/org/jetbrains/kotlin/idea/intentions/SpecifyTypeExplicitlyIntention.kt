@@ -6,6 +6,7 @@ import com.intellij.codeInsight.hint.HintManager
 import com.intellij.codeInsight.intention.HighPriorityAction
 import com.intellij.codeInsight.template.*
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.impl.ImaginaryEditor
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiDocumentManager
@@ -22,7 +23,7 @@ import org.jetbrains.kotlin.idea.core.unquote
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.idea.util.IdeDescriptorRenderers
 import org.jetbrains.kotlin.idea.util.application.isUnitTestMode
-import org.jetbrains.kotlin.idea.util.application.runWriteAction
+import org.jetbrains.kotlin.idea.util.application.runWriteActionIfPhysical
 import org.jetbrains.kotlin.idea.util.getResolutionScope
 import org.jetbrains.kotlin.idea.util.getResolvableApproximations
 import org.jetbrains.kotlin.psi.*
@@ -32,6 +33,8 @@ import org.jetbrains.kotlin.resolve.checkers.ExplicitApiDeclarationChecker
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameOrNull
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.types.*
+import org.jetbrains.kotlin.types.error.ErrorUtils
+import org.jetbrains.kotlin.types.error.ErrorTypeKind
 import org.jetbrains.kotlin.types.typeUtil.makeNotNullable
 import org.jetbrains.kotlin.utils.ifEmpty
 
@@ -67,7 +70,7 @@ class SpecifyTypeExplicitlyIntention : SelfTargetingRangeIntention<KtCallableDec
     override fun applyTo(element: KtCallableDeclaration, editor: Editor?) {
         val type = getTypeForDeclaration(element)
         if (type.isError) {
-            if (editor != null) {
+            if (editor != null && editor !is ImaginaryEditor) {
                 HintManager.getInstance().showErrorHint(editor, KotlinBundle.message("cannot.infer.type.for.this.declaration"))
             }
             return
@@ -114,10 +117,10 @@ class SpecifyTypeExplicitlyIntention : SelfTargetingRangeIntention<KtCallableDec
             }
 
             if (type != null && type.isError && descriptor is PropertyDescriptor) {
-                return descriptor.setterType ?: ErrorUtils.createErrorType("null type")
+                return descriptor.setterType ?: ErrorUtils.createErrorType(ErrorTypeKind.NOT_FOUND_DESCRIPTOR_FOR_FUNCTION, declaration.text)
             }
 
-            return type ?: ErrorUtils.createErrorType("null type")
+            return type ?: ErrorUtils.createErrorType(ErrorTypeKind.NOT_FOUND_DESCRIPTOR_FOR_FUNCTION, declaration.text)
         }
 
         fun createTypeExpressionForTemplate(
@@ -192,10 +195,12 @@ class SpecifyTypeExplicitlyIntention : SelfTargetingRangeIntention<KtCallableDec
             }
         }
 
-        fun addTypeAnnotation(editor: Editor?, declaration: KtCallableDeclaration, exprType: KotlinType) = if (editor != null) {
-            addTypeAnnotationWithTemplate(editor, declaration, exprType)
-        } else {
-            declaration.setType(exprType)
+        fun addTypeAnnotation(editor: Editor?, declaration: KtCallableDeclaration, exprType: KotlinType) {
+            if (editor != null) {
+                addTypeAnnotationWithTemplate(editor, declaration, exprType)
+            } else {
+                declaration.setType(exprType)
+            }
         }
 
         @JvmOverloads
@@ -207,7 +212,7 @@ class SpecifyTypeExplicitlyIntention : SelfTargetingRangeIntention<KtCallableDec
             override fun templateFinished(template: Template, brokenOff: Boolean) {
                 val typeRef = declaration.typeReference
                 if (typeRef != null && typeRef.isValid) {
-                    runWriteAction {
+                    runWriteActionIfPhysical(typeRef) {
                         ShortenReferences.DEFAULT.process(typeRef)
                         if (iterator != null && editor != null) addTypeAnnotationWithTemplate(editor, iterator)
                     }
@@ -232,11 +237,14 @@ class SpecifyTypeExplicitlyIntention : SelfTargetingRangeIntention<KtCallableDec
             val expression = createTypeExpressionForTemplate(exprType, declaration, useTypesFromOverridden = true) ?: return
 
             declaration.setType(StandardNames.FqNames.any.asString())
+            val declarationPointer = declaration.createSmartPointer()
 
-            PsiDocumentManager.getInstance(project).commitAllDocuments()
+            // May invalidate declaration
             PsiDocumentManager.getInstance(project).doPostponedOperationsAndUnblockDocument(editor.document)
 
-            val newTypeRef = declaration.typeReference ?: return
+            val newDeclaration = declarationPointer.element ?: return
+
+            val newTypeRef = newDeclaration.typeReference ?: return
             val builder = TemplateBuilderImpl(newTypeRef)
             builder.replaceElement(newTypeRef, expression)
 
@@ -245,7 +253,7 @@ class SpecifyTypeExplicitlyIntention : SelfTargetingRangeIntention<KtCallableDec
             TemplateManager.getInstance(project).startTemplate(
                 editor,
                 builder.buildInlineTemplate(),
-                createTypeReferencePostprocessor(declaration, iterator, editor)
+                createTypeReferencePostprocessor(newDeclaration, iterator, editor)
             )
         }
     }

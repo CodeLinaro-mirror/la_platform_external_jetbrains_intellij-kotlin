@@ -5,6 +5,7 @@ package org.jetbrains.kotlin.idea.quickfix
 import com.intellij.codeInsight.intention.FileModifier.SafeFieldForPreview
 import com.intellij.codeInsight.intention.HighPriorityAction
 import com.intellij.codeInsight.intention.IntentionAction
+import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
@@ -29,7 +30,7 @@ import org.jetbrains.kotlin.resolve.DataClassDescriptorResolver
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
 import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
-import org.jetbrains.kotlin.types.ErrorUtils
+import org.jetbrains.kotlin.types.error.ErrorUtils
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
 import org.jetbrains.kotlin.types.typeUtil.isUnit
@@ -130,11 +131,11 @@ abstract class ChangeCallableReturnTypeFix(
         }
     }
 
-    override fun invokeForPreview(project: Project, editor: Editor?, file: PsiFile?): Boolean {
+    override fun generatePreview(project: Project, editor: Editor, file: PsiFile): IntentionPreviewInfo {
         if (changeFunctionLiteralReturnTypeFix != null) {
-            return changeFunctionLiteralReturnTypeFix.invokeForPreview(project, editor!!, file)
+            return changeFunctionLiteralReturnTypeFix.generatePreview(project, editor, file)
         }
-        return super.invokeForPreview(project, editor, file)
+        return super.generatePreview(project, editor, file)
     }
 
     object ComponentFunctionReturnTypeMismatchFactory : KotlinSingleIntentionActionFactory() {

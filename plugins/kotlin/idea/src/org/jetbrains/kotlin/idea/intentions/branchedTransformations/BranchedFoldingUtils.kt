@@ -5,6 +5,7 @@ package org.jetbrains.kotlin.idea.intentions.branchedTransformations
 import org.jetbrains.kotlin.cfg.WhenChecker
 import org.jetbrains.kotlin.diagnostics.Errors
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.caches.resolve.safeAnalyzeNonSourceRootCode
 import org.jetbrains.kotlin.idea.core.replaced
 import org.jetbrains.kotlin.idea.intentions.branches
 import org.jetbrains.kotlin.idea.references.mainReference
@@ -235,6 +236,6 @@ object BranchedFoldingUtils {
     private fun KtTryExpression.tryBlockAndCatchBodies(): List<KtExpression?> = listOf(tryBlock) + catchClauses.map { it.catchBody }
 
     private fun KtWhenExpression.hasMissingCases(): Boolean =
-        !KtPsiUtil.checkWhenExpressionHasSingleElse(this) && WhenChecker.getMissingCases(this, this.analyze()).isNotEmpty()
+        !KtPsiUtil.checkWhenExpressionHasSingleElse(this) && WhenChecker.getMissingCases(this, safeAnalyzeNonSourceRootCode()).isNotEmpty()
 
 }

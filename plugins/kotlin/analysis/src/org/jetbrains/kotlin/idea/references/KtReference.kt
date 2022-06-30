@@ -6,11 +6,14 @@ import com.intellij.psi.*
 import com.intellij.psi.impl.source.resolve.ResolveCache
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.PackageViewDescriptor
-import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.caches.resolve.resolveImportReference
 import org.jetbrains.kotlin.idea.caches.resolve.safeAnalyze
 import org.jetbrains.kotlin.idea.codeInsight.DescriptorToSourceUtilsIde
 import org.jetbrains.kotlin.idea.util.application.runWithCancellationCheck
+import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtImportAlias
 import org.jetbrains.kotlin.psi.KtReferenceExpression
+import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import java.util.*
@@ -18,14 +21,29 @@ import java.util.*
 interface KtDescriptorsBasedReference : KtReference {
     override val resolver get() = KotlinDescriptorsBasedReferenceResolver
 
-    fun resolveToDescriptors(bindingContext: BindingContext): Collection<DeclarationDescriptor> {
-        return getTargetDescriptors(bindingContext)
-    }
+    fun resolveToDescriptors(bindingContext: BindingContext): Collection<DeclarationDescriptor> = getTargetDescriptors(bindingContext)
 
     fun getTargetDescriptors(context: BindingContext): Collection<DeclarationDescriptor>
 
-    override fun isReferenceTo(element: PsiElement): Boolean {
-        return matchesTarget(element)
+    fun isReferenceToImportAlias(alias: KtImportAlias): Boolean {
+        val importDirective = alias.importDirective ?: return false
+        val importedFqName = importDirective.importedFqName ?: return false
+        val importedDescriptors = importDirective.containingKtFile.resolveImportReference(importedFqName)
+        val importableTargets = unwrappedTargets.mapNotNull {
+            when {
+                it is KtConstructor<*> -> it.containingClassOrObject
+                it is PsiMethod && it.isConstructor -> it.containingClass
+                else -> it
+            }
+        }
+
+        val project = element.project
+        val resolveScope = element.resolveScope
+        return importedDescriptors.any {
+            it.findPsiDeclarations(project, resolveScope).any { declaration ->
+                declaration in importableTargets
+            }
+        }
     }
 }
 
@@ -33,6 +51,7 @@ fun KtReference.resolveToDescriptors(bindingContext: BindingContext): Collection
     if (this !is KtDescriptorsBasedReference) {
         error("Reference $this should be KtDescriptorsBasedReference but was ${this::class}")
     }
+
     return resolveToDescriptors(bindingContext)
 }
 
@@ -66,14 +85,12 @@ object KotlinDescriptorsBasedReferenceResolver : ResolveCache.PolyVariantResolve
     private fun resolveToPsiElements(
         ref: KtDescriptorsBasedReference,
         targetDescriptor: DeclarationDescriptor
-    ): Collection<PsiElement> {
-        return if (targetDescriptor is PackageViewDescriptor) {
-            val psiFacade = JavaPsiFacade.getInstance(ref.element.project)
-            val fqName = targetDescriptor.fqName.asString()
-            listOfNotNull(psiFacade.findPackage(fqName))
-        } else {
-            DescriptorToSourceUtilsIde.getAllDeclarations(ref.element.project, targetDescriptor, ref.element.resolveScope)
-        }
+    ): Collection<PsiElement> = if (targetDescriptor is PackageViewDescriptor) {
+        val psiFacade = JavaPsiFacade.getInstance(ref.element.project)
+        val fqName = targetDescriptor.fqName.asString()
+        listOfNotNull(psiFacade.findPackage(fqName))
+    } else {
+        DescriptorToSourceUtilsIde.getAllDeclarations(ref.element.project, targetDescriptor, ref.element.resolveScope)
     }
 
     private fun getLabelTargets(ref: KtDescriptorsBasedReference, context: BindingContext): Collection<PsiElement>? {
@@ -82,13 +99,12 @@ object KotlinDescriptorsBasedReferenceResolver : ResolveCache.PolyVariantResolve
         if (labelTarget != null) {
             return listOf(labelTarget)
         }
+
         return context[BindingContext.AMBIGUOUS_LABEL_TARGET, reference]
     }
 
-    override fun resolve(ref: KtReference, incompleteCode: Boolean): Array<ResolveResult> {
-        return runWithCancellationCheck {
-            val resolveToPsiElements = resolveToPsiElements(ref as KtDescriptorsBasedReference)
-            resolveToPsiElements.map { KotlinResolveResult(it) }.toTypedArray()
-        }
+    override fun resolve(ref: KtReference, incompleteCode: Boolean): Array<ResolveResult> = runWithCancellationCheck {
+        val resolveToPsiElements = resolveToPsiElements(ref as KtDescriptorsBasedReference)
+        resolveToPsiElements.map { KotlinResolveResult(it) }.toTypedArray()
     }
 }

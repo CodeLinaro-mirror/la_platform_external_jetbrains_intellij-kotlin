@@ -456,6 +456,12 @@
     </intentionAction>
 
     <intentionAction>
+      <className>org.jetbrains.kotlin.idea.intentions.RemoveAllArgumentNamesIntention</className>
+      <bundleName>messages.KotlinBundle</bundleName>
+      <categoryKey>group.names.kotlin</categoryKey>
+    </intentionAction>
+
+    <intentionAction>
       <className>org.jetbrains.kotlin.idea.intentions.IterateExpressionIntention</className>
       <bundleName>messages.KotlinBundle</bundleName>
       <categoryKey>group.names.kotlin</categoryKey>
@@ -1108,15 +1114,6 @@
                      level="INFORMATION"
                      language="kotlin"
                      key="inspection.simplify.assert.not.null.display.name" bundle="messages.KotlinBundle"/>
-
-    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.ReformatInspection"
-                     groupPath="Kotlin"
-                     groupBundle="messages.KotlinBundle" groupKey="group.names.style.issues"
-                     enabledByDefault="false"
-                     level="WEAK WARNING"
-                     language="kotlin"
-                     runForWholeFile="true"
-                     key="inspection.reformat.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.ReplaceCollectionCountWithSizeInspection"
                      groupPath="Kotlin"
@@ -2066,6 +2063,7 @@
                      groupBundle="messages.KotlinBundle" groupKey="group.names.redundant.constructs"
                      enabledByDefault="true"
                      level="WARNING"
+                     cleanupTool="true"
                      language="kotlin" key="inspection.remove.redundant.qualifier.name.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.RedundantSetterInspection"
@@ -2109,6 +2107,7 @@
                      enabledByDefault="true"
                      level="WARNING"
                      language="kotlin"
+                     cleanupTool="true"
                      key="inspection.redundant.unit.expression.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.SelfAssignmentInspection"
@@ -2117,6 +2116,7 @@
                      enabledByDefault="true"
                      level="WARNING"
                      language="kotlin"
+                     cleanupTool="true"
                      key="inspection.self.assignment.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.ImplicitNullableNothingTypeInspection"
@@ -2397,6 +2397,24 @@
                      language="kotlin"
                      key="inspection.redundant.label.migration.display.name" bundle="messages.KotlinBundle"/>
 
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.AmbiguousExpressionInWhenBranchMigrationInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
+                     enabledByDefault="false"
+                     cleanupTool="true"
+                     level="WARNING"
+                     language="kotlin"
+                     key="inspection.ambiguous.expression.when.branch.migration.display.name" bundle="messages.KotlinBundle"/>
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.AddConversionCallMigrationInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
+                     enabledByDefault="false"
+                     cleanupTool="true"
+                     level="WARNING"
+                     language="kotlin"
+                     key="inspection.add.conversion.call.display.name" bundle="messages.KotlinBundle"/>
+
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.ProhibitUseSiteTargetAnnotationsOnSuperTypesMigrationInspection"
                      groupPath="Kotlin"
                      groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
@@ -2407,6 +2425,15 @@
                      key="inspection.prohibit.use.site.target.annotations.on.super.types.migration.display.name"
                      bundle="messages.KotlinBundle"/>
 
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.InlineClassDeprecatedMigrationInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
+                     enabledByDefault="false"
+                     cleanupTool="true"
+                     level="WARNING"
+                     language="kotlin"
+                     key="inspection.deprecated.inline.classes.migration.display.name" bundle="messages.KotlinBundle"/>
+
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.ProhibitRepeatedUseSiteTargetAnnotationsMigrationInspection"
                      groupPath="Kotlin"
                      groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
@@ -2415,6 +2442,22 @@
                      level="ERROR"
                      language="kotlin"
                      key="inspection.prohibit.repeated.use.site.target.annotations.migration.display.name" bundle="messages.KotlinBundle"/>
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.OverrideDeprecatedMigrationInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
+                     enabledByDefault="false"
+                     level="ERROR"
+                     language="kotlin"
+                     key="inspection.do.not.propagate.method.deprecation.through.overrides" bundle="messages.KotlinBundle"/>
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.NoConstructorMigrationInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
+                     enabledByDefault="false"
+                     level="ERROR"
+                     language="kotlin"
+                     key="inspection.this.class.does.not.have.a.constructor" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.NonExhaustiveWhenStatementMigrationInspection"
                      groupPath="Kotlin"
@@ -2830,6 +2873,14 @@
                      level="WARNING"
                      language="kotlin"
                      key="inspection.logger.initialized.with.foreign.class.display.name" bundle="messages.KotlinBundle"/>
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.logging.KotlinPlaceholderCountMatchesArgumentCountInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.logging"
+                     enabledByDefault="true"
+                     level="WARNING"
+                     language="kotlin"
+                     key="inspection.logger.placeholder.count.matches.argument.count.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.ReplaceWithIgnoreCaseEqualsInspection"
                      groupPath="Kotlin"

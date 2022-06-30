@@ -3,18 +3,18 @@
 package org.jetbrains.uast.kotlin
 
 import com.intellij.psi.*
+import org.jetbrains.kotlin.asJava.toLightAnnotation
 import org.jetbrains.kotlin.backend.common.descriptors.explicitParameters
 import org.jetbrains.kotlin.builtins.createFunctionType
 import org.jetbrains.kotlin.codegen.state.KotlinTypeMapper
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.descriptors.*
-import org.jetbrains.kotlin.idea.references.readWriteAccess
+import org.jetbrains.kotlin.idea.util.actionUnderSafeAnalyzeBlock
 import org.jetbrains.kotlin.name.FqNameUnsafe
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.DescriptorUtils
-import org.jetbrains.kotlin.resolve.bindingContextUtil.isUsedAsResultOfLambda
 import org.jetbrains.kotlin.resolve.calls.components.isVararg
 import org.jetbrains.kotlin.resolve.calls.model.ArgumentMatch
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.resolve.lazy.ForceResolveUtil
 import org.jetbrains.kotlin.resolve.source.getPsi
 import org.jetbrains.kotlin.synthetic.SyntheticJavaPropertyDescriptor
 import org.jetbrains.kotlin.types.*
+import org.jetbrains.kotlin.types.error.ErrorUtils
 import org.jetbrains.kotlin.types.typeUtil.TypeNullability
 import org.jetbrains.kotlin.types.typeUtil.nullability
 import org.jetbrains.uast.*
@@ -48,6 +49,10 @@ interface KotlinUastResolveProviderService : BaseKotlinUastResolveProviderServic
 
     override val baseKotlinConverter: BaseKotlinConverter
         get() = KotlinConverter
+
+    override fun convertToPsiAnnotation(ktElement: KtElement): PsiAnnotation? {
+        return ktElement.actionUnderSafeAnalyzeBlock({ ktElement.toLightAnnotation() }, { null })
+    }
 
     private fun getResolvedCall(sourcePsi: KtCallElement): ResolvedCall<*>? {
         val annotationEntry = sourcePsi.getParentOfType<KtAnnotationEntry>(false) ?: return null
@@ -117,11 +122,13 @@ interface KotlinUastResolveProviderService : BaseKotlinUastResolveProviderServic
 
     override fun getImplicitReturn(ktLambdaExpression: KtLambdaExpression, parent: UElement): KotlinUImplicitReturnExpression? {
         val lastExpression = ktLambdaExpression.bodyExpression?.statements?.lastOrNull() ?: return null
-        if (!lastExpression.isUsedAsResultOfLambda(lastExpression.analyze())) return null
-
-        return KotlinUImplicitReturnExpression(parent).apply {
-            returnExpression = baseKotlinConverter.convertOrEmpty(lastExpression, this)
+        val context = lastExpression.analyze()
+        if (context[BindingContext.USED_AS_RESULT_OF_LAMBDA, lastExpression] == true) {
+            return KotlinUImplicitReturnExpression(parent).apply {
+                returnExpression = baseKotlinConverter.convertOrEmpty(lastExpression, this)
+            }
         }
+        return null
     }
 
     override fun getImplicitParameters(
@@ -151,6 +158,10 @@ interface KotlinUastResolveProviderService : BaseKotlinUastResolveProviderServic
         }
     }
 
+    override fun getPsiAnnotations(psiElement: PsiModifierListOwner): Array<PsiAnnotation> {
+        return psiElement.actionUnderSafeAnalyzeBlock({ psiElement.annotations }, { emptyArray() })
+    }
+
     override fun resolveBitwiseOperators(ktBinaryExpression: KtBinaryExpression): UastBinaryOperator {
         val other = UastBinaryOperator.OTHER
         val ref = ktBinaryExpression.operationReference
@@ -171,7 +182,7 @@ interface KotlinUastResolveProviderService : BaseKotlinUastResolveProviderServic
     override fun resolveAccessorCall(ktSimpleNameExpression: KtSimpleNameExpression): PsiMethod? {
         val resolvedCall = ktSimpleNameExpression.getResolvedCall(ktSimpleNameExpression.analyze()) ?: return null
         val resultingDescriptor = resolvedCall.resultingDescriptor as? SyntheticJavaPropertyDescriptor ?: return null
-        val access = ktSimpleNameExpression.readWriteAccess(useResolveForReadWrite = false)
+        val access = ktSimpleNameExpression.readWriteAccess()
         val descriptor = (if (access.isWrite) resultingDescriptor.setMethod else resultingDescriptor.getMethod) ?: return null
         return resolveToPsiMethod(ktSimpleNameExpression, descriptor)
     }

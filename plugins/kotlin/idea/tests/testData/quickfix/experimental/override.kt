@@ -1,6 +1,6 @@
 // "Propagate 'MyExperimentalAPI' opt-in requirement to containing class 'Derived'" "false"
 // COMPILER_ARGUMENTS: -opt-in=kotlin.RequiresOptIn
-// WITH_RUNTIME
+// WITH_STDLIB
 // ACTION: Propagate 'MyExperimentalAPI' opt-in requirement to 'foo'
 // ACTION: Opt in for 'MyExperimentalAPI' in containing file 'override.kt'
 // ACTION: Opt in for 'MyExperimentalAPI' on 'foo'
@@ -8,7 +8,7 @@
 // ACTION: Add '-opt-in=MyExperimentalAPI' to module light_idea_test_case compiler arguments
 // ACTION: Enable a trailing comma by default in the formatter
 // ACTION: Go To Super Method
-// ERROR: This declaration overrides experimental member of supertype 'Base' and must be annotated with '@MyExperimentalAPI'
+// ERROR: Base declaration of supertype 'Base' needs opt-in. The declaration override must be annotated with '@MyExperimentalAPI' or '@OptIn(MyExperimentalAPI::class)'
 
 @RequiresOptIn
 @Target(AnnotationTarget.FUNCTION)

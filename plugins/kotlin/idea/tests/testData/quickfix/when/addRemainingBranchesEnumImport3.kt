@@ -1,5 +1,5 @@
 // "Add remaining branches with * import" "true"
-// WITH_RUNTIME
+// WITH_STDLIB
 import Foo.*
 
 enum class Foo {
@@ -23,4 +23,3 @@ class Test {
         }
     }
 }
-/* IGNORE_FIR */

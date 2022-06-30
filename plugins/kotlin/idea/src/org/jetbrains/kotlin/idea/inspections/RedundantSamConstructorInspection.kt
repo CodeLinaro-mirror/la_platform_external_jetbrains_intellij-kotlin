@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.idea.FrontendInternals
 import org.jetbrains.kotlin.idea.KotlinBundle
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
+import org.jetbrains.kotlin.idea.caches.resolve.safeAnalyzeNonSourceRootCode
 import org.jetbrains.kotlin.idea.project.languageVersionSettings
 import org.jetbrains.kotlin.idea.resolve.frontendService
 import org.jetbrains.kotlin.idea.util.getResolutionScope
@@ -171,7 +172,7 @@ class RedundantSamConstructorInspection : AbstractKotlinInspection() {
             val oracle = resolutionFacade.frontendService<SamConversionOracle>()
             val resolver = resolutionFacade.frontendService<SamConversionResolver>()
 
-            val bindingContext = functionCall.analyze(resolutionFacade, BodyResolveMode.PARTIAL)
+            val bindingContext = functionCall.safeAnalyzeNonSourceRootCode(resolutionFacade, BodyResolveMode.PARTIAL)
             val functionResolvedCall = functionCall.getResolvedCall(bindingContext) ?: return emptyList()
             if (!functionResolvedCall.isReallySuccess()) return emptyList()
 

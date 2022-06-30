@@ -1,6 +1,6 @@
 // "Move '@SomeOptInAnnotation' annotation from getter to property" "false"
-// COMPILER_ARGUMENTS: -Xopt-in=kotlin.RequiresOptIn
-// WITH_RUNTIME
+// COMPILER_ARGUMENTS: -opt-in=kotlin.RequiresOptIn
+// WITH_STDLIB
 // ACTION: Remove annotation
 // ERROR: Opt-in requirement marker annotation cannot be used on variable
 

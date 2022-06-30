@@ -44,6 +44,11 @@ val KtElement.builtIns: KotlinBuiltIns
 
 var KtFile.forcedTargetPlatform: TargetPlatform? by UserDataProperty(Key.create("FORCED_TARGET_PLATFORM"))
 
+fun Project.isKotlinLanguageVersionConfigured(): Boolean =
+    KotlinCommonCompilerArgumentsHolder.getInstance(this).settings.run {
+        this.languageVersion != null && apiVersion != null
+    }
+
 fun Module.getAndCacheLanguageLevelByDependencies(): LanguageVersion {
     val facetSettings = KotlinFacetSettingsProvider.getInstance(project)?.getInitializedSettings(this)
     val languageLevel = getLibraryLanguageLevel(this, null, facetSettings?.targetPlatform?.idePlatformKind)
@@ -113,7 +118,7 @@ fun Project.getLanguageVersionSettings(
     val languageVersion =
         kotlinFacetSettings?.languageLevel ?: LanguageVersion.fromVersionString(arguments.languageVersion)
         ?: contextModule?.getAndCacheLanguageLevelByDependencies()
-        ?: VersionView.RELEASED_VERSION
+        ?: LanguageVersion.LATEST_STABLE
     val apiVersion = ApiVersion.createByLanguageVersion(LanguageVersion.fromVersionString(arguments.apiVersion) ?: languageVersion)
     val compilerSettings = KotlinCompilerSettings.getInstance(this).settings
 
@@ -253,7 +258,7 @@ private fun parseArguments(
 }
 
 fun MutableMap<LanguageFeature, LanguageFeature.State>.configureMultiplatformSupport(
-    platformKind: IdePlatformKind<*>?,
+    platformKind: IdePlatformKind?,
     module: Module?
 ) {
     if (platformKind.isCommon || module?.implementsCommonModule == true) {

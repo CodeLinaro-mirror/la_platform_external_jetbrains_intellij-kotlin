@@ -3,15 +3,16 @@
 package org.jetbrains.kotlin.idea.klib
 
 import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.compiled.ClassFileDecompilers
+import org.jetbrains.kotlin.analysis.decompiler.psi.KotlinDecompiledFileViewProvider
+import org.jetbrains.kotlin.analysis.decompiler.psi.text.DecompiledText
+import org.jetbrains.kotlin.analysis.decompiler.psi.text.buildDecompiledText
+import org.jetbrains.kotlin.analysis.decompiler.psi.text.createIncompatibleAbiVersionDecompiledText
+import org.jetbrains.kotlin.analysis.decompiler.psi.text.defaultDecompilerRendererOptions
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
-import org.jetbrains.kotlin.idea.decompiler.KotlinDecompiledFileViewProvider
-import org.jetbrains.kotlin.idea.decompiler.common.createIncompatibleAbiVersionDecompiledText
-import org.jetbrains.kotlin.idea.decompiler.textBuilder.DecompiledText
-import org.jetbrains.kotlin.idea.decompiler.textBuilder.buildDecompiledText
-import org.jetbrains.kotlin.idea.decompiler.textBuilder.defaultDecompilerRendererOptions
 import org.jetbrains.kotlin.library.metadata.KlibMetadataProtoBuf
 import org.jetbrains.kotlin.metadata.ProtoBuf
 import org.jetbrains.kotlin.metadata.deserialization.BinaryVersion
@@ -48,7 +49,7 @@ abstract class KlibMetadataDecompiler<out V : BinaryVersion>(
 
     protected abstract fun doReadFile(file: VirtualFile): FileWithMetadata?
 
-    override fun accepts(file: VirtualFile) = file.fileType == fileType
+    override fun accepts(file: VirtualFile) = FileTypeRegistry.getInstance().isFileOfType(file, fileType)
 
     override fun getStubBuilder() = metadataStubBuilder
 
@@ -75,7 +76,7 @@ abstract class KlibMetadataDecompiler<out V : BinaryVersion>(
     }
 
     private fun buildDecompiledText(virtualFile: VirtualFile): DecompiledText {
-        assert(virtualFile.fileType == fileType) { "Unexpected file type ${virtualFile.fileType}" }
+        assert(FileTypeRegistry.getInstance().isFileOfType(virtualFile, fileType)) { "Unexpected file type ${virtualFile.fileType}" }
 
         return when (val file = readFileSafely(virtualFile)) {
             is FileWithMetadata.Incompatible -> createIncompatibleAbiVersionDecompiledText(expectedBinaryVersion(), file.version)

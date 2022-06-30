@@ -3,13 +3,14 @@
 package org.jetbrains.kotlin.idea.klib
 
 import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.fileTypes.FileTypeRegistry
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.compiled.ClsStubBuilder
 import com.intellij.psi.impl.compiled.ClassFileStubBuilder
 import com.intellij.psi.stubs.PsiFileStub
 import com.intellij.util.indexing.FileContent
-import org.jetbrains.kotlin.idea.decompiler.stubBuilder.createIncompatibleAbiVersionFileStub
-import org.jetbrains.kotlin.idea.decompiler.textBuilder.defaultDecompilerRendererOptions
+import org.jetbrains.kotlin.analysis.decompiler.psi.text.defaultDecompilerRendererOptions
+import org.jetbrains.kotlin.analysis.decompiler.stub.createIncompatibleAbiVersionFileStub
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import org.jetbrains.kotlin.serialization.SerializerExtensionProtocol
 import org.jetbrains.kotlin.serialization.js.DynamicTypeDeserializer
@@ -25,7 +26,7 @@ open class KlibMetadataStubBuilder(
 
     override fun buildFileStub(content: FileContent): PsiFileStub<*>? {
         val virtualFile = content.file
-        assert(virtualFile.fileType == fileType) { "Unexpected file type ${virtualFile.fileType}" }
+        assert(FileTypeRegistry.getInstance().isFileOfType(virtualFile, fileType)) { "Unexpected file type ${virtualFile.fileType}" }
 
         val file = readFile(virtualFile) ?: return null
 

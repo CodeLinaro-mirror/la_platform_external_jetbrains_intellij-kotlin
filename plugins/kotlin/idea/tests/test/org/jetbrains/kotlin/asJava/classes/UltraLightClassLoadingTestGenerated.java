@@ -1,4 +1,4 @@
-// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.asJava.classes;
 
@@ -28,11 +28,6 @@ public class UltraLightClassLoadingTestGenerated extends AbstractUltraLightClass
     protected void setUp() {
         compilerTestData("compiler/testData/asJava/ultraLightClasses");
         super.setUp();
-    }
-
-    @TestMetadata("annotationTargets_1_6.kt")
-    public void testAnnotationTargets_1_6() throws Exception {
-        runTest(compilerTestData("compiler/testData/asJava/ultraLightClasses/annotationTargets_1_6.kt"));
     }
 
     @TestMetadata("annotationWithSetParamPropertyModifier.kt")

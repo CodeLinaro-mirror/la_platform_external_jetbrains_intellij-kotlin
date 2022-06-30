@@ -200,7 +200,7 @@ class CompilerArgumentsCachingTest {
         profilePhases = Random.nextBoolean()
         checkPhaseConditions = Random.nextBoolean()
         checkStickyPhaseConditions = Random.nextBoolean()
-        useFir = Random.nextBoolean()
+        useK2 = Random.nextBoolean()
         useFirExtendedCheckers = Random.nextBoolean()
         disableUltraLightClasses = Random.nextBoolean()
         useMixedNamedArguments = Random.nextBoolean()
@@ -223,7 +223,6 @@ class CompilerArgumentsCachingTest {
 
         pluginOptions = generateRandomStringArray(20)
         pluginClasspaths = generateRandomStringArray(20)
-        useExperimental = generateRandomStringArray(20)
         optIn = generateRandomStringArray(20)
         commonSources = generateRandomStringArray(20)
         disablePhases = generateRandomStringArray(20)
@@ -471,7 +470,7 @@ class CompilerArgumentsCachingTest {
             "profilePhases",
             "checkPhaseConditions",
             "checkStickyPhaseConditions",
-            "useFir",
+            "useK2",
             "useFirExtendedCheckers",
             "disableUltraLightClasses",
             "useMixedNamedArguments",

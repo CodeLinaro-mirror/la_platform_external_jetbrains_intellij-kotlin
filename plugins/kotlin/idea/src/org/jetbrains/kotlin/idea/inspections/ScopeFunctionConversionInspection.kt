@@ -3,7 +3,6 @@
 package org.jetbrains.kotlin.idea.inspections
 
 import com.intellij.codeInspection.*
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
@@ -14,6 +13,7 @@ import org.jetbrains.kotlin.descriptors.SimpleFunctionDescriptor
 import org.jetbrains.kotlin.descriptors.ValueParameterDescriptor
 import org.jetbrains.kotlin.idea.KotlinBundle
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
+import org.jetbrains.kotlin.idea.caches.resolve.safeAnalyzeNonSourceRootCode
 import org.jetbrains.kotlin.idea.core.KotlinNameSuggester
 import org.jetbrains.kotlin.idea.core.ShortenReferences
 import org.jetbrains.kotlin.idea.refactoring.getThisLabelName
@@ -76,7 +76,7 @@ private fun getCounterpart(expression: KtCallExpression): String? {
         if (lambdaExpression.valueParameters.isNotEmpty()) {
             return null
         }
-        val bindingContext = callee.analyze(BodyResolveMode.PARTIAL)
+        val bindingContext = callee.safeAnalyzeNonSourceRootCode(BodyResolveMode.PARTIAL)
         val resolvedCall = callee.getResolvedCall(bindingContext) ?: return null
         val descriptor = resolvedCall.resultingDescriptor
         if (descriptor.dispatchReceiverParameter == null && descriptor.extensionReceiverParameter == null) return null

@@ -1,6 +1,6 @@
 // "Remove annotation" "true"
-// COMPILER_ARGUMENTS: -Xopt-in=kotlin.RequiresOptIn
-// WITH_RUNTIME
+// COMPILER_ARGUMENTS: -opt-in=kotlin.RequiresOptIn
+// WITH_STDLIB
 
 @RequiresOptIn
 @Target(AnnotationTarget.VALUE_PARAMETER)
