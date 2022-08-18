@@ -1,18 +1,18 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.refactoring.changeSignature.ui
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.colors.EditorFontType
-import com.intellij.openapi.editor.event.DocumentEvent
-import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.openapi.ui.VerticalFlowLayout
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.NlsContexts
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiCodeFragment
@@ -57,8 +57,10 @@ import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.types.isError
 import java.awt.Font
+import java.awt.ItemSelectable
 import java.awt.Toolkit
 import java.awt.event.ItemEvent
+import java.awt.event.ItemListener
 import javax.swing.*
 
 class KotlinChangeSignatureDialog(
@@ -74,6 +76,18 @@ class KotlinChangeSignatureDialog(
         KotlinMethodDescriptor,
         ParameterTableModelItemBase<KotlinParameterInfo>,
         KotlinCallableParameterTableModel>(project, methodDescriptor, false, context) {
+
+    private fun Disposable.whenDisposed(listener: () -> Unit): Disposable = apply {
+        Disposer.register(this, Disposable { listener() })
+    }
+
+    private fun ItemSelectable.addItemListener(parentDisposable: Disposable? = null, listener: ItemListener) {
+        addItemListener(listener)
+        parentDisposable?.whenDisposed {
+            removeItemListener(listener)
+        }
+    }
+
     override fun getFileType(): KotlinFileType = KotlinFileType.INSTANCE
 
     override fun createParametersInfoModel(descriptor: KotlinMethodDescriptor) =
@@ -155,31 +169,43 @@ class KotlinChangeSignatureDialog(
                         component = editor
                     } else if (KotlinCallableParameterTableModel.isDefaultParameterColumn(columnInfo) && isDefaultColumnEnabled()) {
                         defaultParameterCheckbox.isSelected = item.parameter.defaultValue != null
-                        defaultParameterCheckbox.addItemListener {
-                            parametersTableModel.setValueAtWithoutUpdate(it.stateChange == ItemEvent.SELECTED, row, columnFinal)
-                            updateSignature()
-                        }
+                        defaultParameterCheckbox.addItemListener(
+                            disposable,
+                            ItemListener {
+                                parametersTableModel.setValueAtWithoutUpdate(it.stateChange == ItemEvent.SELECTED, row, columnFinal)
+                                updateSignature()
+                            },
+                        )
+
                         component = defaultParameterCheckbox
                         editor = null
                         notifyReceiverListeners()
                     } else if (KotlinPrimaryConstructorParameterTableModel.isValVarColumn(columnInfo)) {
                         val comboBox = ComboBox(KotlinValVar.values())
                         comboBox.selectedItem = item.parameter.valOrVar
-                        comboBox.addItemListener {
-                            parametersTableModel.setValueAtWithoutUpdate(it.item, row, columnFinal)
-                            updateSignature()
-                        }
+                        comboBox.addItemListener(
+                            disposable,
+                            ItemListener {
+                                parametersTableModel.setValueAtWithoutUpdate(it.item, row, columnFinal)
+                                updateSignature()
+                            },
+                        )
+
                         component = comboBox
                         editor = null
                     } else if (KotlinFunctionParameterTableModel.isReceiverColumn(columnInfo)) {
                         val checkBox = JCheckBox()
                         checkBox.isSelected = parametersTableModel.receiver == item.parameter
-                        checkBox.addItemListener {
-                            val newReceiver = if (it.stateChange == ItemEvent.SELECTED) item.parameter else null
-                            (parametersTableModel as KotlinFunctionParameterTableModel).receiver = newReceiver
-                            updateSignature()
-                            notifyReceiverListeners()
-                        }
+                        checkBox.addItemListener(
+                            disposable,
+                            ItemListener {
+                                val newReceiver = if (it.stateChange == ItemEvent.SELECTED) item.parameter else null
+                                (parametersTableModel as KotlinFunctionParameterTableModel).receiver = newReceiver
+                                updateSignature()
+                                notifyReceiverListeners()
+                            },
+                        )
+
                         component = checkBox
                         editor = null
                     } else
@@ -189,13 +215,12 @@ class KotlinChangeSignatureDialog(
                     panel.add(label)
 
                     if (editor != null) {
-                        editor.addDocumentListener(
-                            object : DocumentListener {
-                                override fun documentChanged(e: DocumentEvent) {
-                                    fireDocumentChanged(e, columnFinal)
-                                }
-                            }
-                        )
+                        val listener = RowEditorChangeListener(columnFinal)
+                        editor.addDocumentListener(listener)
+                        Disposer.register(disposable) {
+                            editor.removeDocumentListener(listener)
+                        }
+
                         editor.setPreferredWidth(table.width / parametersTableModel.columnCount)
                     }
 
