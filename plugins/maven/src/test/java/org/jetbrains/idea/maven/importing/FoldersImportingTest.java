@@ -17,13 +17,13 @@ package org.jetbrains.idea.maven.importing;
 
 import com.intellij.execution.CommonProgramRunConfigurationParameters;
 import com.intellij.execution.util.ProgramParametersUtil;
+import com.intellij.maven.testFramework.MavenMultiVersionImportingTestCase;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.idea.maven.MavenCustomRepositoryHelper;
-import com.intellij.maven.testFramework.MavenMultiVersionImportingTestCase;
 import org.jetbrains.idea.maven.project.MavenImportingSettings;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jetbrains.idea.maven.server.MavenServerManager;
@@ -111,7 +111,7 @@ public class FoldersImportingTest extends MavenMultiVersionImportingTestCase {
 
     ApplicationManager.getApplication().runWriteAction(() -> {
       MavenRootModelAdapter adapter =
-        new MavenRootModelAdapter(new MavenRootModelAdapterLegacyImpl(myProjectsTree.findProject(myProjectPom),
+        new MavenRootModelAdapter(new MavenRootModelAdapterLegacyImpl(getProjectsTree().findProject(myProjectPom),
                                                                       getModule("project"),
                                                                       new ModifiableModelsProviderProxyWrapper(myProject)));
       adapter.addSourceFolder(dir1.getPath(), JavaSourceRootType.SOURCE);
@@ -120,18 +120,32 @@ public class FoldersImportingTest extends MavenMultiVersionImportingTestCase {
     });
 
 
-    assertSources("project", "userSourceFolder");
-    assertExcludes("project", "target", "userExcludedFolder");
+    if (supportsKeepingManualChanges()) {
+      assertSources("project", "userSourceFolder");
+      assertExcludes("project", "target", "userExcludedFolder");
+    }
 
     importProject();
 
-    assertSources("project", "userSourceFolder");
-    assertExcludes("project", "target", "userExcludedFolder");
+    if (supportsKeepingManualChanges()) {
+      assertSources("project", "userSourceFolder");
+      assertExcludes("project", "target", "userExcludedFolder");
+    }
+    else {
+      assertSources("project");
+      assertExcludes("project", "target");
+    }
 
     resolveFoldersAndImport();
 
-    assertSources("project", "userSourceFolder");
-    assertExcludes("project", "target", "userExcludedFolder");
+    if (supportsKeepingManualChanges()) {
+      assertSources("project", "userSourceFolder");
+      assertExcludes("project", "target", "userExcludedFolder");
+    }
+    else {
+      assertSources("project");
+      assertExcludes("project", "target");
+    }
   }
 
   @Test
@@ -192,15 +206,20 @@ public class FoldersImportingTest extends MavenMultiVersionImportingTestCase {
 
     getMavenImporterSettings().setKeepSourceFolders(true);
     createProjectPom("<groupId>test</groupId>" +
-                  "<artifactId>project</artifactId>" +
-                  "<version>1</version>" +
+                     "<artifactId>project</artifactId>" +
+                     "<version>1</version>" +
 
-                  "<build>" +
-                  "  <sourceDirectory>src1</sourceDirectory>" +
-                  "</build>");
+                     "<build>" +
+                     "  <sourceDirectory>src1</sourceDirectory>" +
+                     "</build>");
     resolveFoldersAndImport();
 
-    assertSources("project", "src2", "src1");
+    if (supportsKeepingFoldersFromPreviousImport()) {
+      assertSources("project", "src2", "src1");
+    }
+    else {
+      assertSources("project", "src1");
+    }
   }
 
   @Test
@@ -1475,8 +1494,8 @@ public class FoldersImportingTest extends MavenMultiVersionImportingTestCase {
         return false;
       }
     };
-    assertModules("project", "AA", "BB");
-    String workingDir = ProgramParametersUtil.getWorkingDir(parameters, myProject, getModule("BB"));
+    assertModules("project", mn("project", "AA"), mn("project", "BB"));
+    String workingDir = ProgramParametersUtil.getWorkingDir(parameters, myProject, getModule(mn("project", "BB")));
     assertEquals(pomBB.getCanonicalFile().getParent().getPath(), workingDir);
   }
 

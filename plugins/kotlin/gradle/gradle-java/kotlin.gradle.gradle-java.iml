@@ -33,6 +33,9 @@
     <orderEntry type="library" name="kotlinc.kotlin-compiler-fe10" level="project" />
     <orderEntry type="library" name="kotlinc.kotlin-script-runtime" level="project" />
     <orderEntry type="library" name="kotlinc.kotlin-gradle-statistics" level="project" />
+    <orderEntry type="module" module-name="kotlin.base.util" />
+    <orderEntry type="module" module-name="kotlin.base.compiler-configuration" />
+    <orderEntry type="module" module-name="kotlin.base.plugin" />
     <orderEntry type="module" module-name="kotlin.common" />
     <orderEntry type="module" module-name="kotlin.core" />
     <orderEntry type="module" module-name="kotlin.project-model" />
@@ -62,5 +65,7 @@
     <orderEntry type="module" module-name="intellij.java.compiler.impl" />
     <orderEntry type="module" module-name="intellij.gradle.java" />
     <orderEntry type="module" module-name="intellij.gradle.toolingExtension.impl" />
+    <orderEntry type="library" name="kotlin-gradle-plugin-idea" level="project" />
+    <orderEntry type="library" name="kotlin-tooling-core" level="project" />
   </component>
 </module>

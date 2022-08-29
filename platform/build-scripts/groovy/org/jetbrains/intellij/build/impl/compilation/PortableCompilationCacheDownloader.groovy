@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.intellij.build.impl.compilation
 
 import com.intellij.openapi.util.io.FileUtil
@@ -104,7 +104,7 @@ final class PortableCompilationCacheDownloader implements AutoCloseable {
         context.messages.error("Unable to find last cached commit for $availableCommitDepth in $lastCommits")
       }
       context.messages.info("Using cache for commit $lastCachedCommit ($availableCommitDepth behind last commit).")
-      context.messages.info("Using $executor.corePoolSize threads to download caches.")
+      context.messages.info("Using ${executor.corePoolSize} threads to download caches.")
       if (!downloadCompilationOutputsOnly || anyLocalChanges) {
         executor.submit {
           saveJpsCache(lastCachedCommit)
@@ -183,7 +183,7 @@ final class PortableCompilationCacheDownloader implements AutoCloseable {
 }
 
 @CompileStatic
-class GetClient {
+final class GetClient {
   private int timeout = TimeUnit.MINUTES.toMillis(1).toInteger()
 
   private final RequestConfig config = RequestConfig.custom()

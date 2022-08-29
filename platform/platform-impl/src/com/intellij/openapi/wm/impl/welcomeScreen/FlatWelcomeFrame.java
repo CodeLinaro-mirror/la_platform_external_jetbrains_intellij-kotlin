@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.openapi.wm.impl.welcomeScreen;
 
 import com.intellij.icons.AllIcons;
@@ -41,6 +41,7 @@ import com.intellij.ui.components.JBTextField;
 import com.intellij.ui.components.labels.ActionLink;
 import com.intellij.ui.components.panels.NonOpaquePanel;
 import com.intellij.ui.components.panels.VerticalLayout;
+import com.intellij.ui.components.panels.Wrapper;
 import com.intellij.ui.mac.touchbar.Touchbar;
 import com.intellij.ui.mac.touchbar.TouchbarActionCustomizations;
 import com.intellij.ui.scale.JBUIScale;
@@ -51,7 +52,6 @@ import com.intellij.util.ui.accessibility.AccessibleContextAccessor;
 import com.intellij.util.ui.update.UiNotifyConnector;
 import com.jetbrains.JBR;
 import net.miginfocom.swing.MigLayout;
-import org.jdom.internal.SystemProperty;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -73,32 +73,45 @@ import static com.intellij.util.ObjectUtils.chooseNotNull;
  */
 public class FlatWelcomeFrame extends JFrame implements IdeFrame, Disposable, AccessibleContextAccessor {
   @SuppressWarnings("StaticNonFinalField")
-  public static boolean USE_TABBED_WELCOME_SCREEN = Boolean.parseBoolean(SystemProperty.get("use.tabbed.welcome.screen", "true"));
+  public static boolean USE_TABBED_WELCOME_SCREEN = Boolean.parseBoolean(System.getProperty("use.tabbed.welcome.screen", "true"));
 
   public static final String BOTTOM_PANEL = "BOTTOM_PANEL";
   public static final int DEFAULT_HEIGHT = USE_TABBED_WELCOME_SCREEN ? 650 : 460;
   public static final int MAX_DEFAULT_WIDTH = 800;
   private final AbstractWelcomeScreen myScreen;
+  private final Wrapper myContent;
   private WelcomeBalloonLayoutImpl myBalloonLayout;
   private boolean myDisposed;
   private DefaultFrameHeader myHeader;
 
   public FlatWelcomeFrame() {
+    this(USE_TABBED_WELCOME_SCREEN ? new TabbedWelcomeScreen() : null);
+  }
+
+  public FlatWelcomeFrame(AbstractWelcomeScreen screen) {
     SplashManager.hideBeforeShow(this);
 
     JRootPane rootPane = getRootPane();
     myBalloonLayout = new WelcomeBalloonLayoutImpl(rootPane, JBUI.insets(8));
-    myScreen = USE_TABBED_WELCOME_SCREEN ? new TabbedWelcomeScreen() : new FlatWelcomeScreen();
+    if (screen != null) {
+      myScreen = screen;
+    }
+    else {
+      myScreen = new FlatWelcomeScreen();
+    }
+
+    myContent = new Wrapper();
+    setContentPane(myContent);
 
     if (IdeFrameDecorator.isCustomDecorationActive()) {
       myHeader = new DefaultFrameHeader(this);
-      setContentPane(CustomFrameDialogContent.getCustomContentHolder(this, myScreen.getWelcomePanel(), myHeader));
+      myContent.setContent(CustomFrameDialogContent.getCustomContentHolder(this, myScreen.getWelcomePanel(), myHeader));
     }
     else {
       if (USE_TABBED_WELCOME_SCREEN && SystemInfoRt.isMac) {
         rootPane.setJMenuBar(new WelcomeFrameMenuBar().setFrame(this));
       }
-      setContentPane(myScreen.getWelcomePanel());
+      myContent.setContent(myScreen.getWelcomePanel());
     }
 
     IdeGlassPaneImpl glassPane = new IdeGlassPaneImpl(rootPane);
@@ -167,6 +180,10 @@ public class FlatWelcomeFrame extends JFrame implements IdeFrame, Disposable, Ac
     WelcomeFrame.setupCloseAction(this);
   }
 
+  public @NotNull AbstractWelcomeScreen getScreen() {
+    return myScreen;
+  }
+
   private void updateComponentsAndResize() {
     int defaultHeight = DEFAULT_HEIGHT;
     if (IdeFrameDecorator.isCustomDecorationActive()) {
@@ -179,7 +196,7 @@ public class FlatWelcomeFrame extends JFrame implements IdeFrame, Disposable, Ac
       if (USE_TABBED_WELCOME_SCREEN && SystemInfoRt.isMac) {
         rootPane.setJMenuBar(new WelcomeFrameMenuBar().setFrame(this));
       }
-      setContentPane(myScreen.getWelcomePanel());
+      myContent.setContent(myScreen.getWelcomePanel());
     }
     if (USE_TABBED_WELCOME_SCREEN) {
       JBDimension defaultSize = JBUI.size(MAX_DEFAULT_WIDTH, defaultHeight);
@@ -246,6 +263,7 @@ public class FlatWelcomeFrame extends JFrame implements IdeFrame, Disposable, Ac
     return accessibleContext;
   }
 
+  @SuppressWarnings("WeakerAccess")
   protected String getWelcomeFrameTitle() {
     return WelcomeScreenComponentFactory.getApplicationTitle();
   }
@@ -264,7 +282,7 @@ public class FlatWelcomeFrame extends JFrame implements IdeFrame, Disposable, Ac
     private final DefaultActionGroup myTouchbarActions = new DefaultActionGroup();
     private boolean inDnd;
 
-    FlatWelcomeScreen() {
+    private FlatWelcomeScreen() {
       setBackground(WelcomeScreenUIManager.getMainBackground());
       if (RecentProjectListActionProvider.getInstance().getActions(false, true).size() > 0) {
         JComponent recentProjects = WelcomeScreenComponentFactory.createRecentProjects(this);
@@ -414,7 +432,7 @@ public class FlatWelcomeFrame extends JFrame implements IdeFrame, Disposable, Ac
       mainPanel.setOpaque(false);
 
       JPanel panel = new JPanel(new VerticalLayout(JBUI.scale(5))) {
-        Component firstAction = null;
+        private Component firstAction = null;
 
         @Override
         public Component add(Component comp) {
@@ -454,7 +472,7 @@ public class FlatWelcomeFrame extends JFrame implements IdeFrame, Disposable, Ac
             icon = IconUtil.colorize(icon, new JBColor(0x6e6e6e, 0xafb1b3));
           }
           action = ActionGroupPanelWrapper.wrapGroups(action, this);
-          @SuppressWarnings("deprecation") ActionLink link = new ActionLink(text, icon, action, null, ActionPlaces.WELCOME_SCREEN);
+          ActionLink link = new ActionLink(text, icon, action, null, ActionPlaces.WELCOME_SCREEN);
           link.setFocusable(false);  // don't allow focus, as the containing panel is going to be focusable
           link.setPaintUnderline(false);
           link.setNormalColor(WelcomeScreenUIManager.getLinkNormalColor());
@@ -477,10 +495,10 @@ public class FlatWelcomeFrame extends JFrame implements IdeFrame, Disposable, Ac
     }
   }
 
-  @SuppressWarnings({"unused", "IdentifierGrammar"})
+  @SuppressWarnings({"unused", "IdentifierGrammar", "WeakerAccess"})
   protected void extendActionsGroup(JPanel panel) { }
 
-  @SuppressWarnings("unused")
+  @SuppressWarnings({"unused", "WeakerAccess"})
   protected void onFirstActionShown(@NotNull Component action) { }
 
   @Override

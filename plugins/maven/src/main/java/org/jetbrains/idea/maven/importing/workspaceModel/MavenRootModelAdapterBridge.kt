@@ -13,8 +13,9 @@ import com.intellij.workspaceModel.ide.getInstance
 import com.intellij.workspaceModel.ide.impl.legacyBridge.module.ModuleManagerComponentBridge
 import com.intellij.workspaceModel.ide.impl.legacyBridge.module.roots.ModuleRootComponentBridge
 import com.intellij.workspaceModel.ide.legacyBridge.ModuleBridge
-import com.intellij.workspaceModel.storage.WorkspaceEntityStorageBuilder
+import com.intellij.workspaceModel.storage.MutableEntityStorage
 import com.intellij.workspaceModel.storage.bridgeEntities.*
+import com.intellij.workspaceModel.storage.bridgeEntities.api.*
 import com.intellij.workspaceModel.storage.url.VirtualFileUrlManager
 import org.jetbrains.idea.maven.importing.MavenModelUtil
 import org.jetbrains.idea.maven.importing.MavenRootModelAdapterInterface
@@ -29,17 +30,18 @@ import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.jps.model.java.JavaSourceRootType
 import org.jetbrains.jps.model.module.JpsModuleSourceRootType
 import org.jetbrains.jps.model.serialization.module.JpsModuleRootModelSerializer
+import com.intellij.workspaceModel.storage.bridgeEntities.api.modifyEntity
 import java.io.File
 
 @Retention(AnnotationRetention.SOURCE)
-private annotation class NotRequiredToImplement;
+private annotation class NotRequiredToImplement
 
 class MavenRootModelAdapterBridge(private val myMavenProject: MavenProject,
                                   private val module: ModuleBridge,
                                   private val project: Project,
                                   initialModuleEntity: ModuleEntity,
                                   private val legacyBridgeModifiableModelsProvider: IdeModifiableModelsProviderBridge,
-                                  private val builder: WorkspaceEntityStorageBuilder) : MavenRootModelAdapterInterface {
+                                  private val builder: MutableEntityStorage) : MavenRootModelAdapterInterface {
 
   private var moduleEntity: ModuleEntity = initialModuleEntity
   private val legacyBridge = ModuleRootComponentBridge.getInstance(module)
@@ -133,7 +135,7 @@ class MavenRootModelAdapterBridge(private val myMavenProject: MavenProject,
 
   override fun addExcludedFolder(path: String) {
     getContentRootFor(toUrl(path))?.let {
-      builder.modifyEntity(ModifiableContentRootEntity::class.java, it) {
+      builder.modifyEntity(it) {
         this.excludedUrls = this.excludedUrls + virtualFileManager.fromUrl(VfsUtilCore.pathToUrl(path))
       }
     }
@@ -162,7 +164,7 @@ class MavenRootModelAdapterBridge(private val myMavenProject: MavenProject,
                                    testJar: Boolean) {
 
     val dependency = ModuleDependencyItem.Exportable.ModuleDependency(ModuleId(moduleName), false, toEntityScope(scope), testJar)
-    moduleEntity = builder.modifyEntity(ModifiableModuleEntity::class.java, moduleEntity) {
+    moduleEntity = builder.modifyEntity(moduleEntity) {
       this.dependencies = this.dependencies + dependency
     }
   }
@@ -180,7 +182,7 @@ class MavenRootModelAdapterBridge(private val myMavenProject: MavenProject,
     return ModuleManagerComponentBridge(project).modules.firstOrNull { it.name == moduleName }
   }
 
-  private fun MavenArtifact.ideaLibraryName(): String = "${this.libraryName}";
+  private fun MavenArtifact.ideaLibraryName(): String = "${this.libraryName}"
 
   override fun addSystemDependency(artifact: MavenArtifact,
                                    scope: DependencyScope) {
@@ -213,7 +215,7 @@ class MavenRootModelAdapterBridge(private val myMavenProject: MavenProject,
       LibraryRoot(virtualFileManager.fromUrl(MavenModelUtil.getArtifactUrlForClassifierAndExtension(artifact, "sources", "jar")),
                   LibraryRootTypeId.SOURCES))
 
-    val libraryTableId = LibraryTableId.ProjectLibraryTableId; //(ModuleId(moduleEntity.name))
+    val libraryTableId = LibraryTableId.ProjectLibraryTableId //(ModuleId(moduleEntity.name))
 
     val libraryEntity = builder.addLibraryEntity(artifact.ideaLibraryName(), libraryTableId,
                                                  roots,
@@ -223,9 +225,9 @@ class MavenRootModelAdapterBridge(private val myMavenProject: MavenProject,
     val libDependency = ModuleDependencyItem.Exportable.LibraryDependency(LibraryId(libraryEntity.name, libraryTableId), false,
                                                                           toEntityScope(scope))
 
-    moduleEntity = builder.modifyEntity(ModifiableModuleEntity::class.java, moduleEntity, {
+    moduleEntity = builder.modifyEntity(moduleEntity) {
       this.dependencies += this.dependencies + libDependency
-    })
+    }
     val last = legacyBridge.orderEntries.last()
     assert(last is LibraryOrderEntry && last.libraryName == artifact.ideaLibraryName())
     return last as LibraryOrderEntry

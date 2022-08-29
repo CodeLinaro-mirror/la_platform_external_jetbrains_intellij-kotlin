@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.kotlin.idea.debugger
 
 import com.intellij.openapi.compiler.CompilerPaths
@@ -8,21 +8,23 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.io.isFile
+import com.intellij.util.io.readBytes
 import org.jetbrains.kotlin.idea.caches.project.implementingModules
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
 import org.jetbrains.kotlin.load.kotlin.VirtualFileFinder
 import org.jetbrains.kotlin.load.kotlin.VirtualFileFinderFactory
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.resolve.jvm.JvmClassName
-import java.io.File
 import java.io.IOException
+import java.nio.file.Path
 
 class ClassBytecodeFinder(private val project: Project, private val jvmName: JvmClassName, private val file: VirtualFile) {
     private companion object {
         private val LOG = Logger.getInstance(ClassBytecodeFinder::class.java)
     }
 
-    private val module = ProjectFileIndex.SERVICE.getInstance(project).getModuleForFile(file)
+    private val module = ProjectFileIndex.getInstance(project).getModuleForFile(file)
 
     fun find(): ByteArray? = findInCompilerOutput() ?: findInLibraries()
 
@@ -116,10 +118,10 @@ class ClassBytecodeFinder(private val project: Project, private val jvmName: Jvm
 
     private fun findInSingleModuleOutput(module: Module): ByteArray? {
         for (outputRoot in CompilerPaths.getOutputPaths(arrayOf(module)).toList()) {
-            val file = File(outputRoot, jvmName.internalName + ".class")
-            if (file.isFile) {
+            val path = Path.of(outputRoot, jvmName.internalName + ".class")
+            if (path.isFile()) {
                 try {
-                    return file.readBytes()
+                    return path.readBytes()
                 } catch (e: IOException) {
                     // Ensure results are consistent
                     LOG.debug("Can't read class file $jvmName", e)

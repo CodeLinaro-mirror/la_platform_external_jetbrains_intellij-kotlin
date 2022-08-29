@@ -40,6 +40,10 @@
       "mnemonicsBorderInsets": {
         "os.default": "0,8,1,6",
         "os.linux": "0,8,1,8"
+      },
+      "mnemonicsInsets": {
+        "os.default": "0,0,0,8",
+        "os.linux": "0,0,0,8"
       }
     },
 
@@ -518,9 +522,6 @@
     },
 
     "ToolbarComboWidget": {
-      "background": "#3C3F41",
-      "hoverBackground": "#4C5052",
-      "borderInsets": "3,5,3,5",
       "UI": "com.intellij.ide.ui.laf.darcula.ui.ToolbarComboWidgetUI"
     },
 
@@ -563,12 +564,14 @@
         "pressedBackground": "#4C5052"
       },
       "Dropdown": {
-        "borderInsets": "12,6,12,6",
+        "borderInsets": "3,5,3,5",
         "background": "#3C3F41",
         "hoverBackground": "#4C5052",
         "pressedBackground": "#4C5052"
       }
-    }
+    },
+
+    "Plugins.borderColor": "#515151"
   },
 
   "WelcomeScreen.Projects.actions.selectionBackground": "#326FC1",

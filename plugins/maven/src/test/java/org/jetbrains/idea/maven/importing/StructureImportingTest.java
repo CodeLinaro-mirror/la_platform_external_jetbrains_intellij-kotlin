@@ -17,6 +17,7 @@ package org.jetbrains.idea.maven.importing;
 
 import com.intellij.compiler.CompilerConfiguration;
 import com.intellij.compiler.impl.javaCompiler.javac.JavacConfiguration;
+import com.intellij.maven.testFramework.MavenMultiVersionImportingTestCase;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.module.LanguageLevelUtil;
 import com.intellij.openapi.module.Module;
@@ -24,7 +25,6 @@ import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.pom.java.LanguageLevel;
-import com.intellij.maven.testFramework.MavenMultiVersionImportingTestCase;
 import org.jetbrains.idea.maven.project.MavenGeneralSettings;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.junit.Test;
@@ -53,8 +53,14 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
     Sdk sdk = setupJdkForModule("project");
 
     importProject();
-    assertFalse(ModuleRootManager.getInstance(getModule("project")).isSdkInherited());
-    assertEquals(sdk, ModuleRootManager.getInstance(getModule("project")).getSdk());
+
+    if (supportsKeepingManualChanges()) {
+      assertFalse(ModuleRootManager.getInstance(getModule("project")).isSdkInherited());
+      assertEquals(sdk, ModuleRootManager.getInstance(getModule("project")).getSdk());
+    }
+    else {
+      assertTrue(ModuleRootManager.getInstance(getModule("project")).isSdkInherited());
+    }
   }
 
   @Test
@@ -80,11 +86,11 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
     importProject();
     assertModules("project", "m1", "m2");
 
-    List<MavenProject> roots = myProjectsTree.getRootProjects();
+    List<MavenProject> roots = getProjectsTree().getRootProjects();
     assertEquals(1, roots.size());
     assertEquals("project", roots.get(0).getMavenId().getArtifactId());
 
-    List<MavenProject> modules = myProjectsTree.getModules(roots.get(0));
+    List<MavenProject> modules = getProjectsTree().getModules(roots.get(0));
     assertEquals(2, modules.size());
     assertEquals("m1", modules.get(0).getMavenId().getArtifactId());
     assertEquals("m2", modules.get(1).getMavenId().getArtifactId());
@@ -262,11 +268,11 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
     importProject();
     assertModules("project", "m1", "m2");
 
-    List<MavenProject> roots = myProjectsTree.getRootProjects();
+    List<MavenProject> roots = getProjectsTree().getRootProjects();
     assertEquals(1, roots.size());
     assertEquals("project", roots.get(0).getMavenId().getArtifactId());
 
-    List<MavenProject> modules = myProjectsTree.getModules(roots.get(0));
+    List<MavenProject> modules = getProjectsTree().getModules(roots.get(0));
     assertEquals(2, modules.size());
     assertEquals("m1", modules.get(0).getMavenId().getArtifactId());
     assertEquals("m2", modules.get(1).getMavenId().getArtifactId());
@@ -312,13 +318,13 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
                                  "</parent>");
 
     importProject();
-    assertModules("project", "m1");
+    assertModules("project", mn("project", "m1"));
 
-    List<MavenProject> roots = myProjectsTree.getRootProjects();
+    List<MavenProject> roots = getProjectsTree().getRootProjects();
     assertEquals(1, roots.size());
     assertEquals("project", roots.get(0).getMavenId().getArtifactId());
 
-    List<MavenProject> modules = myProjectsTree.getModules(roots.get(0));
+    List<MavenProject> modules = getProjectsTree().getModules(roots.get(0));
     assertEquals(1, modules.size());
     assertEquals("m1", modules.get(0).getMavenId().getArtifactId());
   }
@@ -349,13 +355,13 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
                                  "</parent>");
 
     importProject();
-    assertModules("project", "m1");
+    assertModules("project", mn("project", "m1"));
 
-    List<MavenProject> roots = myProjectsTree.getRootProjects();
+    List<MavenProject> roots = getProjectsTree().getRootProjects();
     assertEquals(1, roots.size());
     assertEquals("project", roots.get(0).getMavenId().getArtifactId());
 
-    List<MavenProject> modules = myProjectsTree.getModules(roots.get(0));
+    List<MavenProject> modules = getProjectsTree().getModules(roots.get(0));
     assertEquals(1, modules.size());
     assertEquals("m1", modules.get(0).getMavenId().getArtifactId());
   }
@@ -420,7 +426,7 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
 
     assertTrue(parentDir.exists());
 
-    assertEquals("asm-parent", myProjectsTree.getRootProjects().get(0).getParentId().getArtifactId());
+    assertEquals("asm-parent", getProjectsTree().getRootProjects().get(0).getParentId().getArtifactId());
     assertTrue(new File(parentDir, "asm-parent-3.0.pom").exists());
   }
 
@@ -514,6 +520,8 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
 
   @Test
   public void testModuleGroupsWhenNotCreatingModulesForAggregatorProjects() {
+    if (!supportsCreateAggregatorOption() || !supportModuleGroups()) return;
+
     createProjectPom("<groupId>test</groupId>" +
                      "<artifactId>project</artifactId>" +
                      "<version>1</version>" +
@@ -614,8 +622,10 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
     importProjects(p1, p2);
     assertModules("project1", "project2", "module");
 
-    assertModuleGroupPath("project1", "project1 and modules");
-    assertModuleGroupPath("module", "project1 and modules");
+    if (supportModuleGroups()) {
+      assertModuleGroupPath("project1", "project1 and modules");
+      assertModuleGroupPath("module", "project1 and modules");
+    }
 
     p2 = createModulePom("project2",
                          "<groupId>test</groupId>" +
@@ -634,12 +644,19 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
 
     updateProjectsAndImport(p2); // should not fail to map module names. 
 
-    assertModules("project1", "project2", "module", "module (1)");
+    if (supportsKeepingModulesFromPreviousImport()) {
+      assertModules("project1", "project2", "module", "module (1)");
+    }
+    else {
+      assertModules("project1", "project2", "module (1)", "module (2)");
+    }
 
-    assertModuleGroupPath("project1", "project1 and modules");
-    assertModuleGroupPath("module", "project1 and modules");
-    assertModuleGroupPath("project2", "project2 and modules");
-    assertModuleGroupPath("module (1)", "project2 and modules");
+    if (supportModuleGroups()) {
+      assertModuleGroupPath("project1", "project1 and modules");
+      assertModuleGroupPath("module", "project1 and modules");
+      assertModuleGroupPath("project2", "project2 and modules");
+      assertModuleGroupPath("module (1)", "project2 and modules");
+    }
   }
 
   @Test
@@ -1062,8 +1079,8 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
     importProject();
 
     assertEquals("1.3", CompilerConfiguration.getInstance(myProject).getBytecodeTargetLevel(getModule("project")));
-    assertEquals("1.3", CompilerConfiguration.getInstance(myProject).getBytecodeTargetLevel(getModule("m1")));
-    assertEquals("1.5", CompilerConfiguration.getInstance(myProject).getBytecodeTargetLevel(getModule("m2")));
+    assertEquals("1.3", CompilerConfiguration.getInstance(myProject).getBytecodeTargetLevel(getModule(mn("project", "m1"))));
+    assertEquals("1.5", CompilerConfiguration.getInstance(myProject).getBytecodeTargetLevel(getModule(mn("project", "m2"))));
   }
 
   @Test
@@ -1119,7 +1136,7 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
                          "</build>");
 
     importProject();
-    assertModules("project", "m");
+    assertModules("project", mn("project", "m"));
   }
 
   @Test
@@ -1173,9 +1190,9 @@ public class StructureImportingTest extends MavenMultiVersionImportingTestCase {
 
     importProject();
 
-    assertModules("project", "m1", "m2");
-    assertModuleLibDeps("m1");
-    assertModuleLibDeps("m2", "Maven: junit:junit:4.0");
+    assertModules("project", mn("project", "m1"), mn("project", "m2"));
+    assertModuleLibDeps(mn("project", "m1"));
+    assertModuleLibDeps(mn("project", "m2"), "Maven: junit:junit:4.0");
   }
 
   @Test

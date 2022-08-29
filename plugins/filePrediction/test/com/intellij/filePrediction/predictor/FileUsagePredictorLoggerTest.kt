@@ -126,7 +126,7 @@ class FileUsagePredictorLoggerTest : CodeInsightFixtureTestCase<ModuleFixtureBui
 
     setCustomCandidateProviderModel(testRootDisposable, FilePredictionReferenceProvider(), FilePredictionNeighborFilesProvider())
     val predictor = predictorProvider.invoke(testRootDisposable)
-    val events = collectLogEvents {
+    val events = collectLogEvents(testRootDisposable) {
       ApplicationManager.getApplication().executeOnPooledThread{
         predictor.onSessionStarted(myFixture.project, file!!)
         predictor.onSessionStarted(myFixture.project, nextFile!!)
@@ -277,7 +277,6 @@ class FileUsagePredictorLoggerTest : CodeInsightFixtureTestCase<ModuleFixtureBui
       "com/test/Foo3.txt"
     )
 
-    @Suppress("UNCHECKED_CAST")
     val validator = TestFileCandidatesValidatorBuilder()
       .hasField("opened", 0) { (it["features"] as String).contains("JAVA").not() }
       .hasField("opened", 1) { (it["features"] as String).contains("JAVA") }.build()

@@ -1,6 +1,7 @@
 // Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.ide.actions.cache
 
+import com.intellij.idea.ActionsBundle
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -12,7 +13,18 @@ internal class CallSaulAction : DumbAwareAction() {
   override fun actionPerformed(e: AnActionEvent) = service<Saul>().sortThingsOut(RecoveryScope.createInstance(e))
 
   override fun update(e: AnActionEvent) {
-    e.presentation.isEnabledAndVisible = e.project != null
+    val isEnabled = e.project != null
+    e.presentation.isEnabledAndVisible = isEnabled
+    if (isEnabled) {
+      val recoveryScope = RecoveryScope.createInstance(e)
+      if (recoveryScope is FilesRecoveryScope) {
+        e.presentation.text = ActionsBundle.message("action.CallSaul.on.file.text", recoveryScope.files.size)
+      }
+    }
+  }
+
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.BGT
   }
 }
 
@@ -34,6 +46,10 @@ internal class CacheRecoveryActionGroup: ComputableActionGroup() {
       else emptyArray()
       CachedValueProvider.Result.create(actions, service<Saul>().modificationRecoveryActionTracker)
     }
+  }
+
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.BGT
   }
 
   private fun RecoveryAction.toAnAction(): AnAction {

@@ -1,5 +1,4 @@
 // Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-@file:Suppress("ReplaceJavaStaticMethodWithKotlinAnalog")
 
 package com.intellij.toolWindow
 
@@ -19,6 +18,8 @@ internal interface ToolWindowButtonManager {
 
   fun addToToolWindowPane(pane: JComponent) {
   }
+
+  fun initMoreButton() {}
 
   fun updateToolStripesVisibility(showButtons: Boolean, state: ToolWindowPaneState): Boolean
 

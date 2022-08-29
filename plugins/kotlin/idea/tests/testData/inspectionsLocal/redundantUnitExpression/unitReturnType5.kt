@@ -1,6 +1,4 @@
-// PROBLEM: none
 // WITH_STDLIB
-
 fun <T> doIt(p: () -> T): T = p()
 fun Any.doDo() = Unit
 
@@ -10,7 +8,7 @@ abstract class A {
 
 class B : A() {
     override fun a() = doIt {
-        1.let { it.let { it.let { it.let { it?.doDo() } } } }
+        1.let { it.let { it.let { it.let { it.doDo() } } } }
         Unit<caret>
     }
 }

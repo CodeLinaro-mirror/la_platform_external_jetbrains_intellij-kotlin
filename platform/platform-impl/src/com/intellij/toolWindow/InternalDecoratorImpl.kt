@@ -2,10 +2,11 @@
 package com.intellij.toolWindow
 
 import com.intellij.ide.IdeBundle
-import com.intellij.openapi.actionSystem.*
+import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.DataProvider
+import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.impl.ActionButton
-import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.ui.Queryable
 import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.CheckedDisposable
@@ -24,14 +25,12 @@ import com.intellij.openapi.wm.impl.content.ToolWindowContentUi
 import com.intellij.ui.*
 import com.intellij.ui.components.panels.Wrapper
 import com.intellij.ui.content.Content
-import com.intellij.ui.content.ContentManager
 import com.intellij.ui.content.ContentManagerEvent
 import com.intellij.ui.content.ContentManagerListener
 import com.intellij.ui.content.impl.ContentImpl
 import com.intellij.ui.content.impl.ContentManagerImpl
 import com.intellij.ui.hover.HoverStateListener
 import com.intellij.ui.paint.LinePainter2D
-import com.intellij.ui.plaf.beg.BegResources.m
 import com.intellij.util.MathUtil
 import com.intellij.util.animation.AlphaAnimated
 import com.intellij.util.ui.JBInsets
@@ -40,7 +39,6 @@ import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.annotations.ApiStatus
 import org.jetbrains.annotations.NonNls
 import java.awt.*
-import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.accessibility.AccessibleContext
@@ -49,7 +47,7 @@ import javax.swing.border.Border
 
 @ApiStatus.Internal
 class InternalDecoratorImpl internal constructor(
-  val toolWindow: ToolWindowImpl,
+  @JvmField internal val toolWindow: ToolWindowImpl,
   private val contentUi: ToolWindowContentUi,
   private val myDecoratorChild: JComponent
 ) : InternalDecorator(), Queryable, DataProvider, ComponentWithMnemonics {
@@ -424,17 +422,6 @@ class InternalDecoratorImpl internal constructor(
     return if (PlatformDataKeys.TOOL_WINDOW.`is`(dataId)) toolWindow else null
   }
 
-  public override fun processKeyBinding(ks: KeyStroke, e: KeyEvent, condition: Int, pressed: Boolean): Boolean {
-    if (condition == WHEN_ANCESTOR_OF_FOCUSED_COMPONENT && pressed) {
-      val keyStrokes = KeymapUtil.getKeyStrokes(ActionManager.getInstance().getAction("FocusEditor").shortcutSet)
-      if (keyStrokes.contains(ks)) {
-        toolWindow.toolWindowManager.activateEditorComponent()
-        return true
-      }
-    }
-    return super.processKeyBinding(ks, e, condition, pressed)
-  }
-
   fun setTitleActions(actions: List<AnAction>) {
     header.setAdditionalTitleActions(actions)
   }
@@ -526,10 +513,15 @@ class InternalDecoratorImpl internal constructor(
     get() = toolWindow.isActive
 
   fun updateActiveAndHoverState() {
+    val narrow = this.divider?.bounds?.x?.let { it < JBUI.scale(120)} ?: false
     val toolbar = headerToolbar
     if (toolbar is AlphaAnimated) {
       val alpha = toolbar as AlphaAnimated
-      alpha.alphaAnimator.setVisible(!toolWindow.toolWindowManager.isNewUi || isWindowHovered || header.isPopupShowing || toolWindow.isActive)
+      alpha.alphaAnimator.setVisible(narrow
+                                     || !toolWindow.toolWindowManager.isNewUi
+                                     || isWindowHovered
+                                     || header.isPopupShowing
+                                     || toolWindow.isActive)
     }
   }
 

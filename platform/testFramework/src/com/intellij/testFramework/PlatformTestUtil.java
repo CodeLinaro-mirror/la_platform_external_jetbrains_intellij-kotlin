@@ -1,10 +1,9 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.testFramework;
 
 import com.intellij.configurationStore.StateStorageManagerKt;
 import com.intellij.configurationStore.StoreReloadManager;
-import com.intellij.execution.ExecutionException;
-import com.intellij.execution.Executor;
+import com.intellij.diagnostic.ThreadDumper;
 import com.intellij.execution.*;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.actions.ConfigurationFromContext;
@@ -102,7 +101,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -111,7 +113,11 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.intellij.openapi.util.text.StringUtil.splitByLines;
+import static com.intellij.testFramework.UsefulTestCase.assertSameLines;
 import static com.intellij.util.ObjectUtils.consumeIfNotNull;
+import static com.intellij.util.containers.ContainerUtil.map2List;
+import static com.intellij.util.containers.ContainerUtil.sorted;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("UseOfSystemOutOrSystemErr")
@@ -250,12 +256,12 @@ public final class PlatformTestUtil {
   public static void assertTreeEqual(@NotNull JTree tree, @NotNull String expected, boolean checkSelected, boolean ignoreOrder) {
     String treeStringPresentation = print(tree, checkSelected);
     if (ignoreOrder) {
-      final Set<String> actualLines = Set.of(treeStringPresentation.split("\n"));
-      final Set<String> expectedLines = Set.of(expected.split("\n"));
-      assertEquals("Expected:\n" + expected + "\nActual:" + treeStringPresentation, expectedLines, actualLines);
+      final List<String> actualLines = sorted(map2List(splitByLines(treeStringPresentation), String::trim));
+      final List<String> expectedLines = sorted(map2List(splitByLines(expected), String::trim));
+      assertEquals("Expected:\n" + expected + "\nActual:\n" + treeStringPresentation, expectedLines, actualLines);
     }
     else {
-      assertEquals(expected.trim(), treeStringPresentation.trim());
+      assertSameLines(expected.trim(), treeStringPresentation.trim());
     }
   }
 
@@ -280,7 +286,10 @@ public final class PlatformTestUtil {
 
   private static void assertMaxWaitTimeSince(long startTimeMillis, long timeout) {
     long took = getMillisSince(startTimeMillis);
-    assert took <= timeout : String.format("the waiting takes too long. Expected to take no more than: %d ms but took: %d ms", timeout, took);
+    if (took > timeout) {
+      assert false : String.format("the waiting takes too long. Expected to take no more than: %d ms but took: %d ms\nThread dump: %s",
+                                   timeout, took, ThreadDumper.dumpThreadsToString());
+    }
   }
 
   private static void assertDispatchThreadWithoutWriteAccess() {
@@ -309,10 +318,8 @@ public final class PlatformTestUtil {
       UIUtil.dispatchAllInvocationEvents();
       return async.isProcessing();
     }
-    //noinspection deprecation
     AbstractTreeBuilder builder = AbstractTreeBuilder.getBuilderFor(tree);
     if (builder == null) return false;
-    //noinspection deprecation
     AbstractTreeUi ui = builder.getUi();
     if (ui == null) return false;
     return ui.hasPendingWork();
@@ -1071,7 +1078,7 @@ public final class PlatformTestUtil {
   }
 
   /**
-   * @see PlatformTestUtil#executeConfiguration(RunConfiguration, com.intellij.execution.Executor, java.util.function.Consumer)
+   * @see PlatformTestUtil#executeConfiguration(RunConfiguration, Executor, Consumer)
    */
   public static @NotNull Pair<@NotNull ExecutionEnvironment, RunContentDescriptor> executeConfiguration(
     @NotNull RunConfiguration runConfiguration,
@@ -1106,7 +1113,6 @@ public final class PlatformTestUtil {
     }
     Ref<RunContentDescriptor> refRunContentDescriptor = new Ref<>();
     ExecutionEnvironment executionEnvironment = new ExecutionEnvironment(executor, runner, runnerAndConfigurationSettings, project);
-    CountDownLatch latch = new CountDownLatch(1);
     ProgramRunnerUtil.executeConfigurationAsync(executionEnvironment, false, false, descriptor -> {
       LOG.debug("Process started");
       if (descriptorProcessor != null) {
@@ -1131,13 +1137,9 @@ public final class PlatformTestUtil {
         }
       });
       refRunContentDescriptor.set(descriptor);
-      latch.countDown();
     });
     NonBlockingReadActionImpl.waitForAsyncTaskCompletion();
-    LOG.debug("Waiting for process to start");
-    if (!latch.await(60, TimeUnit.SECONDS)) {
-      fail("Process failed to start in 60 seconds");
-    }
+    waitWithEventsDispatching("Process failed to start in 60 seconds", () -> !refRunContentDescriptor.isNull(), 60);
     return Pair.create(executionEnvironment, refRunContentDescriptor.get());
   }
 

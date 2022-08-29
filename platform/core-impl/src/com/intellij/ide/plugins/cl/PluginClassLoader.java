@@ -21,9 +21,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.CodeSource;
-import java.security.ProtectionDomain;
-import java.security.cert.Certificate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -32,7 +29,7 @@ import java.util.function.Function;
 
 @ApiStatus.Internal
 public final class PluginClassLoader extends UrlClassLoader implements PluginAwareClassLoader {
-  public static final ClassLoader[] EMPTY_CLASS_LOADER_ARRAY = new ClassLoader[0];
+  private static final ClassLoader[] EMPTY_CLASS_LOADER_ARRAY = new ClassLoader[0];
 
   static {
     boolean parallelCapable = registerAsParallelCapable();
@@ -44,9 +41,6 @@ public final class PluginClassLoader extends UrlClassLoader implements PluginAwa
   private static final AtomicInteger parentListCacheIdCounter = new AtomicInteger();
 
   private static final Set<String> KOTLIN_STDLIB_CLASSES_USED_IN_SIGNATURES;
-
-  // avoid capturing reference to classloader in AccessControlContext
-  private static final ProtectionDomain PROTECTION_DOMAIN = new ProtectionDomain(new CodeSource(null, (Certificate[]) null), null);
 
   static {
     @SuppressWarnings("SSBasedInspection")
@@ -73,11 +67,16 @@ public final class PluginClassLoader extends UrlClassLoader implements PluginAwa
       "kotlin.coroutines.CoroutineContext",
       "kotlin.coroutines.CoroutineContext$Element",
       "kotlin.coroutines.CoroutineContext$Key",
+      "kotlin.Result",
+      "kotlin.Result$Failure",
       // Even though it's internal class, it can leak (and it does) into API surface because it's exposed by public
       // `kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED` property
       "kotlin.coroutines.intrinsics.CoroutineSingletons",
       "kotlin.coroutines.AbstractCoroutineContextElement",
-      "kotlin.coroutines.AbstractCoroutineContextKey"
+      "kotlin.coroutines.AbstractCoroutineContextKey",
+      "kotlin.coroutines.jvm.internal.ContinuationImpl", // IDEA-295189
+      "kotlin.coroutines.jvm.internal.BaseContinuationImpl", // IDEA-295189
+      "kotlin.coroutines.jvm.internal.CoroutineStackFrame" // IDEA-295189
     ));
     String classes = System.getProperty("idea.kotlin.classes.used.in.signatures");
     if (classes != null) {
@@ -218,7 +217,7 @@ public final class PluginClassLoader extends UrlClassLoader implements PluginAwa
   }
 
   /**
-   * See https://stackoverflow.com/a/5428795 about resolve flag.
+   * See <a href="https://stackoverflow.com/a/5428795">https://stackoverflow.com/a/5428795</a> about resolve flag.
    */
   @Override
   public @Nullable Class<?> tryLoadingClass(@NotNull String name, boolean forceLoadFromSubPluginClassloader)
@@ -355,7 +354,7 @@ public final class PluginClassLoader extends UrlClassLoader implements PluginAwa
     return result;
   }
 
-  private void collectClassLoaders(@NotNull Deque<ClassLoader> queue) {
+  private void collectClassLoaders(@NotNull Deque<? super ClassLoader> queue) {
     for (IdeaPluginDescriptorImpl parent : parents) {
       ClassLoader classLoader = parent.getPluginClassLoader();
       if (classLoader != null && classLoader != coreLoader) {
@@ -504,7 +503,7 @@ public final class PluginClassLoader extends UrlClassLoader implements PluginAwa
     return doFindResource(name, f1, f2);
   }
 
-  private <T> @Nullable T doFindResource(String name, Function<Resource, T> f1, BiFunction<ClassLoader, String, T> f2) {
+  private <T> @Nullable T doFindResource(String name, Function<? super Resource, ? extends T> f1, BiFunction<? super ClassLoader, ? super String, ? extends T> f2) {
     String canonicalPath = toCanonicalPath(name);
 
     Resource resource = classPath.findResource(canonicalPath);
@@ -595,10 +594,10 @@ public final class PluginClassLoader extends UrlClassLoader implements PluginAwa
   }
 
   private static final class DeepEnumeration implements Enumeration<URL> {
-    private final @NotNull List<Enumeration<URL>> list;
+    private final @NotNull List<? extends Enumeration<URL>> list;
     private int myIndex;
 
-    DeepEnumeration(@NotNull List<Enumeration<URL>> enumerations) {
+    private DeepEnumeration(@NotNull List<? extends Enumeration<URL>> enumerations) {
       list = enumerations;
     }
 
@@ -627,11 +626,6 @@ public final class PluginClassLoader extends UrlClassLoader implements PluginAwa
   public @NotNull List<IdeaPluginDescriptorImpl> _getParents() {
     //noinspection SSBasedInspection
     return Collections.unmodifiableList(Arrays.asList(parents));
-  }
-
-  @Override
-  protected ProtectionDomain getProtectionDomain() {
-    return PROTECTION_DOMAIN;
   }
 
   private static void flushDebugLog() {

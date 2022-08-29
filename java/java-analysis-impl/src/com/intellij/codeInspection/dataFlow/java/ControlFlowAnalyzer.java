@@ -53,7 +53,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.intellij.psi.CommonClassNames.*;
 
@@ -85,7 +84,7 @@ public class ControlFlowAnalyzer extends JavaElementVisitor {
     myInlining = inlining;
     myFactory = valueFactory;
     myCodeFragment = codeFragment;
-    myTrapTracker = new TrapTracker(valueFactory, codeFragment);
+    myTrapTracker = new TrapTracker(valueFactory, JavaClassDef.typeConstraintFactory(codeFragment));
   }
 
   private void buildClassInitializerFlow(PsiClass psiClass, boolean isStatic) {
@@ -114,7 +113,7 @@ public class ControlFlowAnalyzer extends JavaElementVisitor {
     addInstruction(new FlushFieldsInstruction());
   }
 
-  private @Nullable ControlFlow buildControlFlow() {
+  @Nullable ControlFlow buildControlFlow() {
     myCurrentFlow = new ControlFlow(myFactory, myCodeFragment);
     addInstruction(new FinishElementInstruction(null)); // to initialize LVA
     try {
@@ -1085,6 +1084,8 @@ public class ControlFlowAnalyzer extends JavaElementVisitor {
       PsiExpression expression = ((PsiGuardedPattern)innerPattern).getGuardingExpression();
       if (expression != null) {
         expression.accept(this);
+      } else {
+        addInstruction(new PushValueInstruction(DfTypes.BOOLEAN));
       }
       DeferredOffset condGotoOffset = new DeferredOffset();
       addInstruction(new ConditionalGotoInstruction(condGotoOffset, DfTypes.TRUE));
@@ -1529,7 +1530,7 @@ public class ControlFlowAnalyzer extends JavaElementVisitor {
     }
     Instruction inst;
     if (op.equals(JavaTokenType.PLUS) && TypeUtils.isJavaLangString(resType)) {
-      inst = new StringConcatInstruction(anchor, resType);
+      inst = new StringConcatInstruction(anchor, TypeConstraints.exact(resType));
     }
     else if (PsiType.BOOLEAN.equals(resType)) {
       if (op.equals(JavaTokenType.AND)) {
@@ -2318,11 +2319,6 @@ public class ControlFlowAnalyzer extends JavaElementVisitor {
     return ContainerUtil.exists(INLINERS, inliner -> inliner.mayInferPreciseType(expression));
   }
 
-  @Nullable
-  public static ControlFlow buildFlow(@NotNull PsiElement psiBlock, DfaValueFactory targetFactory) {
-    return buildFlow(psiBlock, targetFactory, true);
-  }
-
   /**
    * Create control flow for given PSI block (method body, lambda expression, etc.) and return it. May return cached block.
    * It's prohibited to change the resulting control flow (e.g. add instructions, update their indices, update flush variable lists, etc.)
@@ -2333,19 +2329,11 @@ public class ControlFlowAnalyzer extends JavaElementVisitor {
    * @return resulting control flow; null if it cannot be built (e.g. if the code block contains unrecoverable errors)
    */
   @Nullable
-  public static ControlFlow buildFlow(@NotNull PsiElement psiBlock, DfaValueFactory targetFactory, boolean useInliners) {
+  public static ControlFlow buildFlow(@NotNull PsiElement psiBlock, @NotNull DfaValueFactory targetFactory, boolean useInliners) {
     if (!useInliners) {
       return new ControlFlowAnalyzer(targetFactory, psiBlock, false).buildControlFlow();
     }
-    PsiFile file = psiBlock.getContainingFile();
-    ConcurrentHashMap<PsiElement, Optional<ControlFlow>> fileMap =
-      CachedValuesManager.getCachedValue(file, () ->
-        CachedValueProvider.Result.create(new ConcurrentHashMap<>(), PsiModificationTracker.MODIFICATION_COUNT));
-    return fileMap.computeIfAbsent(psiBlock, psi -> {
-      DfaValueFactory factory = new DfaValueFactory(file.getProject());
-      ControlFlow flow = new ControlFlowAnalyzer(factory, psiBlock, true).buildControlFlow();
-      return Optional.ofNullable(flow);
-    }).map(flow -> new ControlFlow(flow, targetFactory)).orElse(null);
+    return DataFlowIRProvider.forElement(psiBlock, targetFactory);
   }
 
   private static class CannotAnalyzeException extends RuntimeException {

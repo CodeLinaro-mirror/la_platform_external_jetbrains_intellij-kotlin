@@ -70,7 +70,7 @@ private fun findCandidateDeclarationsInIndex(
 ): Collection<KtDeclaration?> {
     val containingClass = DescriptorUtils.getParentOfType(referencedDescriptor, ClassDescriptor::class.java, false)
     if (containingClass != null) {
-        return KotlinFullClassNameIndex.getInstance().get(containingClass.fqNameSafe.asString(), project, scope)
+        return KotlinFullClassNameIndex.get(containingClass.fqNameSafe.asString(), project, scope)
     }
 
     val topLevelDeclaration =
@@ -86,11 +86,11 @@ private fun findCandidateDeclarationsInIndex(
     val fqName = topLevelDeclaration.fqNameSafe.asString()
     return when (topLevelDeclaration) {
 
-        is FunctionDescriptor -> KotlinTopLevelFunctionFqnNameIndex.getInstance().get(fqName, project, scope)
+        is FunctionDescriptor -> KotlinTopLevelFunctionFqnNameIndex.get(fqName, project, scope)
 
-        is PropertyDescriptor -> KotlinTopLevelPropertyFqnNameIndex.getInstance().get(fqName, project, scope)
+        is PropertyDescriptor -> KotlinTopLevelPropertyFqnNameIndex.get(fqName, project, scope)
 
-        is TypeAliasDescriptor -> KotlinTopLevelTypeAliasFqNameIndex.getInstance().get(fqName, project, scope)
+        is TypeAliasDescriptor -> KotlinTopLevelTypeAliasFqNameIndex.get(fqName, project, scope)
 
         else -> error("Referenced non local declaration that is not inside top level function, property, class or typealias:\n $referencedDescriptor")
     }

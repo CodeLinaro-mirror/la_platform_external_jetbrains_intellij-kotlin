@@ -14,8 +14,6 @@
             serviceInterface="org.jetbrains.kotlin.psi.KotlinDeclarationNavigationPolicy"
             serviceImplementation="org.jetbrains.kotlin.idea.decompiler.navigation.KotlinDeclarationNavigationPolicyImpl"/>
 
-    <lang.syntaxHighlighterFactory language="kotlin" implementationClass="org.jetbrains.kotlin.idea.highlighter.KotlinSyntaxHighlighterFactory"/>
-
     <syntaxHighlighter factoryClass="org.jetbrains.kotlin.idea.decompiler.builtIns.KotlinSyntaxHighlighterProviderForDecompiledBuiltIns"/>
 
     <highlightVisitor implementation="org.jetbrains.kotlin.idea.highlighter.KotlinHighlightVisitor"/>
@@ -43,9 +41,6 @@
     <annotator language="JAVA" implementationClass="org.jetbrains.kotlin.idea.java.UnimplementedKotlinInterfaceMemberAnnotator"/>
 
     <colorSettingsPage implementation="org.jetbrains.kotlin.idea.highlighter.KotlinColorSettingsPage"/>
-
-    <additionalTextAttributes scheme="Default" file="colorScheme/Default_Kotlin.xml"/>
-    <additionalTextAttributes scheme="Darcula" file="colorScheme/Darcula_Kotlin.xml"/>
 
     <registryKey
             key="kotlin.resolve.force.full.resolve.on.highlighting"

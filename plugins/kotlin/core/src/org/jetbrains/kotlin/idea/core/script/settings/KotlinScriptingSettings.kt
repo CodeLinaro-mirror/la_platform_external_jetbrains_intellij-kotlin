@@ -5,6 +5,7 @@ package org.jetbrains.kotlin.idea.core.script.settings
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.util.addOptionTag
 import com.intellij.util.getAttributeBooleanValue
@@ -12,7 +13,6 @@ import org.jdom.Element
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionsManager
 import org.jetbrains.kotlin.idea.core.script.settings.KotlinScriptingSettings.KotlinScriptDefinitionValue.Companion.DEFAULT
 import org.jetbrains.kotlin.idea.util.application.executeOnPooledThread
-import org.jetbrains.kotlin.idea.util.application.getServiceSafe
 import org.jetbrains.kotlin.scripting.definitions.ScriptDefinition
 
 @State(
@@ -26,6 +26,8 @@ class KotlinScriptingSettings(private val project: Project) : PersistentStateCom
      */
     var suppressDefinitionsCheck = false
 
+    var showSupportWarning = true
+
     private var scriptDefinitions = linkedMapOf<KotlinScriptDefinitionKey, KotlinScriptDefinitionValue>()
 
     override fun getState(): Element {
@@ -36,6 +38,10 @@ class KotlinScriptingSettings(private val project: Project) : PersistentStateCom
                 KotlinScriptingSettings::suppressDefinitionsCheck.name,
                 suppressDefinitionsCheck.toString()
             )
+        }
+
+        if (!showSupportWarning) { // only non-default value should be stored to avoid unnecessary files under .idea/ dir
+            definitionsRootElement.setAttribute(SUPPORT_WARNING_ATTR, "false")
         }
 
         if (scriptDefinitions.isEmpty()) {
@@ -50,6 +56,8 @@ class KotlinScriptingSettings(private val project: Project) : PersistentStateCom
     }
 
     override fun loadState(state: Element) {
+        showSupportWarning = state.getAttributeValue(SUPPORT_WARNING_ATTR)?.toBoolean() ?: true
+
         state.getOptionTag(KotlinScriptingSettings::suppressDefinitionsCheck.name)?.let {
             suppressDefinitionsCheck = it
         }
@@ -167,9 +175,9 @@ class KotlinScriptingSettings(private val project: Project) : PersistentStateCom
         getChildren("option").firstOrNull { it.getAttribute("name").value == name }?.getAttributeBooleanValue("value")
 
     companion object {
-        fun getInstance(project: Project): KotlinScriptingSettings = project.getServiceSafe()
+        fun getInstance(project: Project): KotlinScriptingSettings = project.service()
 
         private const val SCRIPT_DEFINITION_TAG = "scriptDefinition"
-
+        private const val SUPPORT_WARNING_ATTR = "supportWarning"
     }
 }

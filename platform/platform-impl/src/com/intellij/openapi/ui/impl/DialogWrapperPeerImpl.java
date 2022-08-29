@@ -1,13 +1,13 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.openapi.ui.impl;
 
+import com.intellij.concurrency.ThreadContext;
 import com.intellij.ide.DataManager;
-import com.intellij.ide.impl.TypeSafeDataProviderAdapter;
 import com.intellij.ide.ui.AntialiasingType;
 import com.intellij.ide.ui.UISettings;
-import com.intellij.jdkEx.JdkEx;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.*;
+import com.intellij.openapi.actionSystem.ex.ActionUtil;
 import com.intellij.openapi.application.AccessToken;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
@@ -190,6 +190,9 @@ public class DialogWrapperPeerImpl extends DialogWrapperPeer {
   @Override
   public boolean isHeadless() {
     return myDialog instanceof HeadlessDialog;
+  }
+  public void setOnDeactivationAction(@NotNull Disposable disposable, @NotNull Runnable onDialogDeactivated) {
+    WindowDeactivationManager.getInstance().addWindowDeactivationListener(getWindow(), myProject, disposable, onDialogDeactivated);
   }
 
   @Override
@@ -393,7 +396,15 @@ public class DialogWrapperPeerImpl extends DialogWrapperPeer {
       ((CustomFrameDialogContent)contentPane).updateLayout();
     }
 
-    anCancelAction.registerCustomShortcutSet(CommonShortcuts.ESCAPE, rootPane);
+    Application application = ApplicationManager.getApplication();
+    if (application != null && application.getServiceIfCreated(ActionManager.class) != null) {
+      ShortcutSet shortcutSet = ActionUtil.getShortcutSet(IdeActions.ACTION_EDITOR_ESCAPE);
+      anCancelAction.registerCustomShortcutSet(shortcutSet, rootPane);
+    }
+    else {
+      anCancelAction.registerCustomShortcutSet(CommonShortcuts.ESCAPE, rootPane);
+    }
+
     myDisposeActions.add(() -> anCancelAction.unregisterCustomShortcutSet(rootPane));
 
     if (!myCanBeParent) {
@@ -404,7 +415,7 @@ public class DialogWrapperPeerImpl extends DialogWrapperPeer {
     }
 
     final CommandProcessorEx commandProcessor =
-      ApplicationManager.getApplication() != null ? (CommandProcessorEx)CommandProcessor.getInstance() : null;
+      application != null ? (CommandProcessorEx)CommandProcessor.getInstance() : null;
     final boolean appStarted = commandProcessor != null;
 
     boolean changeModalityState = appStarted && myDialog.isModal()
@@ -435,7 +446,10 @@ public class DialogWrapperPeerImpl extends DialogWrapperPeer {
       }
     }
 
-    try (AccessToken ignore = SlowOperations.allowSlowOperations(SlowOperations.RESET)) {
+    try (
+      AccessToken ignore = SlowOperations.allowSlowOperations(SlowOperations.RESET);
+      AccessToken ignore2 = ThreadContext.resetThreadContext()
+    ) {
       myDialog.show();
     }
     finally {
@@ -571,13 +585,9 @@ public class DialogWrapperPeerImpl extends DialogWrapperPeer {
 
     @Override
     public Object getData(@NotNull String dataId) {
-      final DialogWrapper wrapper = myDialogWrapper.get();
+      DialogWrapper wrapper = myDialogWrapper.get();
       if (wrapper instanceof DataProvider) {
         return ((DataProvider)wrapper).getData(dataId);
-      }
-      if (wrapper instanceof TypeSafeDataProvider) {
-        DataProvider adapter = new TypeSafeDataProviderAdapter((TypeSafeDataProvider)wrapper);
-        return adapter.getData(dataId);
       }
       return null;
     }

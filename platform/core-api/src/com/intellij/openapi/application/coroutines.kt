@@ -1,12 +1,9 @@
 // Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-@file:ApiStatus.Experimental
-
 package com.intellij.openapi.application
 
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asContextElement
-import org.jetbrains.annotations.ApiStatus
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -101,7 +98,7 @@ fun ModalityState.asContextElement(): CoroutineContext = coroutineSupport().asCo
 /**
  * @return UI dispatcher which dispatches within the [context modality state][asContextElement].
  */
-@Suppress("unused") // unused receiver
+@Suppress("UnusedReceiverParameter")
 val Dispatchers.EDT: CoroutineContext get() = coroutineSupport().edtDispatcher()
 
 private fun coroutineSupport() = ApplicationManager.getApplication().getService(CoroutineSupport::class.java)

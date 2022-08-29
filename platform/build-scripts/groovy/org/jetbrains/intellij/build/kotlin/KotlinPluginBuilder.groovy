@@ -6,14 +6,14 @@ import groovy.transform.CompileStatic
 import org.jetbrains.intellij.build.BuildContext
 import org.jetbrains.intellij.build.BuildTasks
 import org.jetbrains.intellij.build.ProductProperties
-import org.jetbrains.intellij.build.impl.ModuleOutputPatcher
-import org.jetbrains.intellij.build.impl.PluginLayout
-import org.jetbrains.intellij.build.impl.ProjectLibraryData
+import org.jetbrains.intellij.build.impl.*
 import org.jetbrains.intellij.build.tasks.ArchiveKt
+import org.jetbrains.jps.model.java.JavaResourceRootType
 import org.jetbrains.jps.model.library.JpsLibrary
 import org.jetbrains.jps.model.library.JpsOrderRootType
 import org.jetbrains.jps.model.library.JpsRepositoryLibraryType
 
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.function.BiConsumer
 import java.util.function.UnaryOperator
@@ -27,12 +27,49 @@ final class KotlinPluginBuilder {
    */
   public static String MAIN_KOTLIN_PLUGIN_MODULE = "kotlin.plugin"
 
-  private final String communityHome
-  private final String home
+  /**
+   * Version of Kotlin compiler which is used in the cooperative development setup in kt-master && kt-*-master branches
+   */
+  private static String KOTLIN_COOP_DEV_VERSION = "1.7.255"
+
+  private final Path communityHome
+  private final Path home
   private final ProductProperties properties
 
   @SuppressWarnings('SpellCheckingInspection')
+  public static final List<String> FIR_IDE_MODULES = List.of(
+    "kotlin.fir",
+    "kotlin.fir.fir-fe10-binding",
+    "kotlin.uast.uast-kotlin-fir",
+    "kotlin.uast.uast-kotlin-idea-fir",
+    "kotlin.fir.analysis-api-providers-ide-impl",
+    "kotlin.fir.fir-low-level-api-ide-impl",
+    "kotlin.fir.analysis-project-structure-ide-impl",
+  )
+
+  @SuppressWarnings('SpellCheckingInspection')
+  public static final List<String> FIR_IDE_LIBRARIES = List.of(
+    "kotlinc.analysis-api-providers",
+    "kotlinc.analysis-project-structure",
+    "kotlinc.high-level-api",
+    "kotlinc.high-level-api-fir",
+    "kotlinc.high-level-api-impl-base",
+    "kotlinc.kotlin-compiler-fir",
+    "kotlinc.low-level-api-fir",
+    "kotlinc.symbol-light-classes",
+  )
+
+
+  @SuppressWarnings('SpellCheckingInspection')
   public static final List<String> MODULES = List.of(
+    "kotlin.base.util",
+    "kotlin.base.indices",
+    "kotlin.base.compiler-configuration",
+    "kotlin.base.plugin",
+    "kotlin.base.psi",
+    "kotlin.base.fe10.analysis",
+    "kotlin.base.fe10.kdoc",
+    "kotlin.base.fe10.obsolete-compat",
     "kotlin.core",
     "kotlin.idea",
     "kotlin.fir.frontend-independent",
@@ -60,9 +97,7 @@ final class KotlinPluginBuilder {
     "kotlin.compiler-plugins.lombok.gradle",
     "kotlin.compiler-plugins.lombok.maven",
     "kotlin.compiler-plugins.scripting",
-    // Google: this is a workaround for b/218317110 in which these Android stubs
-    // conflict with layoutlib.jar in dev builds.
-    // "kotlin.compiler-plugins.android-extensions-stubs",
+    "kotlin.compiler-plugins.android-extensions-stubs",
     "kotlin.jvm-run-configurations",
     "kotlin.maven",
     "kotlin.gradle.gradle-tooling",
@@ -107,9 +142,8 @@ final class KotlinPluginBuilder {
     "kotlin.uast.uast-kotlin-idea",
     "kotlin.i18n",
     "kotlin.project-model",
-    "kotlin.features-trainer",
-    "kotlin.fe10-analyze.safe-analyze-utils"
-    )
+    "kotlin.features-trainer"
+  )
 
   @SuppressWarnings('SpellCheckingInspection')
   private static final List<String> LIBRARIES = List.of(
@@ -117,7 +151,9 @@ final class KotlinPluginBuilder {
     "kotlinc.kotlin-scripting-compiler-impl",
     "kotlinc.kotlin-scripting-common",
     "kotlinc.kotlin-scripting-jvm",
-    "kotlinc.kotlin-gradle-statistics"
+    "kotlinc.kotlin-gradle-statistics",
+    "kotlin-gradle-plugin-idea",
+    "kotlin-tooling-core"
   )
 
   private static final List<String> COMPILER_PLUGINS = List.of(
@@ -127,21 +163,24 @@ final class KotlinPluginBuilder {
     "kotlinc.sam-with-receiver-compiler-plugin",
     "kotlinc.kotlinx-serialization-compiler-plugin",
     "kotlinc.parcelize-compiler-plugin",
-    "kotlinc.lombok-compiler-plugin"
+    "kotlinc.lombok-compiler-plugin",
   )
 
-  KotlinPluginBuilder(String communityHome, String home, ProductProperties properties) {
+  KotlinPluginBuilder(Path communityHome, Path home, ProductProperties properties) {
     this.communityHome = communityHome
     this.home = home
     this.properties = properties
   }
 
   static PluginLayout kotlinPlugin() {
-    return kotlinPlugin(KotlinPluginKind.valueOf(System.getProperty("kotlin.plugin.kind", "IJ")))
+    return kotlinPlugin(
+      KotlinPluginKind.valueOf(System.getProperty("kotlin.plugin.kind", "IJ")),
+      KotlinPluginType.valueOf(System.getProperty("kotlin.plugin.type", KotlinPluginType.FE10.name())),
+    )
   }
 
-  static PluginLayout kotlinPlugin(KotlinPluginKind kind) {
-    return PluginLayout.plugin(MAIN_KOTLIN_PLUGIN_MODULE) {
+  static PluginLayout kotlinPlugin(KotlinPluginKind kind, KotlinPluginType type) {
+    return PluginLayoutGroovy.plugin(MAIN_KOTLIN_PLUGIN_MODULE) {
       switch (kind) {
         default:
           directoryName = "Kotlin"
@@ -157,14 +196,14 @@ final class KotlinPluginBuilder {
         isUltimate = false
       }
 
-      for (String moduleName : MODULES) {
+      for (String moduleName : MODULES + type.additionalModules) {
         withModule(moduleName)
       }
-      for (String library : LIBRARIES) {
+      for (String library : LIBRARIES + type.additionalLibraries) {
         withProjectLibraryUnpackedIntoJar(library, mainJarName)
       }
       for (String library : COMPILER_PLUGINS) {
-        withProjectLibrary(library, ProjectLibraryData.PackMode.STANDALONE_MERGED)
+        withProjectLibrary(library, LibraryPackMode.STANDALONE_MERGED)
       }
 
       if (isUltimate && kind == KotlinPluginKind.IJ) {
@@ -178,7 +217,7 @@ final class KotlinPluginBuilder {
       }
 
       String kotlincKotlinCompilerCommon = "kotlinc.kotlin-compiler-common"
-      withProjectLibrary(kotlincKotlinCompilerCommon, ProjectLibraryData.PackMode.STANDALONE_MERGED)
+      withProjectLibrary(kotlincKotlinCompilerCommon, LibraryPackMode.STANDALONE_MERGED)
 
       withPatch(new BiConsumer<ModuleOutputPatcher, BuildContext>() {
         @Override
@@ -191,13 +230,30 @@ final class KotlinPluginBuilder {
 
           ArchiveKt.consumeDataByPrefix(
             jars[0].toPath(), "META-INF/extensions/", new BiConsumer<String, byte[]>() {
-              @Override
-              void accept(String name, byte[] data) {
-                patcher.patchModuleOutput(MAIN_KOTLIN_PLUGIN_MODULE, name, data)
-              }
-            })
+            @Override
+            void accept(String name, byte[] data) {
+              patcher.patchModuleOutput(MAIN_KOTLIN_PLUGIN_MODULE, name, data)
+            }
+          })
         }
       })
+
+      if (type == KotlinPluginType.FIR) {
+        withPatch(new BiConsumer<ModuleOutputPatcher, BuildContext>() {
+          @Override
+          void accept(ModuleOutputPatcher patcher, BuildContext context) {
+            def firResourcesDir = context.findModule("kotlin.resources-fir").sourceRoots
+              .findAll { it.rootType instanceof JavaResourceRootType }[0]
+              .file.toPath()
+
+            Files.walk(firResourcesDir)
+              .filter { Files.isRegularFile(it) }
+              .forEach { resource ->
+                patcher.patchModuleOutput(MAIN_KOTLIN_PLUGIN_MODULE, "META-INF/" + resource.fileName.toString(), resource.toFile().text, true)
+              }
+          }
+        })
+      }
 
       withProjectLibrary("kotlinc.kotlin-compiler-fe10")
       withProjectLibrary("kotlinc.kotlin-compiler-ir")
@@ -209,10 +265,9 @@ final class KotlinPluginBuilder {
       withProjectLibrary("kotlinc.kotlin-stdlib", "kotlinc-lib.jar")
       withProjectLibrary("kotlinc.kotlin-jps-common")
       //noinspection SpellCheckingInspection
-      withProjectLibrary("javaslang", ProjectLibraryData.PackMode.STANDALONE_MERGED)
-      withProjectLibrary("kotlinx-collections-immutable-jvm", ProjectLibraryData.PackMode.STANDALONE_MERGED)
-      withProjectLibrary("javax-inject", ProjectLibraryData.PackMode.STANDALONE_MERGED)
-      withProjectLibrary("completion-ranking-kotlin")
+      withProjectLibrary("javaslang", LibraryPackMode.STANDALONE_MERGED)
+      withProjectLibrary("kotlinx-collections-immutable-jvm", LibraryPackMode.STANDALONE_MERGED)
+      withProjectLibrary("javax-inject", LibraryPackMode.STANDALONE_MERGED)
 
       withGeneratedResources(new BiConsumer<Path, BuildContext>() {
         @Override
@@ -235,12 +290,10 @@ final class KotlinPluginBuilder {
             String major = ijBuildNumber.group(1)
             String minor = ijBuildNumber.group(2)
             String kotlinVersion = context.project.libraryCollection.libraries
-              .find { it.name.startsWith("kotlinc.") && it.type instanceof JpsRepositoryLibraryType }
+              .find { it.name.startsWith("kotlinc.kotlin-jps-plugin-classpath") && it.type instanceof JpsRepositoryLibraryType }
               ?.asTyped(JpsRepositoryLibraryType.INSTANCE)
-              ?.properties?.data?.version
-            if (kotlinVersion == null) {
-              throw new IllegalStateException("Can't determine Kotlin compiler version")
-            }
+              ?.properties?.data?.version ?: KOTLIN_COOP_DEV_VERSION
+
             String version = "${major}-${kotlinVersion}-${kind}${minor}"
             context.messages.info("version: $version")
             return version
@@ -314,27 +367,30 @@ final class KotlinPluginBuilder {
 
   private static String replace(String oldText, String regex, String newText) {
     String result = oldText.replaceFirst(regex, newText)
-    if (result == oldText && /* Update IDE from Sources */ !oldText.contains(newText)) {
+    if (result == oldText && /* Update IDE from Sources */!oldText.contains(newText)) {
       throw new IllegalStateException("Cannot find '$regex' in '$oldText'")
     }
     return result
   }
 
   def build() {
-    BuildContext buildContext = BuildContext.createContext(communityHome, home, properties)
-
-    // Google: the module intellij.idea.community.build.tasks contains BuildHelper,
-    // which is needed by DistributionJARsBuilder during the build. So, we build it
-    // here. An alternative solution is to run the full 'build' ant target first.
-    BuildTasks.create(buildContext).compileModules(["intellij.idea.community.build.tasks"], [])
-
+    BuildContext buildContext = BuildContextImpl.createContext(communityHome, home, properties)
     BuildTasks.create(buildContext).buildNonBundledPlugins([MAIN_KOTLIN_PLUGIN_MODULE])
-
-    // Google: produce a zip of Kotlin plugin sources.
-    def sourcesZip = Path.of(buildContext.paths.artifacts, "kotlin-plugin-sources.zip")
-    def kotlinModules = kotlinPlugin().includedModuleNames
-    BuildTasks.create(buildContext).zipSourcesOfModules(kotlinModules, sourcesZip, /*libraries*/ true)
   }
+
+  enum KotlinPluginType {
+    FIR(FIR_IDE_MODULES, FIR_IDE_LIBRARIES),
+    FE10(List.<String>of(), List.<String>of())
+
+    List< String> additionalModules
+    List< String> additionalLibraries
+
+    KotlinPluginType(List<String> additionalModules, List<String> additionalLibraries) {
+      this.additionalModules = additionalModules
+      this.additionalLibraries = additionalLibraries
+    }
+  }
+
 
   enum KotlinPluginKind {
     IJ, AS, MI,

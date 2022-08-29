@@ -12,10 +12,25 @@
     <extensionPoint qualifiedName="org.jetbrains.kotlin.idea.gradleBuildScriptSupport"
                     interface="org.jetbrains.kotlin.idea.extensions.gradle.GradleBuildScriptSupport"
                     dynamic="true"/>
+    <extensionPoint
+            qualifiedName="org.jetbrains.kotlin.kpm.moduleInitialize"
+            interface="org.jetbrains.kotlin.idea.gradle.configuration.kpm.ModuleDataInitializer"
+            dynamic="true"/>
+    <extensionPoint
+            qualifiedName="org.jetbrains.kotlin.kpm.createRoots"
+            interface="org.jetbrains.kotlin.idea.gradle.configuration.kpm.ContentRootsCreator"
+            dynamic="true"/>
+
   </extensionPoints>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin">
     <scriptDiagnosticFixProvider implementation="org.jetbrains.kotlin.idea.gradle.scripting.GradleScriptDiagnosticFixProvider"/>
+
+    <scripting.support.checker.provider id="GraldeScriptingSupportCheckerProvider"
+            implementation="org.jetbrains.kotlin.idea.gradle.scripting.GradleScriptingSupportCheckerProvider"/>
+
+    <failedToDownloadJpsMavenArtifactSuggestedSolutionsContributor
+            implementation="org.jetbrains.kotlin.idea.gradle.GradleFailedToDownloadSuggestedSolutionsContributor"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
@@ -49,6 +64,7 @@
                     serviceImplementation="org.jetbrains.kotlin.idea.gradle.configuration.mpp.ExternalSystemBasedStableModuleNameProvider"/>
 
     <postStartupActivity implementation="org.jetbrains.kotlin.idea.gradle.statistics.KotlinGradleFUSLogger"/>
+    <statistics.counterUsagesCollector implementationClass="org.jetbrains.kotlin.idea.gradle.statistics.KotlinGradleFUSCollector"/>
   </extensions>
 
   <actions>

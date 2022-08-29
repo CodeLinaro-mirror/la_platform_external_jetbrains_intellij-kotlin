@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.psi.impl.file.impl;
 
 import com.intellij.ProjectTopics;
@@ -7,6 +7,7 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileTypes.FileTypeRegistry;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.module.impl.scopes.ModuleWithDependenciesScope;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.*;
@@ -24,6 +25,8 @@ import com.intellij.psi.impl.java.stubs.index.JavaSourceModuleNameIndex;
 import com.intellij.psi.impl.light.LightJavaModule;
 import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.util.Query;
 import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.NotNull;
@@ -31,6 +34,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.jps.model.java.JavaModuleSourceRootTypes;
 
 import java.util.*;
+import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
@@ -159,16 +163,44 @@ public final class JavaFileManagerImpl implements JavaFileManager, Disposable {
   public @NotNull Collection<PsiJavaModule> findModules(@NotNull String moduleName, @NotNull GlobalSearchScope scope) {
     GlobalSearchScope excludingScope = new LibSrcExcludingScope(scope);
 
-    List<PsiJavaModule> results = new ArrayList<>(JavaModuleNameIndex.getInstance().get(moduleName, myManager.getProject(), excludingScope));
+    Project project = myManager.getProject();
+    List<PsiJavaModule> results = new ArrayList<>(JavaModuleNameIndex.getInstance().get(moduleName, project, excludingScope));
 
+    Set<VirtualFile> shadowedRoots = new HashSet<>();
     for (VirtualFile manifest : JavaSourceModuleNameIndex.getFilesByKey(moduleName, excludingScope)) {
-      results.add(LightJavaModule.create(myManager, manifest.getParent().getParent(), moduleName));
-    }
-
-    for (VirtualFile root : JavaAutoModuleNameIndex.getFilesByKey(moduleName, excludingScope)) {
+      VirtualFile root = manifest.getParent().getParent();
+      shadowedRoots.add(root);
       results.add(LightJavaModule.create(myManager, root, moduleName));
     }
 
+    for (VirtualFile root : JavaAutoModuleNameIndex.getFilesByKey(moduleName, excludingScope)) {
+      if (shadowedRoots.contains(root)) { //already found by MANIFEST attribute
+        continue;
+      }
+      VirtualFile manifest = root.findFileByRelativePath(JarFile.MANIFEST_NAME);
+      if (manifest != null && LightJavaModule.claimedModuleName(manifest) != null) {
+        continue;
+      }
+      results.add(LightJavaModule.create(myManager, root, moduleName));
+    }
+
+    if (results.isEmpty()) {
+      CachedValuesManager valuesManager = CachedValuesManager.getManager(project);
+      ProjectRootModificationTracker rootModificationTracker = ProjectRootModificationTracker.getInstance(project);
+      for (Module module : ModuleManager.getInstance(project).getModules()) {
+        String targetModuleName = valuesManager
+          .getCachedValue(module, () -> CachedValueProvider.Result.create(LightJavaModule.moduleName(module.getName()),
+                                                                          rootModificationTracker));
+        if (moduleName.equals(targetModuleName)) {
+          VirtualFile[] sourceRoots = ModuleRootManager.getInstance(module).getSourceRoots(false);
+          if (sourceRoots.length > 0) {
+            results.add(LightJavaModule.create(myManager, sourceRoots[0], moduleName));
+            break;
+          }
+        }
+      }
+    }
+    
     return upgradeModules(sortModules(results, scope), moduleName, scope);
   }
 

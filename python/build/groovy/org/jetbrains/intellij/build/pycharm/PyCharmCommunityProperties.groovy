@@ -1,19 +1,21 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.intellij.build.pycharm
 
 import groovy.transform.CompileStatic
-import groovy.transform.TypeCheckingMode
 import org.jetbrains.intellij.build.*
 
-import static org.jetbrains.intellij.build.impl.PluginLayout.plugin
+import java.nio.file.Files
+import java.nio.file.Path
+
+import static org.jetbrains.intellij.build.impl.PluginLayoutGroovy.plugin
 
 @CompileStatic
 class PyCharmCommunityProperties extends PyCharmPropertiesBase {
-  PyCharmCommunityProperties(String communityHome) {
+  PyCharmCommunityProperties(Path communityHome) {
     platformPrefix = "PyCharmCore"
     customProductCode = "PC"
     applicationInfoModule = "intellij.pycharm.community"
-    brandingResourcePaths = ["$communityHome/python/resources".toString()]
+    brandingResourcePaths = List.of(communityHome.resolve("python/resources"))
     scrambleMainJar = false
     buildSourcesArchive = true
 
@@ -23,11 +25,11 @@ class PyCharmCommunityProperties extends PyCharmPropertiesBase {
       "intellij.xml.dom.impl",
       "intellij.platform.main",
       "intellij.pycharm.community"
+
     ]
-    productLayout.bundledPluginModules +=
-      ["intellij.python.community.plugin",
-       "intellij.pycharm.community.customization"
-      ] + new File("$communityHome/python/build/plugin-list.txt").readLines()
+    productLayout.bundledPluginModules.add("intellij.python.community.plugin")
+    productLayout.bundledPluginModules.add("intellij.pycharm.community.customization")
+    productLayout.bundledPluginModules.addAll(Files.readAllLines(communityHome.resolve("python/build/plugin-list.txt")))
 
     productLayout.allNonTrivialPlugins = CommunityRepositoryModules.COMMUNITY_REPOSITORY_PLUGINS + [
       plugin("intellij.pycharm.community.customization") {
@@ -42,13 +44,13 @@ class PyCharmCommunityProperties extends PyCharmPropertiesBase {
   }
 
   @Override
-  @CompileStatic(TypeCheckingMode.SKIP)
   void copyAdditionalFiles(BuildContext context, String targetDirectory) {
     super.copyAdditionalFiles(context, targetDirectory)
-    context.ant.copy(todir: "$targetDirectory/license") {
-      fileset(file: "$context.paths.communityHome/LICENSE.txt")
-      fileset(file: "$context.paths.communityHome/NOTICE.txt")
-    }
+
+    new FileSet(context.paths.communityHomeDir)
+      .include("LICENSE.txt")
+      .include("NOTICE.txt")
+      .copyToDir(Path.of(targetDirectory, "license"))
   }
 
   @Override
@@ -88,6 +90,7 @@ class PyCharmCommunityProperties extends PyCharmPropertiesBase {
   }
 }
 
+@CompileStatic
 class PyCharmCommunityWindowsDistributionCustomizer extends PyCharmWindowsDistributionCustomizer {
   PyCharmCommunityWindowsDistributionCustomizer(String projectHome) {
     icoPath = "$projectHome/python/resources/PyCharmCore.ico"
@@ -102,6 +105,7 @@ class PyCharmCommunityWindowsDistributionCustomizer extends PyCharmWindowsDistri
   }
 }
 
+@CompileStatic
 class PyCharmCommunityLinuxDistributionCustomizer extends LinuxDistributionCustomizer {
   PyCharmCommunityLinuxDistributionCustomizer(projectHome) {
     iconPngPath = "$projectHome/python/resources/PyCharmCore128.png"
@@ -110,10 +114,11 @@ class PyCharmCommunityLinuxDistributionCustomizer extends LinuxDistributionCusto
 
   @Override
   String getRootDirectoryName(ApplicationInfoProperties applicationInfo, String buildNumber) {
-    "pycharm-community-${applicationInfo.isEAP ? buildNumber : applicationInfo.fullVersion}"
+    "pycharm-community-${applicationInfo.isEAP() ? buildNumber : applicationInfo.fullVersion}"
   }
 }
 
+@CompileStatic
 class PyCharmCommunityMacDistributionCustomizer extends PyCharmMacDistributionCustomizer {
   PyCharmCommunityMacDistributionCustomizer(projectHome) {
     icnsPath = "$projectHome/python/resources/PyCharmCore.icns"
@@ -124,7 +129,7 @@ class PyCharmCommunityMacDistributionCustomizer extends PyCharmMacDistributionCu
 
   @Override
   String getRootDirectoryName(ApplicationInfoProperties applicationInfo, String buildNumber) {
-    String suffix = applicationInfo.isEAP ? " ${applicationInfo.majorVersion}.${applicationInfo.minorVersion} EAP" : ""
+    String suffix = applicationInfo.isEAP() ? " ${applicationInfo.majorVersion}.${applicationInfo.minorVersion} EAP" : ""
     "PyCharm CE${suffix}.app"
   }
 }

@@ -1,9 +1,10 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.highlighter
 
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
+import org.jetbrains.kotlin.base.util.KotlinPlatformUtils
 import org.jetbrains.kotlin.descriptors.PropertyDescriptor
 import org.jetbrains.kotlin.idea.caches.project.NotUnderContentRootModuleInfo
 import org.jetbrains.kotlin.idea.caches.project.getModuleInfo
@@ -13,7 +14,6 @@ import org.jetbrains.kotlin.idea.core.script.ScriptConfigurationManager
 import org.jetbrains.kotlin.idea.core.script.ScriptDefinitionsManager
 import org.jetbrains.kotlin.idea.util.ProjectRootsUtil
 import org.jetbrains.kotlin.idea.util.application.runReadAction
-import org.jetbrains.kotlin.idea.util.isRunningInCidrIde
 import org.jetbrains.kotlin.psi.KtCodeFragment
 import org.jetbrains.kotlin.psi.KtFile
 import kotlin.script.experimental.api.ScriptDiagnostic
@@ -79,9 +79,12 @@ object KotlinHighlightingUtil {
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun shouldHighlightScript(ktFile: KtFile): Boolean {
-        if (isRunningInCidrIde) return false // There is no Java support in CIDR. So do not highlight errors in KTS if running in CIDR.
+        if (KotlinPlatformUtils.isCidr) {
+            // There is no Java support in CIDR. So do not highlight errors in KTS if running in CIDR.
+            return false
+        }
+
         if (!ScriptConfigurationManager.getInstance(ktFile.project).hasConfiguration(ktFile)) return false
         if (IdeScriptReportSink.getReports(ktFile).any { it.severity == ScriptDiagnostic.Severity.FATAL }) {
             return false

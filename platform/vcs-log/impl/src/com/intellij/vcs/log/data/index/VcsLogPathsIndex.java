@@ -1,4 +1,4 @@
-// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.vcs.log.data.index;
 
 import com.intellij.openapi.Disposable;
@@ -13,9 +13,10 @@ import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.indexing.DataIndexer;
 import com.intellij.util.indexing.StorageException;
 import com.intellij.util.io.*;
+import com.intellij.util.io.storage.AbstractStorage;
 import com.intellij.vcs.log.data.VcsLogStorage;
 import com.intellij.vcs.log.history.EdgeData;
-import com.intellij.vcs.log.impl.FatalErrorHandler;
+import com.intellij.vcs.log.impl.VcsLogErrorHandler;
 import com.intellij.vcs.log.impl.VcsLogIndexer;
 import com.intellij.vcs.log.util.StorageId;
 import com.intellij.vcsUtil.VcsFileUtil;
@@ -48,14 +49,14 @@ public final class VcsLogPathsIndex extends VcsLogFullDetailsIndex<List<VcsLogPa
                           @NotNull VcsLogStorage storage,
                           @NotNull Set<VirtualFile> roots,
                           @Nullable StorageLockContext storageLockContext,
-                          @NotNull FatalErrorHandler fatalErrorHandler,
+                          @NotNull VcsLogErrorHandler errorHandler,
                           @NotNull Disposable disposableParent) throws IOException {
     super(storageId, PATHS, new PathsIndexer(storage, createPathsEnumerator(roots, storageId, storageLockContext),
                                              createRenamesMap(storageId, storageLockContext)),
-          new ChangeKindListKeyDescriptor(), storageLockContext, fatalErrorHandler, disposableParent);
+          new ChangeKindListKeyDescriptor(), storageLockContext, errorHandler, disposableParent);
 
     myPathsIndexer = (PathsIndexer)myIndexer;
-    myPathsIndexer.setFatalErrorConsumer(e -> fatalErrorHandler.consume(this, e));
+    myPathsIndexer.setFatalErrorConsumer(e -> errorHandler.handleError(VcsLogErrorHandler.Source.Index, e));
   }
 
   @NotNull
@@ -64,7 +65,7 @@ public final class VcsLogPathsIndex extends VcsLogFullDetailsIndex<List<VcsLogPa
                                                                            @Nullable StorageLockContext storageLockContext) throws IOException {
     Path storageFile = storageId.getStorageFile(INDEX_PATHS_IDS);
     return new PersistentEnumerator<>(storageFile, new LightFilePathKeyDescriptor(roots),
-                                      Page.PAGE_SIZE, storageLockContext, storageId.getVersion());
+                                      AbstractStorage.PAGE_SIZE, storageLockContext, storageId.getVersion());
   }
 
   @NotNull
@@ -72,7 +73,7 @@ public final class VcsLogPathsIndex extends VcsLogFullDetailsIndex<List<VcsLogPa
                                                                                                   @Nullable StorageLockContext storageLockContext)
     throws IOException {
     Path storageFile = storageId.getStorageFile(RENAMES_MAP);
-    return new PersistentHashMap<>(storageFile, new CoupleKeyDescriptor(), new CollectionDataExternalizer(), Page.PAGE_SIZE,
+    return new PersistentHashMap<>(storageFile, new CoupleKeyDescriptor(), new CollectionDataExternalizer(), AbstractStorage.PAGE_SIZE,
                                    storageId.getVersion(), storageLockContext);
   }
 

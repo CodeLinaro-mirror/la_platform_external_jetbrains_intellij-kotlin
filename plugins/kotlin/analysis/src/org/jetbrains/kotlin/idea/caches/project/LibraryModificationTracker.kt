@@ -1,9 +1,10 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.caches.project
 
 import com.intellij.ide.highlighter.ArchiveFileType
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileTypes.FileTypeEvent
 import com.intellij.openapi.fileTypes.FileTypeListener
 import com.intellij.openapi.fileTypes.FileTypeManager
@@ -21,12 +22,11 @@ import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import org.jetbrains.kotlin.idea.core.KotlinPluginDisposable
-import org.jetbrains.kotlin.idea.util.application.getServiceSafe
 
 class LibraryModificationTracker(project: Project) : SimpleModificationTracker() {
     companion object {
         @JvmStatic
-        fun getInstance(project: Project): LibraryModificationTracker = project.getServiceSafe()
+        fun getInstance(project: Project): LibraryModificationTracker = project.service()
     }
 
     init {
@@ -75,7 +75,7 @@ class LibraryModificationTracker(project: Project) : SimpleModificationTracker()
         })
     }
 
-    private val projectFileIndex = ProjectFileIndex.SERVICE.getInstance(project)
+    private val projectFileIndex = ProjectFileIndex.getInstance(project)
 
     private inline fun processBulk(events: List<VFileEvent>, check: (VirtualFile) -> Boolean) {
         events.forEach { event ->

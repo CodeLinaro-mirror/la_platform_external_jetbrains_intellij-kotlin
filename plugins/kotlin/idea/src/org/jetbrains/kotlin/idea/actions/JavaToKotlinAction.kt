@@ -7,10 +7,7 @@ import com.intellij.ide.highlighter.ArchiveFileType
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.ide.scratch.ScratchFileService
 import com.intellij.ide.scratch.ScratchRootType
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
+import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -32,6 +29,7 @@ import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.base.util.KotlinPlatformUtils
 import org.jetbrains.kotlin.idea.KotlinBundle
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.idea.configuration.ExperimentalFeatures
@@ -43,7 +41,6 @@ import org.jetbrains.kotlin.idea.statistics.ConversionType
 import org.jetbrains.kotlin.idea.statistics.J2KFusCollector
 import org.jetbrains.kotlin.idea.util.application.executeWriteCommand
 import org.jetbrains.kotlin.idea.util.application.runReadAction
-import org.jetbrains.kotlin.idea.util.isRunningInCidrIde
 import org.jetbrains.kotlin.j2k.ConverterSettings
 import org.jetbrains.kotlin.j2k.FilesResult
 import org.jetbrains.kotlin.j2k.J2kConverterExtension
@@ -258,12 +255,14 @@ class JavaToKotlinAction : AnAction() {
         convertFiles(javaFiles, project, module)
     }
 
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = isEnabled(e)
     }
 
     private fun isEnabled(e: AnActionEvent): Boolean {
-        if (isRunningInCidrIde) return false
+        if (KotlinPlatformUtils.isCidr) return false
         val virtualFiles = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY) ?: return false
         val project = e.project ?: return false
         e.getData(PlatformCoreDataKeys.MODULE) ?: return false

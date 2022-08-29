@@ -6,25 +6,44 @@ import com.intellij.notification.Notifications
 import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import junit.framework.TestCase.assertNull
+import org.jetbrains.kotlin.idea.KotlinBundle
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinPluginLayout
 
 fun catchNotificationText(project: Project, action: () -> Unit): String? {
-  val myDisposable = Disposer.newDisposable()
-  try {
-    var notificationText: String? = null
-    val connection = project.messageBus.connect(myDisposable)
-    connection.subscribe(Notifications.TOPIC, object : Notifications {
-      override fun notify(notification: Notification) {
-        assertNull(notificationText)
-        notificationText = notification.content
-      }
-    })
-
-    action()
-    connection.deliverImmediately()
-    NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
-    return notificationText
-  } finally {
-    Disposer.dispose(myDisposable)
-  }
+    val notifications = catchNotifications(project, action).ifEmpty { return null }
+    return notifications.single().content
 }
+
+fun catchNotifications(project: Project, action: () -> Unit): List<Notification> {
+    val myDisposable = Disposer.newDisposable()
+    try {
+        val notifications = mutableListOf<Notification>()
+        val connection = project.messageBus.connect(myDisposable)
+        connection.subscribe(Notifications.TOPIC, object : Notifications {
+            override fun notify(notification: Notification) {
+                notifications += notification
+            }
+        })
+
+        action()
+        connection.deliverImmediately()
+        NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+        return notifications
+    } finally {
+        Disposer.dispose(myDisposable)
+    }
+}
+
+val Notification.asText: String get() = "Title: '$title'\nContent: '$content'"
+fun List<Notification>.asText(filterNotificationAboutNewKotlinVersion: Boolean = true): String =
+    sortedBy { it.content }
+        .filter {
+            !filterNotificationAboutNewKotlinVersion ||
+                    !it.content.contains(
+                        KotlinBundle.message(
+                            "kotlin.external.compiler.updates.notification.content.0",
+                            KotlinPluginLayout.instance.standaloneCompilerVersion.kotlinVersion
+                        )
+                    )
+        }
+        .joinToString(separator = "\n-----\n", transform = Notification::asText)

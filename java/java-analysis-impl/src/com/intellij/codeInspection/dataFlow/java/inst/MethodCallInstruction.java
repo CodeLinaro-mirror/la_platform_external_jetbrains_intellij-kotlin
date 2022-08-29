@@ -124,9 +124,7 @@ public class MethodCallInstruction extends ExpressionPushingInstruction {
   @Override
   public @NotNull Instruction bindToFactory(@NotNull DfaValueFactory factory) {
     if (myPrecalculatedReturnValue == null) return this;
-    var instruction = new MethodCallInstruction(this, myPrecalculatedReturnValue.bindToFactory(factory));
-    instruction.setIndex(getIndex());
-    return instruction;
+    return new MethodCallInstruction(this, myPrecalculatedReturnValue.bindToFactory(factory));
   }
 
   /**
@@ -411,7 +409,7 @@ public class MethodCallInstruction extends ExpressionPushingInstruction {
       }
       return factory.fromDfType(dfType.meet(mutable.asDfType()));
     }
-    LongRangeSet range = JvmPsiRangeSetUtil.typeRange(type);
+    LongRangeSet range = JvmPsiRangeSetUtil.typeRange(type, true);
     if (range != null) {
       if (myTargetMethod != null) {
         range = range.meet(JvmPsiRangeSetUtil.fromPsiElement(myTargetMethod));

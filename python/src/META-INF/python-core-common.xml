@@ -27,6 +27,7 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <library.type implementation="com.jetbrains.python.library.PythonLibraryType"/>
+    <roots.watchedRootsProvider implementation="com.jetbrains.python.target.targetWithVfs.TargetVfsWatchedRootsProvider"/>
     <renameHandler implementation="com.jetbrains.python.magicLiteral.PyMagicLiteralRenameHandler"/>
     <nameSuggestionProvider implementation="com.jetbrains.python.refactoring.PyNameSuggestionProvider"/>
     <methodNavigationOffsetProvider implementation="com.jetbrains.python.codeInsight.PyMethodNavigationOffsetProvider"/>
@@ -410,7 +411,7 @@
     <postStartupActivity implementation="com.jetbrains.python.sdk.poetry.PoetryConfigLoader" order="last"/>
 
     <!-- Targets API -->
-    <registryKey key="python.use.targets.api" defaultValue="false" description="Switches Python support to Targets API." />
+    <registryKey key="python.use.targets.api" defaultValue="true" description="Switches Python support to Targets API." />
     <notificationGroup id="Python Debugger" displayType="TOOL_WINDOW" toolWindowId="Debug" bundle="messages.PyBundle" key="debug.notification.group"/>
     <notificationGroup id="Python SDK Updater" displayType="BALLOON" bundle="messages.PyBundle" key="python.sdk.updater.notifications.group.title"/>
     <notificationGroup id="Sync Python requirements" displayType="BALLOON" bundle="messages.PyBundle" key="python.requirements.balloon"/>
@@ -430,6 +431,9 @@
     <vcs.envCustomizer implementation="com.jetbrains.python.sdk.PyVirtualEnvVcsCustomizer"/>
 
     <executionTargetLanguageRuntimeType implementation="com.jetbrains.python.target.PythonLanguageRuntimeType"/>
+
+  <!--  Code vision -->
+    <vcs.codeVisionLanguageContext language="Python" implementationClass="com.jetbrains.python.vcs.PyVcsContextProvider"/>
   </extensions>
 
   <extensionPoints>
@@ -507,6 +511,10 @@
     <extensionPoint qualifiedName="Pythonid.pySdkProvider"
                     interface="com.jetbrains.python.sdk.PySdkProvider"
                     dynamic="true"/>
+
+    <extensionPoint qualifiedName="Pythonid.connectionCredentialsToTargetConfigurationConverter"
+                    interface="com.jetbrains.python.run.target.ConnectionCredentialsToTargetConfigurationConverter"
+                    dynamic="true"/>
   </extensionPoints>
 
   <extensions defaultExtensionNs="Pythonid">
@@ -519,6 +527,7 @@
     <pyAnnotator implementation="com.jetbrains.python.validation.FStringsAnnotator"/>
     <pyAnnotator implementation="com.jetbrains.python.validation.PyHighlightingAnnotator"/>
     <pyAnnotator implementation="com.jetbrains.python.validation.PyPatternAnnotator"/>
+    <pyAnnotator implementation="com.jetbrains.python.validation.PyTryExceptAnnotator"/>
 
     <!--stdlib-->
     <documentationLinkProvider implementation="com.jetbrains.python.codeInsight.stdlib.PyStdlibDocumentationLinkProvider"/>
@@ -600,6 +609,7 @@
     <inspectionExtension implementation="com.jetbrains.python.inspections.PyUnresolvedReferenceDefaultInspectionExtension" order="last"/>
 
     <runConfigurationEditorExtension implementation="com.jetbrains.python.run.PyRunConfigurationTargetOptions"/>
+    <remoteSdkValidator implementation="com.jetbrains.python.target.PyTargetSdkValidator"/>
   </extensions>
 
   <actions>

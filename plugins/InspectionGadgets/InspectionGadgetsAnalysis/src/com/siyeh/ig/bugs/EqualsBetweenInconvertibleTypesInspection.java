@@ -95,6 +95,7 @@ public class EqualsBetweenInconvertibleTypesInspection extends BaseInspection {
           !TypeUtils.areConvertible(lhsType, rhsType) /* red code */) {
         return;
       }
+      if (LambdaUtil.notInferredType(lhsType) || LambdaUtil.notInferredType(rhsType)) return;
       TypeMismatch mismatch = InconvertibleTypesChecker.deepCheck(lhsType, rhsType, getMutualSubclassMode());
       if (mismatch != null) {
         registerError(expression.getOperationSign(), mismatch);
@@ -120,11 +121,13 @@ public class EqualsBetweenInconvertibleTypesInspection extends BaseInspection {
     }
 
     @Override
-    public void checkTypes(@NotNull PsiReferenceExpression expression, @NotNull PsiType leftType, @NotNull PsiType rightType) {
+    public boolean checkTypes(@NotNull PsiReferenceExpression expression, @NotNull PsiType leftType, @NotNull PsiType rightType) {
       TypeMismatch mismatch = InconvertibleTypesChecker.checkTypes(leftType, rightType, getMutualSubclassMode());
       if (mismatch != null) {
         registerError(Objects.requireNonNull(expression.getReferenceNameElement()), mismatch);
+        return true;
       }
+      return false;
     }
   }
 }

@@ -49,7 +49,7 @@ interface CodeVisionProvider<T> {
    *  Return true if [computeForEditor] should be called
    *  false otherwise
    */
-  fun shouldRecomputeForEditor(editor: Editor, uiData: T) = true
+  fun shouldRecomputeForEditor(editor: Editor, uiData: T?) = true
 
   /**
    * Should return text ranges and applicable hints for them, invoked on background thread.
@@ -86,7 +86,6 @@ interface CodeVisionProvider<T> {
   @Deprecated("use getPlaceholderCollector")
   fun collectPlaceholders(editor: Editor): List<TextRange> = emptyList()
 
-  @JvmDefault
   fun getPlaceholderCollector(editor: Editor, psiFile: PsiFile?) : CodeVisionPlaceholderCollector? = null
 
   /**

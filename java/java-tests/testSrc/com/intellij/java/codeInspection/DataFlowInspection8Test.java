@@ -308,6 +308,12 @@ public class DataFlowInspection8Test extends DataFlowInspectionTestCase {
     myFixture.addClass("package org.eclipse.jdt.annotation;public @interface NonNullByDefault {}");
     doTest();
   }
+  public void testEclipseDefaultOptionalOrElse() {
+    myFixture.addClass("package org.eclipse.jdt.annotation;public @interface NonNullByDefault {}");
+    myFixture.addClass("package org.eclipse.jdt.annotation;import java.lang.annotation.*;" +
+                       "@Target({ElementType.TYPE_USE}) public @interface Nullable {}");
+    doTest();
+  }
   public void testClassInsideLambda() { doTest(); }
   public void testMultiDimensionalArrays() {
     setupTypeUseAnnotations("typeUse", myFixture);
@@ -359,6 +365,7 @@ public class DataFlowInspection8Test extends DataFlowInspectionTestCase {
   public void testReturnOrElseNull() { doTestWith(insp -> insp.REPORT_NULLABLE_METHODS_RETURNING_NOT_NULL = true); }
   public void testArrayIntersectionType() { doTest(); }
   public void testFunctionType() { doTest(); }
+  public void testIteratorHasNextModifiesPrivateField() { doTest(); }
   public void testJsr305TypeUseNoLocal() {
     DataFlowInspectionTest.addJavaxNullabilityAnnotations(myFixture);
     DataFlowInspectionTest.addJavaxDefaultNullabilityAnnotations(myFixture);

@@ -1,5 +1,5 @@
 // Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-@file:Suppress("PropertyName", "ReplacePutWithAssignment", "ReplacePutWithAssignment")
+@file:Suppress("PropertyName", "ReplacePutWithAssignment")
 
 package com.intellij.configurationStore.xml
 
@@ -353,8 +353,9 @@ internal class XmlSerializerMapTest {
 
   @Test
   fun `pluginFeatureService serialization`() {
-    val state = PluginFeatureService.State()
-    state.features.put("foo", PluginFeatureService.FeaturePluginList())
+    val state = PluginFeatureService.State(
+      mapOf("foo" to PluginFeatureService.FeaturePluginList())
+    )
 
     testSerializer(
       """

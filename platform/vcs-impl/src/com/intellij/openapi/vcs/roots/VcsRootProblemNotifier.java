@@ -1,7 +1,6 @@
-// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.openapi.vcs.roots;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
 import com.intellij.openapi.application.ApplicationManager;
@@ -25,6 +24,7 @@ import com.intellij.vcsUtil.VcsUtil;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.*;
 
@@ -64,7 +64,7 @@ public final class VcsRootProblemNotifier {
     myProject = project;
     mySettings = VcsConfiguration.getInstance(myProject);
     myChangeListManager = ChangeListManager.getInstance(project);
-    myProjectFileIndex = ProjectFileIndex.SERVICE.getInstance(myProject);
+    myProjectFileIndex = ProjectFileIndex.getInstance(myProject);
     myVcsManager = ProjectLevelVcsManager.getInstance(project);
     myReportedUnregisteredRoots = new HashSet<>();
   }

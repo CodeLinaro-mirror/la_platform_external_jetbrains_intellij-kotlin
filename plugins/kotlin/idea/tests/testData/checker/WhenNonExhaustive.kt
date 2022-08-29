@@ -60,6 +60,6 @@ fun nonExhaustiveNullableSealed(v: Variant?) = <error descr="[NO_ELSE_IN_WHEN] '
 
 sealed class Empty
 
-fun nonExhaustiveEmpty(e: Empty) = <error descr="[NO_ELSE_IN_WHEN] 'when' expression must be exhaustive, add necessary 'else' branch">when</error>(<warning>e</warning>) {}
+fun nonExhaustiveEmpty(e: Empty) = <error descr="[NO_ELSE_IN_WHEN] 'when' expression must be exhaustive, add necessary 'else' branch">when</error>(<warning descr="[UNUSED_EXPRESSION] The expression is unused">e</warning>) {}
 
-fun nonExhaustiveNullableEmpty(e: Empty?) = <error descr="[NO_ELSE_IN_WHEN] 'when' expression must be exhaustive, add necessary 'else' branch">when</error>(<warning>e</warning>) {}
+fun nonExhaustiveNullableEmpty(e: Empty?) = <error descr="[NO_ELSE_IN_WHEN] 'when' expression must be exhaustive, add necessary 'else' branch">when</error>(<warning descr="[UNUSED_EXPRESSION] The expression is unused">e</warning>) {}

@@ -4,7 +4,9 @@ package com.intellij.ide.actions.searcheverywhere
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.project.Project
+import org.jetbrains.annotations.ApiStatus
 
+@ApiStatus.Internal
 abstract class SearchEverywhereMlService {
   companion object {
     val EP_NAME: ExtensionPointName<SearchEverywhereMlService> = ExtensionPointName.create("com.intellij.searchEverywhereMlService")
@@ -21,11 +23,11 @@ abstract class SearchEverywhereMlService {
     }
   }
 
-  abstract fun shouldOrderByMl(tabId: String): Boolean
+  abstract fun shouldOrderByMl(): Boolean
 
   abstract fun getMlWeight(contributor: SearchEverywhereContributor<*>, element: Any, matchingDegree: Int): Double
 
-  abstract fun onSessionStarted(project: Project?)
+  abstract fun onSessionStarted(project: Project?, mixedListInfo: SearchEverywhereMixedListInfo)
 
   abstract fun onSearchRestart(project: Project?, tabId: String, reason: SearchRestartReason,
                                keysTyped: Int, backspacesTyped: Int, searchQuery: String,

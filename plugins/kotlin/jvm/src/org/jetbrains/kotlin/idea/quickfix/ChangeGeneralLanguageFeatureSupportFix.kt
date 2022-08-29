@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.quickfix
 
@@ -6,6 +6,7 @@ import com.intellij.codeInsight.intention.IntentionAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.RootsChangeRescanningInfo
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.util.NlsContexts
 import com.intellij.psi.PsiElement
@@ -16,7 +17,7 @@ import org.jetbrains.kotlin.idea.KotlinJvmBundle
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCompilerSettings
 import org.jetbrains.kotlin.idea.configuration.findApplicableConfigurator
 import org.jetbrains.kotlin.idea.core.isInTestSourceContentKotlinAware
-import org.jetbrains.kotlin.idea.facet.getCleanRuntimeLibraryVersion
+import org.jetbrains.kotlin.idea.facet.getRuntimeLibraryVersion
 import org.jetbrains.kotlin.idea.roots.invalidateProjectRoots
 import org.jetbrains.kotlin.idea.util.module
 import org.jetbrains.kotlin.psi.KtFile
@@ -57,12 +58,12 @@ sealed class ChangeGeneralLanguageFeatureSupportFix(
                 additionalArguments = additionalArguments.replaceLanguageFeature(
                     feature,
                     featureSupport,
-                    file.module?.let { getCleanRuntimeLibraryVersion(it) },
+                    file.module?.let { getRuntimeLibraryVersion(it) },
                     separator = " ",
                     quoted = false
                 )
             }
-            project.invalidateProjectRoots()
+            project.invalidateProjectRoots(RootsChangeRescanningInfo.NO_RESCAN_NEEDED)
         }
 
     }

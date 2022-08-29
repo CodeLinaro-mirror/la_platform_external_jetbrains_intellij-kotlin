@@ -4,13 +4,14 @@ package org.jetbrains.kotlin.idea.jvmDecompiler
 
 import com.intellij.codeInsight.AttachSourcesProvider
 import com.intellij.ide.highlighter.JavaClassFileType
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.roots.LibraryOrderEntry
 import com.intellij.openapi.util.ActionCallback
 import com.intellij.psi.PsiFile
-import org.jetbrains.kotlin.idea.util.isRunningInCidrIde
+import org.jetbrains.kotlin.base.util.KotlinPlatformUtils
 import org.jetbrains.kotlin.psi.KtFile
 
 class DecompileKotlinToJavaAction : AnAction(KotlinJvmDecompilerBundle.message("action.decompile.java.name")) {
@@ -20,11 +21,12 @@ class DecompileKotlinToJavaAction : AnAction(KotlinJvmDecompilerBundle.message("
         KotlinJvmDecompilerFacadeImpl.showDecompiledCode(binaryFile)
     }
 
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+
     override fun update(e: AnActionEvent) {
-        if (isRunningInCidrIde) {
-            e.presentation.isEnabledAndVisible = false
-        } else {
-            e.presentation.isEnabled = getBinaryKotlinFile(e) != null
+        when {
+            KotlinPlatformUtils.isCidr -> e.presentation.isEnabledAndVisible = false
+            else -> e.presentation.isEnabled = getBinaryKotlinFile(e) != null
         }
     }
 

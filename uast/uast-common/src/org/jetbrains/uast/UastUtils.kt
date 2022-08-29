@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 @file:JvmMultifileClass
 @file:JvmName("UastUtils")
 
@@ -27,7 +27,7 @@ fun <T : UElement> UElement.getParentOfType(parentClass: Class<out T>, strict: B
 }
 
 fun UElement.skipParentOfType(strict: Boolean, vararg parentClasses: Class<out UElement>): UElement? {
-  var element = (if (strict) uastParent else this)  ?: return null
+  var element = (if (strict) uastParent else this) ?: return null
   while (true) {
     if (!parentClasses.any { it.isInstance(element) }) {
       return element
@@ -143,11 +143,11 @@ fun UElement.tryResolveNamed(): PsiNamedElement? = (this as? UResolvable)?.resol
 fun UReferenceExpression?.getQualifiedName(): String? = (this?.resolve() as? PsiClass)?.qualifiedName
 
 /**
- * Returns the String expression value, or null if the value can't be calculated or if the calculated value is not a String.
+ * Returns the String expression value, or null if the value can't be calculated, or if the calculated value is not a String or an integral literal.
  */
-fun UExpression.evaluateString(): String? = evaluate() as? String
+fun UExpression.evaluateString(): String? = evaluate().takeIf { it is String || isIntegralLiteral() }?.toString()
 
-fun UExpression.skipParenthesizedExprDown(): UExpression? {
+fun UExpression.skipParenthesizedExprDown(): UExpression {
   var expression = this
   while (expression is UParenthesizedExpression) {
     expression = expression.expression
@@ -171,7 +171,7 @@ fun UFile.getIoFile(): File? = sourcePsi.virtualFile?.let { VfsUtilCore.virtualT
 
 @Deprecated("use UastFacade", ReplaceWith("UastFacade"))
 @ApiStatus.ScheduledForRemoval
-@Suppress("Deprecation")
+@Suppress("DEPRECATION")
 tailrec fun UElement.getUastContext(): UastContext {
   val psi = this.sourcePsi
   if (psi != null) {
@@ -231,7 +231,7 @@ tailrec fun UElement.isLastElementInControlFlow(scopeElement: UElement? = null):
   }
 
 fun UNamedExpression.getAnnotationMethod(): PsiMethod? {
-  val annotation : UAnnotation? = getParentOfType(UAnnotation::class.java, true)
+  val annotation: UAnnotation? = getParentOfType(UAnnotation::class.java, true)
   val fqn = annotation?.qualifiedName ?: return null
   val annotationSrc = annotation.sourcePsi
   if (annotationSrc == null) return null

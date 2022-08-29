@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package com.intellij.codeInspection.ui;
 
@@ -56,6 +56,7 @@ import com.intellij.ui.SideBorder;
 import com.intellij.util.Alarm;
 import com.intellij.util.ThreeState;
 import com.intellij.util.concurrency.SequentialTaskExecutor;
+import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.ui.EdtInvocationManager;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
@@ -533,7 +534,7 @@ public class InspectionResultsView extends JPanel implements Disposable, DataPro
   }
 
   void addProblemDescriptors(InspectionToolWrapper wrapper, RefEntity refElement, CommonProblemDescriptor[] descriptors) {
-    updateTree(() -> {
+    updateTree(() -> ReadAction.run(() -> {
       if (!isDisposed()) {
         final AnalysisUIOptions uiOptions = myGlobalInspectionContext.getUIOptions();
         final InspectionToolPresentation presentation = myGlobalInspectionContext.getPresentation(wrapper);
@@ -567,27 +568,28 @@ public class InspectionResultsView extends JPanel implements Disposable, DataPro
           }, 200);
         }
       }
-    });
+    }));
   }
 
   public void update() {
     ApplicationManager.getApplication().assertIsDispatchThread();
     final Application app = ApplicationManager.getApplication();
     Collection<Tools> tools = new ArrayList<>(myGlobalInspectionContext.getTools().values());
-    final Runnable buildAction = () -> {
-      try {
-        setUpdating(true);
-        myTree.removeAllNodes();
-        addToolsSynchronously(tools);
-      }
-      finally {
-        setUpdating(false);
-      }
-    };
     if (app.isUnitTestMode()) {
-      buildAction.run();
+      updateResults(tools);
     } else {
-      updateTree(buildAction);
+      updateTree(() -> updateResults(tools));
+    }
+  }
+
+  public void updateResults(Collection<Tools> tools) {
+    try {
+      setUpdating(true);
+      myTree.removeAllNodes();
+      addToolsSynchronously(tools);
+    }
+    finally {
+      setUpdating(false);
     }
   }
 
@@ -643,8 +645,12 @@ public class InspectionResultsView extends JPanel implements Disposable, DataPro
     TreePath[] paths = myTree.getSelectionPaths();
     if (paths == null || paths.length == 0) return null;
 
+    if (PlatformCoreDataKeys.SELECTED_ITEMS.is(dataId)) {
+      return ContainerUtil.map2Array(paths, p -> p.getLastPathComponent());
+    }
+      
     if (paths.length > 1) {
-      if (LangDataKeys.PSI_ELEMENT_ARRAY.is(dataId)) {
+      if (PlatformCoreDataKeys.PSI_ELEMENT_ARRAY.is(dataId)) {
         RefEntity[] refElements = myTree.getSelectedElements();
         List<PsiElement> psiElements = new ArrayList<>();
         for (RefEntity refElement : refElements) {
@@ -661,6 +667,10 @@ public class InspectionResultsView extends JPanel implements Disposable, DataPro
 
     TreePath path = paths[0];
     InspectionTreeNode selectedNode = (InspectionTreeNode)path.getLastPathComponent();
+
+    if (PlatformCoreDataKeys.SELECTED_ITEM.is(dataId)) {
+      return selectedNode;
+    }
 
     if (!CommonDataKeys.NAVIGATABLE.is(dataId) && !CommonDataKeys.PSI_ELEMENT.is(dataId)) {
       return null;
@@ -684,9 +694,17 @@ public class InspectionResultsView extends JPanel implements Disposable, DataPro
         return psiElement.isValid() ? psiElement : null;
       }
     }
-    else if (selectedNode instanceof ProblemDescriptionNode && CommonDataKeys.NAVIGATABLE.is(dataId)) {
-      Navigatable navigatable = getSelectedNavigatable(((ProblemDescriptionNode)selectedNode).getDescriptor());
-      return navigatable == null ? InspectionResultsViewUtil.getNavigatableForInvalidNode((ProblemDescriptionNode)selectedNode) : navigatable;
+    else if (selectedNode instanceof ProblemDescriptionNode) {
+      if (CommonDataKeys.NAVIGATABLE.is(dataId)) {
+        Navigatable navigatable = getSelectedNavigatable(((ProblemDescriptionNode)selectedNode).getDescriptor());
+        return navigatable == null
+               ? InspectionResultsViewUtil.getNavigatableForInvalidNode((ProblemDescriptionNode)selectedNode)
+               : navigatable;
+      }
+      if (CommonDataKeys.PSI_ELEMENT.is(dataId)) {
+        RefEntity item = ((ProblemDescriptionNode)selectedNode).getElement();
+        return item instanceof RefElement ? ((RefElement)item).getPsiElement() : null;
+      }
     }
 
     return null;

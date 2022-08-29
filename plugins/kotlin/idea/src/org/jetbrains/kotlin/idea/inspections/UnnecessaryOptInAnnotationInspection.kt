@@ -12,6 +12,7 @@ import com.intellij.psi.util.parentOfType
 import org.jetbrains.kotlin.config.ApiVersion
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.idea.KotlinBundle
+import org.jetbrains.kotlin.idea.base.psi.KotlinPsiHeuristics
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
@@ -37,7 +38,6 @@ import org.jetbrains.kotlin.resolve.constants.KClassValue
 import org.jetbrains.kotlin.resolve.constants.StringValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.*
 import org.jetbrains.kotlin.types.KotlinType
-import org.jetbrains.kotlin.util.aliasImportMap
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 /**
@@ -82,15 +82,14 @@ class UnnecessaryOptInAnnotationInspection : AbstractKotlinInspection() {
      * Main inspection visitor to traverse all annotation entries.
      */
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
-        val optInAliases = holder.file.safeAs<KtFile>()
-            ?.aliasImportMap()
-            ?.entries()
-            ?.filter { it.value in OPT_IN_SHORT_NAMES }
-            ?.mapNotNull { it.key }
-            ?.toSet()
-            ?: emptySet()
+        val file = holder.file
+        val optInAliases = if (file is KtFile) KotlinPsiHeuristics.getImportAliases(file, OPT_IN_SHORT_NAMES) else emptySet()
 
         return annotationEntryVisitor { annotationEntry  ->
+            val annotationEntryArguments = annotationEntry.valueArguments.ifEmpty {
+                return@annotationEntryVisitor
+            }
+
             // Fast check if the annotation may be `@OptIn`/`@UseExperimental` or any of their import aliases
             val entryShortName = annotationEntry.shortName?.asString()
             if (entryShortName != null && entryShortName !in OPT_IN_SHORT_NAMES && entryShortName !in optInAliases)
@@ -104,7 +103,7 @@ class UnnecessaryOptInAnnotationInspection : AbstractKotlinInspection() {
             if (annotationFqName !in OptInNames.USE_EXPERIMENTAL_FQ_NAMES) return@annotationEntryVisitor
 
             val resolvedMarkers = mutableListOf<ResolvedMarker>()
-            for (arg in annotationEntry.valueArguments) {
+            for (arg in annotationEntryArguments) {
                 val argumentExpression = arg.getArgumentExpression()?.safeAs<KtClassLiteralExpression>() ?: continue
                 val markerFqName = annotationContext[
                         BindingContext.REFERENCE_TARGET,
@@ -118,7 +117,7 @@ class UnnecessaryOptInAnnotationInspection : AbstractKotlinInspection() {
             annotationEntry.getOwner()?.accept(OptInMarkerVisitor(), markerProcessor)
 
             val unusedMarkers = resolvedMarkers.filter { markerProcessor.isUnused(it.fqName) }
-            if (annotationEntry.valueArguments.size == unusedMarkers.size) {
+            if (annotationEntryArguments.size == unusedMarkers.size) {
                 // If all markers in the `@OptIn` annotation are useless, create a quick fix to remove
                 // the entire annotation.
                 holder.registerProblem(

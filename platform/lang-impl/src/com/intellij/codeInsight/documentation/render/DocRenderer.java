@@ -406,6 +406,10 @@ final class DocRenderer implements CustomFoldRegionRenderer {
     }
   }
 
+  /**
+   * @deprecated Unused in v2 implementation.
+   */
+  @Deprecated
   private void showDocumentation(@NotNull Editor editor,
                                  @NotNull PsiElement context,
                                  @NotNull String linkUrl,
@@ -649,6 +653,11 @@ final class DocRenderer implements CustomFoldRegionRenderer {
 
     private MyScalingImageView(Element element) {
       super(element);
+    }
+
+    @Override
+    public Icon getLoadingImageIcon() {
+      return AllIcons.Process.Step_passive;
     }
 
     @Override

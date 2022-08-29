@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.openapi.keymap.impl
 
 import com.intellij.configurationStore.SchemeDataHolder
@@ -16,7 +16,6 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.keymap.Keymap
-import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.keymap.KeymapManagerListener
 import com.intellij.openapi.keymap.KeymapUtil
 import com.intellij.openapi.keymap.ex.KeymapManagerEx
@@ -622,7 +621,7 @@ open class KeymapImpl @JvmOverloads constructor(private var dataHolder: SchemeDa
   protected open fun convertShortcut(shortcut: Shortcut): Shortcut = shortcut
 
   private fun fireShortcutChanged(actionId: String) {
-    (KeymapManager.getInstance() as? KeymapManagerImpl)?.fireShortcutChanged(this, actionId)
+    ApplicationManager.getApplication().messageBus.syncPublisher(KeymapManagerListener.TOPIC).shortcutChanged(this, actionId)
   }
 
   override fun toString(): String = presentableName
@@ -668,7 +667,7 @@ private fun areShortcutsEqual(shortcuts1: List<Shortcut>, shortcuts2: List<Short
 @Suppress("SpellCheckingInspection") private const val resharperKeymap = "com.intellij.plugins.resharperkeymap"
 @Suppress("SpellCheckingInspection") private const val sublimeKeymap = "com.intellij.plugins.sublimetextkeymap"
 @Suppress("SpellCheckingInspection") private const val visualStudioKeymap = "com.intellij.plugins.visualstudiokeymap"
-@Suppress("SpellCheckingInspection") private const val visualStudio2022Keymap = "com.intellij.plugins.visualstudio2022keymap"
+private const val visualStudio2022Keymap = "com.intellij.plugins.visualstudio2022keymap"
 @Suppress("SpellCheckingInspection") private const val xcodeKeymap = "com.intellij.plugins.xcodekeymap"
 @Suppress("SpellCheckingInspection") private const val visualAssistKeymap = "com.intellij.plugins.visualassistkeymap"
 @Suppress("SpellCheckingInspection") private const val riderKeymap = "com.intellij.plugins.riderkeymap"
@@ -684,7 +683,6 @@ internal fun notifyAboutMissingKeymap(keymapName: String, @NlsContexts.Notificat
       ApplicationManager.getApplication().invokeLater(
         {
           // TODO remove when PluginAdvertiser implements that
-          @Suppress("SpellCheckingInspection")
           val pluginId = when (keymapName) {
             "Mac OS X",
             "Mac OS X 10.5+" -> macOSKeymap

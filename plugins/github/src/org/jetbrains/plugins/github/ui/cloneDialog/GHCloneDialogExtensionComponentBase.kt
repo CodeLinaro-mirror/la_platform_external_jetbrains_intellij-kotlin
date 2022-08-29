@@ -5,9 +5,9 @@ import com.intellij.collaboration.auth.AccountsListener
 import com.intellij.collaboration.messages.CollaborationToolsBundle
 import com.intellij.collaboration.ui.CollaborationToolsUIUtil
 import com.intellij.dvcs.repo.ClonePathProvider
-import com.intellij.dvcs.ui.FilePathDocumentChildPathHandle
 import com.intellij.dvcs.ui.CloneDvcsValidationUtils
 import com.intellij.dvcs.ui.DvcsBundle.message
+import com.intellij.dvcs.ui.FilePathDocumentChildPathHandle
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.actionSystem.IdeActions
@@ -61,6 +61,7 @@ import org.jetbrains.plugins.github.api.util.GithubApiPagesLoader
 import org.jetbrains.plugins.github.authentication.GithubAuthenticationManager
 import org.jetbrains.plugins.github.authentication.accounts.GithubAccount
 import org.jetbrains.plugins.github.authentication.accounts.GithubAccountInformationProvider
+import org.jetbrains.plugins.github.exceptions.GithubAuthenticationException
 import org.jetbrains.plugins.github.exceptions.GithubMissingTokenException
 import org.jetbrains.plugins.github.i18n.GithubBundle
 import org.jetbrains.plugins.github.ui.avatars.GHAvatarIconsProvider
@@ -283,7 +284,7 @@ internal abstract class GHCloneDialogExtensionComponentBase(
   }
 
   private fun loadUserDetails(account: GithubAccount,
-                              executor: GithubApiRequestExecutor.WithTokenAuth) {
+                              executor: GithubApiRequestExecutor) {
     progressManager.run(object : Task.Backgroundable(project, GithubBundle.message("progress.title.not.visible")) {
       lateinit var user: GithubAuthenticatedUser
       lateinit var iconProvider: GHAvatarIconsProvider
@@ -302,17 +303,13 @@ internal abstract class GHCloneDialogExtensionComponentBase(
       }
 
       override fun onThrowable(error: Throwable) {
-        LOG.error(error)
-        errorsByAccount[account] = GHRepositoryListItem.Error(account,
-                                                              GithubBundle.message("clone.error.load.repositories"),
-                                                              GithubBundle.message("retry.link"),
-                                                              Runnable { addAccount(account) })
+        LOG.info(error)
+        handleApiError(account, executor, error)
       }
     })
   }
 
-  private fun loadRepositories(account: GithubAccount,
-                               executor: GithubApiRequestExecutor.WithTokenAuth) {
+  private fun loadRepositories(account: GithubAccount, executor: GithubApiRequestExecutor) {
     repositoriesByAccount.remove(account)
     errorsByAccount.remove(account)
 
@@ -340,12 +337,29 @@ internal abstract class GHCloneDialogExtensionComponentBase(
       }
 
       override fun onThrowable(error: Throwable) {
-        errorsByAccount[account] = GHRepositoryListItem.Error(account,
-                                                              GithubBundle.message("clone.error.load.repositories"),
-                                                              GithubBundle.message("retry.link"),
-                                                              Runnable { loadRepositories(account, executor) })
+        handleApiError(account, executor, error)
       }
     })
+  }
+
+  private fun handleApiError(account: GithubAccount,
+                             executor: GithubApiRequestExecutor,
+                             error: Throwable) {
+    val errorItem = if (error is GithubAuthenticationException) {
+      GHRepositoryListItem.Error(account,
+                                 GithubBundle.message("credentials.invalid.auth.data", ""),
+                                 GithubBundle.message("accounts.relogin"),
+                                 Runnable { switchToLogin(account) })
+    }
+    else {
+      GHRepositoryListItem.Error(account,
+                                 GithubBundle.message("clone.error.load.repositories"),
+                                 GithubBundle.message("retry.link"),
+                                 Runnable { loadRepositories(account, executor) })
+    }
+
+    errorsByAccount[account] = errorItem
+    refillRepositories()
   }
 
   private fun refillRepositories() {

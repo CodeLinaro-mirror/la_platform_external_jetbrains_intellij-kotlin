@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.diff.actions
 
 import com.intellij.diff.*
@@ -40,6 +40,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.util.text.TextWithMnemonic
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.EditorNotificationPanel
@@ -59,6 +60,10 @@ class ShowBlankDiffWindowAction : DumbAwareAction() {
 
   init {
     isEnabledInModalContext = true
+  }
+
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.EDT
   }
 
   override fun actionPerformed(e: AnActionEvent) {
@@ -140,19 +145,24 @@ internal class SwitchToRecentEditorActionGroup : ActionGroup(), DumbAware {
     return BlankDiffWindowUtil.getRecentFiles().map2Array { MySwitchAction(it) }
   }
 
-  @Suppress("DialogTitleCapitalization")
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.EDT
+  }
+
   private class MySwitchAction(val content: RecentBlankContent) : BlankSwitchContentActionBase() {
     init {
-      val text = content.text
-      val dateAppendix = DateFormatUtil.formatPrettyDateTime(content.timestamp)
-      val presentable = when {
-        text.length < 40 -> DiffBundle.message("blank.diff.recent.content.summary.text.date", text.trim(), dateAppendix)
-        else -> {
-          val shortenedText = StringUtil.shortenTextWithEllipsis(text.trim(), 30, 0)
-          DiffBundle.message("blank.diff.recent.content.summary.text.length.date", shortenedText, text.length, dateAppendix)
+      templatePresentation.setTextWithMnemonic {
+        val text = content.text
+        val dateAppendix = DateFormatUtil.formatPrettyDateTime(content.timestamp)
+        val presentable = when {
+          text.length < 40 -> DiffBundle.message("blank.diff.recent.content.summary.text.date", text.trim(), dateAppendix)
+          else -> {
+            val shortenedText = StringUtil.shortenTextWithEllipsis(text.trim(), 30, 0)
+            DiffBundle.message("blank.diff.recent.content.summary.text.length.date", shortenedText, text.length, dateAppendix)
+          }
         }
+        TextWithMnemonic.fromPlainText(presentable)
       }
-      templatePresentation.text = presentable
     }
 
     override fun isEnabled(currentContent: DiffContent): Boolean = true
@@ -191,6 +201,10 @@ internal abstract class BlankSwitchContentActionBase : DumbAwareAction() {
     else {
       e.presentation.isEnabledAndVisible = false
     }
+  }
+
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.EDT
   }
 
   override fun actionPerformed(e: AnActionEvent) {
@@ -241,6 +255,10 @@ internal class BlankToggleThreeSideModeAction : DumbAwareAction() {
       ActionsBundle.message("action.ToggleThreeSideInBlankDiffWindow.text.enable")
     }
     e.presentation.isEnabledAndVisible = true
+  }
+
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.EDT
   }
 
   override fun actionPerformed(e: AnActionEvent) {

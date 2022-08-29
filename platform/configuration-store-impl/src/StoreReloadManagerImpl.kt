@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.configurationStore
 
 import com.intellij.configurationStore.schemeManager.SchemeChangeApplicator
@@ -59,7 +59,7 @@ internal class StoreReloadManagerImpl : StoreReloadManager, Disposable {
     processOpenedProjects { project ->
       val changedSchemes: Map<SchemeChangeApplicator<*, *>, Set<SchemeChangeEvent<*, *>>>? = CHANGED_SCHEMES_KEY.getAndClear(project as UserDataHolderEx)
       val changedStorages = CHANGED_FILES_KEY.getAndClear(project as UserDataHolderEx)
-      if ((changedSchemes == null || changedSchemes.isEmpty()) && (changedStorages == null || changedStorages.isEmpty())
+      if ((changedSchemes.isNullOrEmpty()) && (changedStorages.isNullOrEmpty())
           && !mayHaveAdditionalConfigurations(project)) {
         return@processOpenedProjects
       }
@@ -80,7 +80,6 @@ internal class StoreReloadManagerImpl : StoreReloadManager, Disposable {
               continue
             }
 
-            @Suppress("UNCHECKED_CAST")
             if (reloadStore(storages, store) == ReloadComponentStoreStatus.RESTART_AGREED) {
               projectsToReload.add(project)
             }
@@ -274,7 +273,7 @@ internal fun reloadStore(changedStorages: Set<StateStorage>, store: ComponentSto
       return ReloadComponentStoreStatus.ERROR
     }
 
-    if (notReloadableComponents == null || notReloadableComponents.isEmpty()) {
+    if (notReloadableComponents.isNullOrEmpty()) {
       return ReloadComponentStoreStatus.SUCCESS
     }
 

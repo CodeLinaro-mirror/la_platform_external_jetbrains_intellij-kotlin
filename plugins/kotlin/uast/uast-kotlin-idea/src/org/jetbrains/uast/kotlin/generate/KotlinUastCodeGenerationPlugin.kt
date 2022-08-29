@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.uast.kotlin.generate
 
@@ -12,6 +12,8 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
 import org.jetbrains.kotlin.idea.core.*
 import org.jetbrains.kotlin.idea.refactoring.fqName.fqName
+import org.jetbrains.kotlin.idea.references.KtSimpleNameReference
+import org.jetbrains.kotlin.idea.references.KtSimpleNameReferenceDescriptorsImpl
 import org.jetbrains.kotlin.idea.util.getResolutionScope
 import org.jetbrains.kotlin.idea.util.resolveToKotlinType
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
@@ -19,8 +21,6 @@ import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.*
 import org.jetbrains.kotlin.resolve.scopes.utils.findClassifier
-import org.jetbrains.kotlin.util.firstNotNullResult
-import org.jetbrains.kotlin.utils.addToStdlib.cast
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 import org.jetbrains.uast.*
 import org.jetbrains.uast.generate.UParameterInfo
@@ -72,6 +72,19 @@ class KotlinUastCodeGenerationPlugin : UastCodeGenerationPlugin {
             else -> replaced
         }?.toUElementOfExpectedTypes(elementType)
     }
+
+    override fun bindToElement(reference: UReferenceExpression, element: PsiElement): PsiElement? {
+        val sourcePsi = reference.sourcePsi ?: return null
+        if (sourcePsi !is KtSimpleNameExpression) return null
+        return KtSimpleNameReferenceDescriptorsImpl(sourcePsi)
+            .bindToElement(element, KtSimpleNameReference.ShorteningMode.FORCED_SHORTENING)
+    }
+
+    override fun shortenReference(reference: UReferenceExpression): UReferenceExpression? {
+        val sourcePsi = reference.sourcePsi ?: return null
+        if (sourcePsi !is KtElement) return null
+        return ShortenReferences.DEFAULT.process(sourcePsi).toUElementOfType()
+    }
 }
 
 private fun hasBraces(oldPsi: KtBlockExpression): Boolean = oldPsi.lBrace != null && oldPsi.rBrace != null
@@ -79,7 +92,6 @@ private fun hasBraces(oldPsi: KtBlockExpression): Boolean = oldPsi.lBrace != nul
 class KotlinUastElementFactory(project: Project) : UastElementFactory {
     private val psiFactory = KtPsiFactory(project)
 
-    @Suppress("UNUSED_PARAMETER")
     override fun createQualifiedReference(qualifiedName: String, context: PsiElement?): UQualifiedReferenceExpression? {
         return psiFactory.createExpression(qualifiedName).let {
             when (it) {
@@ -238,7 +250,7 @@ class KotlinUastElementFactory(project: Project) : UastElementFactory {
     }
 
     @Deprecated("use version with context parameter")
-    fun createSimpleReference(name: String): USimpleNameReferenceExpression? {
+    fun createSimpleReference(name: String): USimpleNameReferenceExpression {
         logger<KotlinUastElementFactory>().error("Please switch caller to the version with a context parameter")
         return createSimpleReference(name, null)
     }
@@ -258,7 +270,7 @@ class KotlinUastElementFactory(project: Project) : UastElementFactory {
     }
 
     @Deprecated("use version with context parameter")
-    fun createReturnExpresion(expression: UExpression?, inLambda: Boolean): UReturnExpression? {
+    fun createReturnExpresion(expression: UExpression?, inLambda: Boolean): UReturnExpression {
         logger<KotlinUastElementFactory>().error("Please switch caller to the version with a context parameter")
         return createReturnExpresion(expression, inLambda, null)
     }
@@ -350,7 +362,7 @@ class KotlinUastElementFactory(project: Project) : UastElementFactory {
     }
 
     @Deprecated("use version with context parameter")
-    fun createBlockExpression(expressions: List<UExpression>): UBlockExpression? {
+    fun createBlockExpression(expressions: List<UExpression>): UBlockExpression {
         logger<KotlinUastElementFactory>().error("Please switch caller to the version with a context parameter")
         return createBlockExpression(expressions, null)
     }
@@ -367,7 +379,7 @@ class KotlinUastElementFactory(project: Project) : UastElementFactory {
     }
 
     @Deprecated("use version with context parameter")
-    fun createDeclarationExpression(declarations: List<UDeclaration>): UDeclarationsExpression? {
+    fun createDeclarationExpression(declarations: List<UDeclaration>): UDeclarationsExpression {
         logger<KotlinUastElementFactory>().error("Please switch caller to the version with a context parameter")
         return createDeclarationExpression(declarations, null)
     }
@@ -457,7 +469,7 @@ class KotlinUastElementFactory(project: Project) : UastElementFactory {
         type: PsiType?,
         initializer: UExpression,
         immutable: Boolean
-    ): ULocalVariable? {
+    ): ULocalVariable {
         logger<KotlinUastElementFactory>().error("Please switch caller to the version with a context parameter")
         return createLocalVariable(suggestedName, type, initializer, immutable, null)
     }

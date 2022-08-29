@@ -3,6 +3,7 @@ package com.intellij.ui.dsl.builder.impl
 
 import com.intellij.openapi.util.NlsContexts
 import com.intellij.ui.dsl.builder.CollapsiblePanel
+import com.intellij.ui.dsl.builder.IntelliJSpacingConfiguration
 import com.intellij.ui.dsl.builder.Panel
 import com.intellij.ui.dsl.gridLayout.HorizontalAlign
 import org.jetbrains.annotations.ApiStatus
@@ -13,9 +14,9 @@ internal class CollapsiblePanelImpl(dialogPanelConfig: DialogPanelConfig,
                                     parent: RowImpl,
                                     @NlsContexts.BorderTitle title: String,
                                     init: Panel.() -> Unit) :
-  PanelImpl(dialogPanelConfig, parent), CollapsiblePanel {
+  PanelImpl(dialogPanelConfig, IntelliJSpacingConfiguration(), parent), CollapsiblePanel {
 
-  private val collapsibleTitledSeparator = CollapsibleTitledSeparator(title)
+  private val collapsibleTitledSeparator = CollapsibleTitledSeparatorImpl(title)
 
   override var expanded by collapsibleTitledSeparator::expanded
 

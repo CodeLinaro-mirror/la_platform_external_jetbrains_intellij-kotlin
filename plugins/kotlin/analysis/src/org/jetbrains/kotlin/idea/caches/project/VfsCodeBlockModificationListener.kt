@@ -41,15 +41,7 @@ class VfsCodeBlockModificationListener: StartupActivity.Background {
                 }
             }
         }
-        if (isUnitTestMode()) {
-            val connection = project.messageBus.connect(disposable)
-            connection.subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
-                override fun after(events: List<VFileEvent>) {
-                    vfsEventsListener.filesChanged(events)
-                }
-            })
-        } else {
-            AsyncVfsEventsPostProcessor.getInstance().addListener(vfsEventsListener, disposable)
-        }
+
+        AsyncVfsEventsPostProcessor.getInstance().addListener(vfsEventsListener, disposable)
     }
 }

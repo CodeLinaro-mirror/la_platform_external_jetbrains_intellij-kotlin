@@ -238,7 +238,7 @@ class PluginAdvertiserEditorNotificationProvider : EditorNotificationProvider,
       }
 
       val productCodes = ideExtensions[extensionOrFileName]
-      if (productCodes == null || productCodes.isEmpty()) {
+      if (productCodes.isNullOrEmpty()) {
         return emptyList()
       }
 
@@ -251,6 +251,9 @@ class PluginAdvertiserEditorNotificationProvider : EditorNotificationProvider,
 
       if (commercialVersionCode != null && suggestedIde != null && suggestedIde.key != commercialVersionCode) {
         return listOf(suggestedIde.value, ides[commercialVersionCode]!!)
+      }
+      else if (suggestedIde != null && suggestedIde.key == activeProductCode) {
+        return emptyList()
       }
       else {
         return suggestedIde?.value?.let { listOf(it) } ?: emptyList()

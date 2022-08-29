@@ -1,9 +1,7 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.maven
 
-import com.intellij.icons.AllIcons
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.components.PersistentStateComponent
@@ -21,6 +19,7 @@ import com.intellij.util.PathUtil
 import org.jdom.Element
 import org.jdom.Text
 import org.jetbrains.concurrency.AsyncPromise
+import org.jetbrains.idea.maven.execution.MavenRunner
 import org.jetbrains.idea.maven.importing.MavenImporter
 import org.jetbrains.idea.maven.importing.MavenRootModelAdapter
 import org.jetbrains.idea.maven.model.MavenPlugin
@@ -35,12 +34,14 @@ import org.jetbrains.kotlin.compilerRunner.ArgumentUtils
 import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.extensions.ProjectExtensionDescriptor
 import org.jetbrains.kotlin.idea.KotlinBundle
+import org.jetbrains.kotlin.idea.compiler.configuration.IdeKotlinVersion
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinJpsPluginSettings
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinPluginLayout
 import org.jetbrains.kotlin.idea.facet.*
 import org.jetbrains.kotlin.idea.framework.KotlinSdkType
 import org.jetbrains.kotlin.idea.framework.detectLibraryKind
 import org.jetbrains.kotlin.idea.maven.configuration.KotlinMavenConfigurator
 import org.jetbrains.kotlin.idea.platform.tooling
-import org.jetbrains.kotlin.idea.util.application.getServiceSafe
 import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.platform.TargetPlatform
 import org.jetbrains.kotlin.platform.impl.CommonIdePlatformKind
@@ -70,6 +71,7 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         const val KOTLIN_PLUGIN_SOURCE_DIRS_CONFIG = "sourceDirs"
 
         private val KOTLIN_JVM_TARGET_6_NOTIFICATION_DISPLAYED = Key<Boolean>("KOTLIN_JVM_TARGET_6_NOTIFICATION_DISPLAYED")
+        private val KOTLIN_JPS_VERSION_ACCUMULATOR = Key<IdeKotlinVersion>("KOTLIN_JPS_VERSION_ACCUMULATOR")
     }
 
     override fun preProcess(
@@ -78,7 +80,9 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         changes: MavenProjectChanges,
         modifiableModelsProvider: IdeModifiableModelsProvider
     ) {
+        KotlinJpsPluginSettings.getInstance(module.project)?.dropExplicitVersion()
         module.project.putUserData(KOTLIN_JVM_TARGET_6_NOTIFICATION_DISPLAYED, null)
+        module.project.putUserData(KOTLIN_JPS_VERSION_ACCUMULATOR, null)
     }
 
     override fun process(
@@ -95,6 +99,14 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         if (changes.plugins) {
             contributeSourceDirectories(mavenProject, module, rootModel)
         }
+
+        if (!KotlinJpsPluginSettings.isUnbundledJpsExperimentalFeatureEnabled(module.project)) {
+            return
+        }
+        val mavenPlugin = mavenProject.findKotlinMavenPlugin() ?: return
+        val currentVersion = mavenPlugin.compilerVersion
+        val accumulatorVersion = module.project.getUserData(KOTLIN_JPS_VERSION_ACCUMULATOR)
+        module.project.putUserData(KOTLIN_JPS_VERSION_ACCUMULATOR, maxOf(accumulatorVersion ?: currentVersion, currentVersion))
     }
 
     override fun postProcess(
@@ -104,6 +116,15 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         modifiableModelsProvider: IdeModifiableModelsProvider
     ) {
         super.postProcess(module, mavenProject, changes, modifiableModelsProvider)
+        module.project.getUserData(KOTLIN_JPS_VERSION_ACCUMULATOR)?.let { version ->
+            KotlinJpsPluginSettings.importKotlinJpsVersionFromExternalBuildSystem(
+                module.project,
+                version.rawVersion,
+                isDelegatedToExtBuild = MavenRunner.getInstance(module.project).settings.isDelegateBuildToMaven
+            )
+
+            module.project.putUserData(KOTLIN_JPS_VERSION_ACCUMULATOR, null)
+        }
 
         if (changes.dependencies) {
             scheduleDownloadStdlibSources(mavenProject, module)
@@ -189,7 +210,8 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
     private fun getCompilerArgumentsByConfigurationElement(
         mavenProject: MavenProject,
         configuration: Element?,
-        platform: TargetPlatform
+        platform: TargetPlatform,
+        project: Project
     ): ImportedArguments {
         val arguments = platform.createArguments()
         var jvmTarget6IsUsed = false
@@ -207,22 +229,22 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
                 arguments.jdkHome = configuration?.getChild("jdkHome")?.text
                 arguments.javaParameters = configuration?.getChild("javaParameters")?.text?.toBoolean() ?: false
 
-                check(PluginManagerCore.getBuildNumber().baselineVersion in setOf(221, 213, 212)) {
-                    "This commit should be present only in 221, 213, 212 platforms"
-                }
-
                 val jvmTarget = configuration?.getChild("jvmTarget")?.text ?: mavenProject.properties["kotlin.compiler.jvmTarget"]?.toString()
-                if (jvmTarget == JvmTarget.JVM_1_6.description) {
-                    // Load JVM target 1.6 in Maven projects as 1.8, for IDEA platforms <= 221.
+                if (jvmTarget == JvmTarget.JVM_1_6.description &&
+                    KotlinJpsPluginSettings.getInstance(project)?.settings?.version?.isBlank() != false
+                ) {
+                    // Load JVM target 1.6 in Maven projects as 1.8, for IDEA platforms <= 222.
                     // The reason is that JVM target 1.6 is no longer supported by the latest Kotlin compiler, yet we'd like JPS projects imported from
                     // Maven to be compilable by IDEA, to avoid breaking local development.
-                    // (Since IDEA 222, JPS plugin is unbundled from the Kotlin IDEA plugin, so this change is not needed there.)
+                    // (Since IDEA 222, JPS plugin is unbundled from the Kotlin IDEA plugin, so this change is not needed there in case
+                    // when explicit version is specified in kotlinc.xml)
                     arguments.jvmTarget = JvmTarget.JVM_1_8.description
                     jvmTarget6IsUsed = true
                 } else {
                     arguments.jvmTarget = jvmTarget
                 }
             }
+
             is K2JSCompilerArguments -> {
                 arguments.sourceMap = configuration?.getChild("sourceMap")?.text?.trim()?.toBoolean() ?: false
                 arguments.sourceMapPrefix = configuration?.getChild("sourceMapPrefix")?.text?.trim() ?: ""
@@ -242,6 +264,7 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
                     is Text -> {
                         argElement.text?.let { addAll(splitArgumentString(it)) }
                     }
+
                     is Element -> {
                         if (argElement.name == "arg") {
                             addIfNotNull(argElement.text)
@@ -275,9 +298,18 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         PomFile.KotlinGoals.MetaData
     )
 
+    private val MavenPlugin.compilerVersion: IdeKotlinVersion
+        get() = version?.let(IdeKotlinVersion::opt) ?: KotlinPluginLayout.instance.standaloneCompilerVersion
+
+    private fun MavenProject.findKotlinMavenPlugin(): MavenPlugin? = findPlugin(
+        KotlinMavenConfigurator.GROUP_ID,
+        KotlinMavenConfigurator.MAVEN_PLUGIN_ID,
+    )
+
     private fun configureFacet(mavenProject: MavenProject, modifiableModelsProvider: IdeModifiableModelsProvider, module: Module) {
-        val mavenPlugin = mavenProject.findPlugin(KotlinMavenConfigurator.GROUP_ID, KotlinMavenConfigurator.MAVEN_PLUGIN_ID) ?: return
-        val compilerVersion = mavenPlugin.version ?: LanguageVersion.LATEST_STABLE.versionString
+        val mavenPlugin = mavenProject.findKotlinMavenPlugin() ?: return
+        val compilerVersion = mavenPlugin.compilerVersion
+
         val kotlinFacet = module.getOrCreateFacet(
             modifiableModelsProvider,
             false,
@@ -293,13 +325,14 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
             modifiableModelsProvider,
             emptySet()
         )
+
         val facetSettings = kotlinFacet.configuration.settings
         val configuredPlatform = kotlinFacet.configuration.settings.targetPlatform!!
         val configuration = mavenPlugin.configurationElement
-        val sharedArguments = getCompilerArgumentsByConfigurationElement(mavenProject, configuration, configuredPlatform)
+        val sharedArguments = getCompilerArgumentsByConfigurationElement(mavenProject, configuration, configuredPlatform, module.project)
         val executionArguments = mavenPlugin.executions
             ?.firstOrNull { it.goals.any { s -> s in compilationGoals } }
-            ?.configurationElement?.let { getCompilerArgumentsByConfigurationElement(mavenProject, it, configuredPlatform) }
+            ?.configurationElement?.let { getCompilerArgumentsByConfigurationElement(mavenProject, it, configuredPlatform, module.project) }
         parseCompilerArgumentsToFacet(sharedArguments.args, emptyList(), kotlinFacet, modifiableModelsProvider)
         if (executionArguments != null) {
             parseCompilerArgumentsToFacet(executionArguments.args, emptyList(), kotlinFacet, modifiableModelsProvider)
@@ -307,6 +340,7 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         if (facetSettings.compilerArguments is K2JSCompilerArguments) {
             configureJSOutputPaths(mavenProject, modifiableModelsProvider.getModifiableRootModel(module), facetSettings, mavenPlugin)
         }
+
         MavenProjectImportHandler.getInstances(module.project).forEach { it(kotlinFacet, mavenProject) }
         setImplementedModuleName(kotlinFacet, mavenProject, module)
         kotlinFacet.noVersionAutoAdvance()
@@ -366,7 +400,7 @@ class KotlinMavenImporter : MavenImporter(KOTLIN_PLUGIN_GROUP_ID, KOTLIN_PLUGIN_
         val directories = collectSourceDirectories(mavenProject)
 
         val toBeAdded = directories.map { it.second }.toSet()
-        val state = module.getServiceSafe<KotlinImporterComponent>()
+        val state = module.kotlinImporterComponent
 
         val isNonJvmModule = mavenProject
             .plugins
@@ -465,4 +499,4 @@ class KotlinImporterComponent : PersistentStateComponent<KotlinImporterComponent
 }
 
 internal val Module.kotlinImporterComponent: KotlinImporterComponent
-    get() = this.getServiceSafe()
+    get() = getService(KotlinImporterComponent::class.java) ?: error("Service ${KotlinImporterComponent::class.java} not found")

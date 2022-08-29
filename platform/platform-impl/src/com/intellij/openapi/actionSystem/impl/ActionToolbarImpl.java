@@ -4,7 +4,6 @@ package com.intellij.openapi.actionSystem.impl;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.DataManager;
 import com.intellij.ide.ui.UISettings;
-import com.intellij.ide.ui.customization.CustomisedActionGroup;
 import com.intellij.ide.ui.customization.CustomizationUtil;
 import com.intellij.internal.statistic.collectors.fus.ui.persistence.ToolbarClicksCollector;
 import com.intellij.openapi.Disposable;
@@ -51,10 +50,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 
@@ -128,7 +125,7 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
   private final ActionGroup myActionGroup;
   private final @NotNull String myPlace;
   private List<? extends AnAction> myVisibleActions;
-  private final PresentationFactory myPresentationFactory = new PresentationFactory();
+  private final PresentationFactory myPresentationFactory = new ActionToolbarPresentationFactory();
   private final boolean myDecorateButtons;
 
   private final ToolbarUpdater myUpdater;
@@ -429,6 +426,7 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
       }
       presentation.putClientProperty(CustomComponentAction.COMPONENT_KEY, customComponent);
       customComponent.putClientProperty(CustomComponentAction.ACTION_KEY, action);
+      ((CustomComponentAction)action).updateCustomComponent(customComponent, presentation);
     }
     tweakActionComponentUI(customComponent);
 
@@ -493,7 +491,11 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
 
       @Override
       protected @NotNull Icon getFallbackIcon(boolean enabled) {
-        return enabled ? AllIcons.Toolbar.Unknown : IconLoader.getDisabledIcon(AllIcons.Toolbar.Unknown);
+        Presentation p = getAction().getTemplatePresentation();
+        Icon icon = Objects.requireNonNullElse(p.getIcon(), AllIcons.Toolbar.Unknown);
+        if (enabled) return icon;
+        if (p.getDisabledIcon() != null) return p.getDisabledIcon();
+        return IconLoader.getDisabledIcon(icon);
       }
     };
 
@@ -1190,10 +1192,11 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
 
   private void updateActionsImpl(boolean forced) {
     if (forced) myForcedUpdateRequested = true;
+    boolean isUnitTestMode = ApplicationManager.getApplication().isUnitTestMode();
 
     DataContext dataContext = Utils.wrapDataContext(getDataContext());
     ActionUpdater updater = new ActionUpdater(myPresentationFactory, dataContext, myPlace, false, true);
-    if (Utils.isAsyncDataContext(dataContext)) {
+    if (Utils.isAsyncDataContext(dataContext) && !isUnitTestMode) {
       CancellablePromise<List<AnAction>> lastUpdate = myLastUpdate;
       myLastUpdate = null;
       if (lastUpdate != null) lastUpdate.cancel();
@@ -1269,11 +1272,11 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
     if (forced || canUpdateActions(newVisibleActions)) {
       myForcedUpdateRequested = false;
       myCachedImage = null;
-      boolean shouldRebuildUI = newVisibleActions.isEmpty() || myVisibleActions.isEmpty();
+      boolean fullReset = newVisibleActions.isEmpty() || myVisibleActions.isEmpty();
       myVisibleActions = newVisibleActions;
 
       boolean skipSizeAdjustments = mySkipWindowAdjustments;
-      Component compForSize = skipSizeAdjustments ? null : guessBestParentForSizeAdjustment();
+      Component compForSize = guessBestParentForSizeAdjustment();
       Dimension oldSize = skipSizeAdjustments ? null : compForSize.getPreferredSize();
 
       removeAll();
@@ -1285,30 +1288,20 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
       if (!skipSizeAdjustments) {
         Dimension availSize = compForSize.getSize();
         Dimension newSize = compForSize.getPreferredSize();
-        adjustContainerWindowSize(shouldRebuildUI, availSize, oldSize, newSize);
+        adjustContainerWindowSize(fullReset, availSize, oldSize, newSize);
       }
 
-      if (shouldRebuildUI) {
-        revalidate();
-      }
-      else {
-        Container parent = getParent();
-        if (parent != null) {
-          parent.invalidate();
-          parent.validate();
-        }
-      }
-
-      repaint();
+      compForSize.revalidate();
+      compForSize.repaint();
     }
   }
 
-  private void adjustContainerWindowSize(boolean shouldRebuildUI,
+  private void adjustContainerWindowSize(boolean fullReset,
                                          @NotNull Dimension availSize,
                                          @NotNull Dimension oldSize,
                                          @NotNull Dimension newSize) {
     Dimension delta = new Dimension(newSize.width - oldSize.width, newSize.height - oldSize.height);
-    if (!shouldRebuildUI) {
+    if (!fullReset) {
       if (myOrientation == SwingConstants.HORIZONTAL) delta.width = 0;
       if (myOrientation == SwingConstants.VERTICAL) delta.height = 0;
     }
@@ -1344,6 +1337,7 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
       Dimension pSize = p.getSize();
       if (myOrientation == SwingConstants.HORIZONTAL && pSize.height - availSize.height > 8 ||
           myOrientation == SwingConstants.VERTICAL && pSize.width - availSize.width > 8) {
+        if (availSize.width == 0 && availSize.height == 0) result = p;
         break;
       }
       result = p;
@@ -1492,7 +1486,7 @@ public class ActionToolbarImpl extends JPanel implements ActionToolbar, QuickAct
         return toClose;
       })
       .setCancelOnMouseOutCallback(event -> {
-        Window window = UIUtil.getWindow(popupToolbar);
+        Window window = ComponentUtil.getWindow(popupToolbar);
         if (window != null && Window.Type.POPUP == window.getType()) {
           Component parent = UIUtil.uiParents(event.getComponent(), false).find(window::equals);
           if (parent != null) return false; // mouse over a child popup

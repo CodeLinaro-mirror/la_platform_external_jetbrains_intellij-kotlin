@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.openapi.roots.impl;
 
 import com.intellij.ProjectTopics;
@@ -37,17 +37,16 @@ import com.intellij.util.ModalityUiUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.gist.GistManager;
 import com.intellij.util.gist.GistManagerImpl;
-import com.intellij.util.indexing.FileBasedIndex;
-import com.intellij.util.indexing.FileBasedIndexImpl;
-import com.intellij.util.indexing.FileBasedIndexProjectHandler;
-import com.intellij.util.indexing.IndexingBundle;
+import com.intellij.util.indexing.*;
 import com.intellij.util.indexing.diagnostic.ChangedFilesPushedDiagnostic;
 import com.intellij.util.indexing.diagnostic.ChangedFilesPushingStatistics;
 import com.intellij.util.indexing.diagnostic.IndexDiagnosticDumper;
 import com.intellij.util.indexing.roots.*;
+import com.intellij.util.indexing.roots.kind.IndexableSetOrigin;
 import com.intellij.workspaceModel.ide.WorkspaceModel;
-import com.intellij.workspaceModel.storage.WorkspaceEntityStorage;
-import com.intellij.workspaceModel.storage.bridgeEntities.ModuleEntity;
+import com.intellij.workspaceModel.ide.impl.legacyBridge.module.ModuleEntityUtils;
+import com.intellij.workspaceModel.storage.EntityStorage;
+import com.intellij.workspaceModel.storage.bridgeEntities.api.ModuleEntity;
 import kotlin.sequences.Sequence;
 import kotlin.sequences.SequencesKt;
 import org.jetbrains.annotations.ApiStatus;
@@ -214,8 +213,8 @@ public final class PushedFilePropertiesUpdaterImpl extends PushedFilePropertiesU
     myProject.getMessageBus().connect(task).subscribe(ProjectTopics.PROJECT_ROOTS, new ModuleRootListener() {
       @Override
       public void rootsChanged(@NotNull ModuleRootEvent event) {
-        for (RootsChangeIndexingInfo info : ((ModuleRootEventImpl)event).getInfos()) {
-          if (info == RootsChangeIndexingInfo.TOTAL_REINDEX) {
+        for (RootsChangeRescanningInfo info : ((ModuleRootEventImpl)event).getInfos()) {
+          if (info == RootsChangeRescanningInfo.TOTAL_RESCAN) {
             DumbService.getInstance(myProject).cancelTask(task);
             return;
           }
@@ -322,8 +321,18 @@ public final class PushedFilePropertiesUpdaterImpl extends PushedFilePropertiesU
     return moduleValues;
   }
 
+  public static Object @NotNull [] getImmediateValuesEx(@NotNull List<FilePropertyPusherEx<?>> pushers,
+                                                        @NotNull IndexableSetOrigin origin) {
+    final Object[] moduleValues;
+    moduleValues = new Object[pushers.size()];
+    for (int i = 0; i < moduleValues.length; i++) {
+      moduleValues[i] = pushers.get(i).getImmediateValueEx(origin);
+    }
+    return moduleValues;
+  }
+
   public static void scanProject(@NotNull Project project,
-                                 @NotNull Function<Module, ? extends ContentIteratorEx> iteratorProducer) {
+                                 @NotNull Function<? super Module, ? extends ContentIteratorEx> iteratorProducer) {
     Stream<Runnable> tasksStream;
     //noinspection deprecation
     if (DefaultProjectIndexableFilesContributor.indexProjectBasedOnIndexableEntityProviders()) {
@@ -335,8 +344,8 @@ public final class PushedFilePropertiesUpdaterImpl extends PushedFilePropertiesU
       tasksStream = moduleEntities.stream()
         .flatMap(moduleEntity -> {
           return ReadAction.compute(() -> {
-            WorkspaceEntityStorage storage = WorkspaceModel.getInstance(project).getEntityStorage().getCurrent();
-            Module module = IndexableEntityProviderMethods.INSTANCE.findModuleForEntity(moduleEntity, storage, project);
+            EntityStorage storage = WorkspaceModel.getInstance(project).getEntityStorage().getCurrent();
+            Module module = ModuleEntityUtils.findModuleBridge(moduleEntity, storage);
             if (module == null) {
               return Stream.empty();
             }

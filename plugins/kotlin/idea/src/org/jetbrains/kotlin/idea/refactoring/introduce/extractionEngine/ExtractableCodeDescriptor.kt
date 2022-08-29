@@ -14,13 +14,13 @@ import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
 import org.jetbrains.kotlin.idea.KotlinBundle
+import org.jetbrains.kotlin.idea.base.psi.unifier.KotlinPsiRange
 import org.jetbrains.kotlin.idea.core.replaced
 import org.jetbrains.kotlin.idea.refactoring.introduce.extractionEngine.OutputValue.*
 import org.jetbrains.kotlin.idea.references.KtSimpleNameReference.ShorteningMode
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.util.IdeDescriptorRenderers
 import org.jetbrains.kotlin.idea.util.approximateFlexibleTypes
-import org.jetbrains.kotlin.idea.util.psi.patternMatching.KotlinPsiRange
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.lexer.KtKeywordToken
 import org.jetbrains.kotlin.lexer.KtModifierKeywordToken
@@ -353,37 +353,41 @@ data class ExtractableCodeDescriptor(
 ) {
     val name: String get() = suggestedNames.firstOrNull() ?: ""
     val duplicates: List<DuplicateInfo> by lazy { findDuplicates() }
-
-    @Deprecated("Provided for binary backward compatibility -- used in Compose IDE plugin", level = DeprecationLevel.HIDDEN)
-    fun copy(
-        extractionData: ExtractionData = this.extractionData,
-        originalContext: BindingContext = this.originalContext,
-        suggestedNames: List<String> = this.suggestedNames,
-        visibility: KtModifierKeywordToken? = this.visibility,
-        parameters: List<Parameter> = this.parameters,
-        receiverParameter: Parameter? = this.receiverParameter,
-        typeParameters: List<TypeParameter> = this.typeParameters,
-        replacementMap: MultiMap<KtSimpleNameExpression, Replacement> = this.replacementMap,
-        controlFlow: ControlFlow = this.controlFlow,
-        returnType: KotlinType = this.returnType,
-        modifiers: List<KtKeywordToken> = this.modifiers,
-        annotations: List<AnnotationDescriptor> = this.annotations
-    ) = copy(
-        extractionData,
-        originalContext,
-        suggestedNames,
-        visibility,
-        parameters,
-        receiverParameter,
-        typeParameters,
-        replacementMap,
-        controlFlow,
-        returnType,
-        modifiers,
-        annotations,
-        emptyList()
-    )
 }
+
+@IDEAPluginsCompatibilityAPI(
+    usedIn = [IDEAPlatforms._213],
+    message = "Provided for binary backward compatibility",
+    plugins = "Jetpack Compose plugin in IDEA"
+)
+fun ExtractableCodeDescriptor.copy(
+ extractionData: ExtractionData = this.extractionData,
+ originalContext: BindingContext = this.originalContext,
+ suggestedNames: List<String> = this.suggestedNames,
+ visibility: KtModifierKeywordToken? = this.visibility,
+ parameters: List<Parameter> = this.parameters,
+ receiverParameter: Parameter? = this.receiverParameter,
+ typeParameters: List<TypeParameter> = this.typeParameters,
+ replacementMap: MultiMap<KtSimpleNameExpression, Replacement> = this.replacementMap,
+ controlFlow: ControlFlow = this.controlFlow,
+ returnType: KotlinType = this.returnType,
+ modifiers: List<KtKeywordToken> = this.modifiers,
+ annotations: List<AnnotationDescriptor> = this.annotations
+) = copy(
+    extractionData,
+    originalContext,
+    suggestedNames,
+    visibility,
+    parameters,
+    receiverParameter,
+    typeParameters,
+    replacementMap,
+    controlFlow,
+    returnType,
+    modifiers,
+    annotations,
+    emptyList()
+)
 
 fun ExtractableCodeDescriptor.copy(
     newName: String,

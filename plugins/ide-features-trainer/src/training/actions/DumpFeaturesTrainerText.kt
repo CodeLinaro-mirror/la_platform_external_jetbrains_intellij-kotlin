@@ -4,6 +4,7 @@
 package training.actions
 
 import com.intellij.ide.CopyPasteManagerEx
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
@@ -52,11 +53,19 @@ private class DumpFeaturesTrainerText : DumbAwareAction() {
       if (x is KLesson) {
         buffer.append(x.name)
         buffer.append(":\n")
-        x.lessonContent(ApplyTaskLessonContext(buffer, project, dialog.mode, x))
+        x.fullLessonContent(ApplyTaskLessonContext(buffer, project, dialog.mode, x))
         buffer.append('\n')
       }
     }
     CopyPasteManagerEx.getInstance().setContents(StringSelection(buffer.toString()))
+  }
+
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.BGT
+  }
+
+  override fun update(e: AnActionEvent) {
+    e.presentation.isEnabledAndVisible = e.project != null
   }
 }
 

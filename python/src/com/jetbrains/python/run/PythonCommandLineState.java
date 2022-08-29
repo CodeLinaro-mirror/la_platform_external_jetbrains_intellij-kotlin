@@ -71,6 +71,7 @@ import com.jetbrains.python.sdk.flavors.PythonSdkFlavor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -123,10 +124,6 @@ public abstract class PythonCommandLineState extends CommandLineState {
   private Boolean myMultiprocessDebug = null;
   private boolean myRunWithPty = PtyCommandLine.isEnabled();
 
-  public boolean isRunWithPty() {
-    return myRunWithPty;
-  }
-
   public boolean isDebug() {
     return PyDebugRunner.PY_DEBUG_RUNNER.equals(getEnvironment().getRunner().getRunnerId());
   }
@@ -157,6 +154,10 @@ public abstract class PythonCommandLineState extends CommandLineState {
     return myConfig.getSdk();
   }
 
+  public AbstractPythonRunConfiguration<?> getConfig() {
+    return myConfig;
+  }
+
   @NotNull
   @Override
   public ExecutionResult execute(@NotNull Executor executor, @NotNull ProgramRunner<?> runner) throws ExecutionException {
@@ -171,8 +172,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
     return execute(executor, getDefaultPythonProcessStarter(), patchers);
   }
 
-  @NotNull
-  public ExecutionResult execute(Executor executor) throws ExecutionException {
+  public @Nullable ExecutionResult execute(@NotNull Executor executor) throws ExecutionException {
     return execute(executor, (targetEnvironmentRequest, pythonScript) -> pythonScript);
   }
 
@@ -220,9 +220,13 @@ public abstract class PythonCommandLineState extends CommandLineState {
     return (ConsoleView)consoleRef.get();
   }
 
-  @NotNull
-  public ExecutionResult execute(/*TODO @NotNull ?*/Executor executor,
-                                                    @NotNull PythonScriptTargetedCommandLineBuilder converter) throws ExecutionException {
+  /**
+   * Please do not overuse {@code null} return value. {@code null} value is utilized by {@link PythonScriptCommandLineState} when starting
+   * Python run configurations with "Run with Python Console" flag. It is more a workaround, so please annotate the overridden methods with
+   * {@link NotNull} where possible.
+   */
+  public @Nullable ExecutionResult execute(@NotNull Executor executor,
+                                           @NotNull PythonScriptTargetedCommandLineBuilder converter) throws ExecutionException {
     final ProcessHandler processHandler = startProcess(converter);
     final ConsoleView console = createAndAttachConsoleInEDT(myConfig.getProject(), processHandler, executor);
     return new DefaultExecutionResult(console, processHandler, createActions(console, processHandler));
@@ -243,7 +247,6 @@ public abstract class PythonCommandLineState extends CommandLineState {
   protected void addTracebackFilter(Project project, ConsoleView consoleView, ProcessHandler processHandler) {
     // TODO workaround
     if (PythonSdkUtil.isRemote(myConfig.getSdk()) && processHandler instanceof ProcessControlWithMappings) {
-      assert processHandler instanceof ProcessControlWithMappings;
       consoleView
         .addMessageFilter(new PyRemoteTracebackFilter(project, myConfig.getWorkingDirectory(), (ProcessControlWithMappings)processHandler));
     }
@@ -323,6 +326,14 @@ public abstract class PythonCommandLineState extends CommandLineState {
     // Python script that may be the debugger script that runs the original script
     PythonExecution realPythonExecution = builder.build(helpersAwareTargetRequest, pythonScript);
 
+    if (myConfig instanceof PythonRunConfiguration) {
+      PythonRunConfiguration pythonConfig = (PythonRunConfiguration)myConfig;
+      String inputFilePath = pythonConfig.getInputFile();
+      if (pythonConfig.isRedirectInput() && !StringUtil.isEmptyOrSpaces(inputFilePath)) {
+        realPythonExecution.withInputFile(new File(inputFilePath));
+      }
+    }
+
     // TODO [Targets API] [major] Meaningful progress indicator should be taken
     EmptyProgressIndicator progressIndicator = new EmptyProgressIndicator();
     TargetEnvironment targetEnvironment =
@@ -330,10 +341,10 @@ public abstract class PythonCommandLineState extends CommandLineState {
 
     List<String> interpreterParameters = getConfiguredInterpreterParameters();
     TargetedCommandLine targetedCommandLine =
-      PythonScripts.buildTargetedCommandLine(realPythonExecution, targetEnvironment, myConfig.getSdk(), interpreterParameters);
+      PythonScripts.buildTargetedCommandLine(realPythonExecution, targetEnvironment, sdk, interpreterParameters, myRunWithPty);
 
     // TODO [Targets API] `myConfig.isPassParentEnvs` must be handled (at least for the local case)
-    ProcessHandler processHandler = doStartProcess(targetEnvironment, targetedCommandLine, progressIndicator, isDebug());
+    ProcessHandler processHandler = doStartProcess(targetEnvironment, targetedCommandLine, progressIndicator);
 
     // Attach extensions
     PythonRunConfigurationExtensionsManager.Companion.getInstance()
@@ -349,7 +360,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
     pythonExecution.setWorkingDir(getPythonExecutionWorkingDir(targetEnvironmentRequest));
     initEnvironment(myConfig.getProject(), pythonExecution, myConfig, createRemotePathMapper(), isDebug(), helpersAwareTargetRequest);
     customizePythonExecutionEnvironmentVars(helpersAwareTargetRequest, pythonExecution.getEnvs(), myConfig.isPassParentEnvs());
-    PythonScripts.ensureProjectDirIsOnTarget(targetEnvironmentRequest, myConfig.getProject());
+    PythonScripts.ensureProjectAndModuleDirsAreOnTarget(targetEnvironmentRequest, myConfig.getProject(), myConfig.getModule());
     return pythonExecution;
   }
 
@@ -358,7 +369,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
    * {@link PythonCommandLineState}. The working directory is resolved within
    * the uploads that are registered in the provided request.
    *
-   * @param targetEnvironment the environment to explore for the working directory upload
+   * @param targetEnvironmentRequest the environment to explore for the working directory upload
    * @return the promise to the working directory path
    */
   protected @Nullable Function<TargetEnvironment, String> getPythonExecutionWorkingDir(@NotNull TargetEnvironmentRequest targetEnvironmentRequest) {
@@ -393,12 +404,14 @@ public abstract class PythonCommandLineState extends CommandLineState {
   }
 
   @NotNull
-  private static ProcessHandler doStartProcess(@NotNull TargetEnvironment targetEnvironment,
-                                               @NotNull TargetedCommandLine commandLine,
-                                               @NotNull ProgressIndicator progressIndicator,
-                                               boolean isDebug) throws ExecutionException {
+  private ProcessHandler doStartProcess(@NotNull TargetEnvironment targetEnvironment,
+                                        @NotNull TargetedCommandLine commandLine,
+                                        @NotNull ProgressIndicator progressIndicator) throws ExecutionException {
     final ProcessHandler processHandler;
-    processHandler = doCreateProcess(targetEnvironment, commandLine, progressIndicator, isDebug);
+    Process process = targetEnvironment.createProcess(commandLine, progressIndicator);
+    // TODO [Targets API] [major] The command line should be prefixed with the interpreter identifier (f.e. Docker container id)
+    String commandLineString = StringUtil.join(commandLine.getCommandPresentation(targetEnvironment), " ");
+    processHandler = createProcessHandler(process, commandLineString, targetEnvironment, commandLine);
     ProcessTerminatedListener.attach(processHandler);
     return processHandler;
   }
@@ -460,17 +473,14 @@ public abstract class PythonCommandLineState extends CommandLineState {
   }
 
   @NotNull
-  private static ProcessHandler doCreateProcess(@NotNull TargetEnvironment targetEnvironment,
-                                                @NotNull TargetedCommandLine commandLine,
-                                                @NotNull ProgressIndicator progressIndicator,
-                                                boolean isDebug) throws ExecutionException {
-    Process process = targetEnvironment.createProcess(commandLine, progressIndicator);
-    // TODO [Targets API] [major] The command line should be prefixed with the interpreter identifier (f.e. Docker container id)
-    String commandLineString = StringUtil.join(commandLine.getCommandPresentation(targetEnvironment), " ");
+  protected ProcessHandler createProcessHandler(@NotNull Process process,
+                                                @NotNull String commandLineString,
+                                                @NotNull TargetEnvironment targetEnvironment,
+                                                @NotNull TargetedCommandLine commandLine) {
     if (targetEnvironment instanceof LocalTargetEnvironment) {
       // TODO This special treatment of local target must be replaced with a generalized approach
       //  (f.e. with an ability of a target environment to match arbitrary local path to a target one)
-      if (isDebug) {
+      if (isDebug()) {
         return new PyDebugProcessHandler(process, commandLineString, commandLine.getCharset());
       }
       return new PythonProcessHandler(process, commandLineString, commandLine.getCharset());
@@ -631,10 +641,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
     TargetEnvironmentRequest targetEnvironmentRequest = helpersAwareTargetRequest.getTargetEnvironmentRequest();
     PythonScripts.extendEnvs(commandLine, map, targetEnvironmentRequest.getTargetPlatform());
 
-    Charset charset = commandLine.getCharset();
-    if (charset != null) {
-      setupEncodingEnvs(commandLine, charset);
-    }
+    setupEncodingEnvs(commandLine, commandLine.getCharset());
 
     buildPythonPath(project, commandLine, runParams, pathMapper, isDebug, targetEnvironmentRequest);
 
@@ -748,8 +755,8 @@ public abstract class PythonCommandLineState extends CommandLineState {
     Sdk pythonSdk = PythonSdkUtil.findSdkByPath(sdkHome);
     if (pythonSdk != null) {
       List<Function<TargetEnvironment, String>> pathList = new ArrayList<>();
-      pathList.addAll(TargetedPythonPaths.getAddedPaths(targetEnvironmentRequest, pythonSdk));
-      pathList.addAll(TargetedPythonPaths.collectPythonPath(targetEnvironmentRequest, project, module, sdkHome, pathMapper,
+      pathList.addAll(TargetedPythonPaths.getAddedPaths(pythonSdk));
+      pathList.addAll(TargetedPythonPaths.collectPythonPath(project, module, sdkHome, pathMapper,
                                                             shouldAddContentRoots, shouldAddSourceRoots, isDebug));
       initPythonPath(pythonScript, passParentEnvs, pathList, sdkHome, targetEnvironmentRequest);
     }

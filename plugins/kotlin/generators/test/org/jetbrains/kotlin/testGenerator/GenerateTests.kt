@@ -1009,7 +1009,7 @@ private fun assembleWorkspace(): TWorkspace = workspace {
 
     testGroup("analysis-api-providers-ide-impl") {
         testClass<AbstractProjectWideOutOfBlockKotlinModificationTrackerTest> {
-            model("outOfBlockProjectWide")
+            model("outOfBlockProjectWide", pattern = KT_WITHOUT_DOTS or JAVA)
         }
 //
 //      testClass<AbstractFileStructureAndOutOfBlockModificationTrackerConsistencyTest> {
@@ -1107,6 +1107,7 @@ private fun assembleWorkspace(): TWorkspace = workspace {
             model("intentions/importMember", pattern = pattern)
             model("intentions/convertToBlockBody", pattern = pattern)
             model("intentions/addWhenRemainingBranches", pattern = pattern)
+            model("../../../fir/testData/intentions/useExpressionBody", pattern=pattern)
         }
 
         testClass<AbstractFirShortenRefsTest> {
@@ -1131,6 +1132,7 @@ private fun assembleWorkspace(): TWorkspace = workspace {
             val pattern = Patterns.forRegex("^([\\w\\-_]+)\\.(kt|kts)$")
             model("idea/tests/testData/inspectionsLocal/unusedVariable", pattern = pattern)
             model("idea/tests/testData/inspectionsLocal/redundantVisibilityModifier", pattern = pattern)
+            model("idea/tests/testData/inspectionsLocal/implicitThis")
             model("fir/testData/inspectionsLocal", pattern = pattern)
         }
     }
@@ -1460,15 +1462,15 @@ private fun assembleWorkspace(): TWorkspace = workspace {
 
     testGroup("refIndex/tests") {
         testClass<AbstractKotlinCompilerReferenceTest> {
-            model("compilerIndex", pattern = DIRECTORY, testPerClass = true)
+            model("compilerIndex", pattern = DIRECTORY, classPerTest = true)
         }
     }
 
     testGroup("refIndex/tests", testDataPath = "../../idea/tests/testData") {
         testClass<AbstractFindUsagesWithCompilerReferenceIndexTest> {
-            model("findUsages/kotlin", pattern = Patterns.forRegex("""^(.+)\.0\.kt$"""), testPerClass = true)
-            model("findUsages/java", pattern = Patterns.forRegex("""^(.+)\.0\.java$"""), testPerClass = true)
-            model("findUsages/propertyFiles", pattern = Patterns.forRegex("""^(.+)\.0\.properties$"""), testPerClass = true)
+            model("findUsages/kotlin", pattern = Patterns.forRegex("""^(.+)\.0\.kt$"""), classPerTest = true)
+            model("findUsages/java", pattern = Patterns.forRegex("""^(.+)\.0\.java$"""), classPerTest = true)
+            model("findUsages/propertyFiles", pattern = Patterns.forRegex("""^(.+)\.0\.properties$"""), classPerTest = true)
         }
     }
 

@@ -378,18 +378,8 @@ public class IdeMenuBar extends JMenuBar implements IdeEventQueue.EventDispatche
   private void updateAppMenu() {
     if (!Menu.isJbScreenMenuEnabled()) return;
 
-    final Menu appMenu = Menu.getAppMenu();
-
     // 1. rename with localized
-    final DynamicBundle bundle = new DynamicBundle("messages.MacAppMenuBundle");
-    for (String title: bundle.getResourceBundle().keySet()) {
-      String localizedTitle = bundle.getMessage(title);
-      MenuItem item = appMenu.findItemByTitle(title);
-      if (item != null) {
-        item.setLabel(localizedTitle);
-        item.dispose(); // must always dispose java-wrapper for native NSMenuItem after usage
-      }
-    }
+    Menu.renameAppMenuItems(new DynamicBundle("messages.MacAppMenuBundle"));
 
     //
     // 2. add custom new items in AppMenu
@@ -434,7 +424,7 @@ public class IdeMenuBar extends JMenuBar implements IdeEventQueue.EventDispatche
     boolean isDarkMenu = isDarkMenu();
     for (AnAction action : myVisibleActions) {
       ActionMenu actionMenu =
-        new ActionMenu(null, ActionPlaces.MAIN_MENU, (ActionGroup)action, myPresentationFactory, enableMnemonics, isDarkMenu);
+        new ActionMenu(null, ActionPlaces.MAIN_MENU, (ActionGroup)action, myPresentationFactory, enableMnemonics, isDarkMenu, true);
 
       if (IdeFrameDecorator.isCustomDecorationActive()) {
         actionMenu.setOpaque(false);

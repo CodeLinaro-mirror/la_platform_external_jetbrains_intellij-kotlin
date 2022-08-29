@@ -11,8 +11,8 @@ import training.learn.course.KLesson
 import training.statistic.FeatureUsageStatisticConsts.LESSON_ID
 import training.statistic.FeatureUsageStatisticConsts.TASK_ID
 
-private class TaskIdRuleValidator : CustomValidationRule() {
-  override fun acceptRuleId(ruleId: String?): Boolean = (TASK_ID == ruleId)
+class TaskIdRuleValidator : CustomValidationRule() {
+  override fun getRuleId(): String = TASK_ID
 
   override fun doValidate(data: String, context: EventContext): ValidationResultType {
     val taskId = data.toIntOrNull()
@@ -31,7 +31,7 @@ private class TaskIdRuleValidator : CustomValidationRule() {
 
   private fun KLesson.getTaskCount(): Int {
     val context = ExtractTaskCountContext(this)
-    lessonContent(context)
+    fullLessonContent(context)
     return context.taskCount
   }
 }

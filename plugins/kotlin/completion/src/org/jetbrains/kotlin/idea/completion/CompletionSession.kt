@@ -276,7 +276,6 @@ abstract class CompletionSession(
         ImportInsertHelper.getInstance(file.project).isImportedWithDefault(ImportPath(it, false), file)
     }
 
-    @Suppress("InvalidBundleOrProperty") //workaround to avoid false-positive: KTIJ-19892
     protected open fun createSorter(): CompletionSorter {
         var sorter = CompletionSorter.defaultSorter(parameters, prefixMatcher)!!
 
@@ -440,7 +439,7 @@ abstract class CompletionSession(
 
     protected open fun createLookupElementFactory(contextVariablesProvider: ContextVariablesProvider): LookupElementFactory {
         return LookupElementFactory(
-            basicLookupElementFactory, receiverTypes,
+            basicLookupElementFactory, parameters.editor, receiverTypes,
             callTypeAndReceiver.callType, inDescriptor, contextVariablesProvider
         )
     }

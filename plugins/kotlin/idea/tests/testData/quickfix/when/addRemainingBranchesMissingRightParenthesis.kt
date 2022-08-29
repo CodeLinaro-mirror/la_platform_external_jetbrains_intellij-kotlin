@@ -1,6 +1,6 @@
 // "Add remaining branches" "false"
-// WITH_STDLIB
 // ERROR: 'when' expression must be exhaustive, add necessary 'is B' branch or 'else' branch instead
+// WITH_STDLIB
 
 sealed class A
 class B : A()

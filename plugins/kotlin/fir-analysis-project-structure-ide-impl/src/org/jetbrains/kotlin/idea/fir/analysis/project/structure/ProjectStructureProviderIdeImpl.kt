@@ -5,24 +5,24 @@ package org.jetbrains.kotlin.idea.fir.analysis.project.structure
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.util.containers.CollectionFactory
+import org.jetbrains.kotlin.analysis.project.structure.KtBinaryModule
 import org.jetbrains.kotlin.analysis.project.structure.KtLibraryModule
 import org.jetbrains.kotlin.analysis.project.structure.KtModule
 import org.jetbrains.kotlin.analysis.project.structure.ProjectStructureProvider
 import org.jetbrains.kotlin.analyzer.ModuleInfo
 import org.jetbrains.kotlin.idea.caches.project.*
 
+@OptIn(FE10ApiUsage::class)
 internal class ProjectStructureProviderIdeImpl : ProjectStructureProvider() {
-    private val cache = CollectionFactory.createConcurrentWeakIdentityMap<ModuleInfo, KtModule>()
-
     override fun getKtModuleForKtElement(element: PsiElement): KtModule {
         val moduleInfo = element.getModuleInfo(createSourceLibraryInfoForLibraryBinaries = false)
         return getKtModuleByModuleInfo(moduleInfo)
     }
 
+    // TODO maybe introduce some cache?
     fun getKtModuleByModuleInfo(moduleInfo: ModuleInfo): KtModule =
-        cache.getOrPut(moduleInfo) {
-            createKtModuleByModuleInfo(moduleInfo)
-        }
+        createKtModuleByModuleInfo(moduleInfo)
+
 
     private fun createKtModuleByModuleInfo(moduleInfo: ModuleInfo): KtModule = when (moduleInfo) {
         is ModuleSourceInfo -> KtSourceModuleByModuleInfo(moduleInfo, this)
@@ -33,8 +33,13 @@ internal class ProjectStructureProviderIdeImpl : ProjectStructureProvider() {
         else -> TODO("Unsupported module info ${moduleInfo::class} $moduleInfo")
     }
 
-    override fun getKtLibraryModules(): Collection<KtLibraryModule> {
+    override fun getKtBinaryModules(): Collection<KtBinaryModule> {
         TODO("This is a temporary function used for Android LINT, and should not be called in the IDE")
+    }
+
+    override fun getStdlibWithBuiltinsModule(module: KtModule): KtLibraryModule? {
+        val stdlibLibraryInfo = module.moduleInfo.findJvmStdlibAcrossDependencies() ?: return null
+        return getKtModuleByModuleInfo(stdlibLibraryInfo) as KtLibraryModule
     }
 
     companion object {

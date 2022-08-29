@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.ui.docking.impl;
 
 import com.intellij.ide.IdeEventQueue;
@@ -20,6 +20,7 @@ import com.intellij.openapi.util.*;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.*;
 import com.intellij.openapi.wm.ex.WindowManagerEx;
+import com.intellij.ui.ComponentUtil;
 import com.intellij.ui.ScreenUtil;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.awt.RelativeRectangle;
@@ -147,7 +148,7 @@ public final class DockManagerImpl extends DockManager implements PersistentStat
 
   @Contract("null, _ -> null")
   @Override
-  public @Nullable DockContainer getContainerFor(@Nullable Component c, @NotNull Predicate<DockContainer> filter) {
+  public @Nullable DockContainer getContainerFor(@Nullable Component c, @NotNull Predicate<? super DockContainer> filter) {
     if (c == null) {
       return null;
     }
@@ -220,7 +221,7 @@ public final class DockManagerImpl extends DockManager implements PersistentStat
     private final JLabel myImageContainer;
 
     private MyDragSession(MouseEvent me, @NotNull DockableContent content) {
-      myWindow = new JDialog(UIUtil.getWindow(me.getComponent()));
+      myWindow = new JDialog(ComponentUtil.getWindow(me.getComponent()));
       myWindow.setUndecorated(true);
       myContent = content;
       myStartDragContainer = getContainerFor(me.getComponent());
@@ -423,7 +424,7 @@ public final class DockManagerImpl extends DockManager implements PersistentStat
     DockContainer container = getFactory(DockableEditorContainerFactory.TYPE).createContainer(null);
 
     DockWindow window = createWindowFor(getWindowDimensionKey(file), null, container, REOPEN_WINDOW.get(file, true));
-    if (!ApplicationManager.getApplication().isHeadlessEnvironment()) {
+    if (!ApplicationManager.getApplication().isHeadlessEnvironment() && !ApplicationManager.getApplication().isUnitTestMode()) {
       window.show(true);
     }
 
@@ -577,8 +578,10 @@ public final class DockManagerImpl extends DockManager implements PersistentStat
           continue;
         }
         IdeRootPaneNorthExtension toInstall = each.copy();
-        myNorthExtensions.put(toInstall.getKey(), toInstall);
-        myNorthPanel.add(toInstall.getComponent());
+        if(toInstall != null) {
+          myNorthExtensions.put(toInstall.getKey(), toInstall);
+          myNorthPanel.add(toInstall.getComponent());
+        }
       }
 
       Iterator<String> existing = myNorthExtensions.keySet().iterator();

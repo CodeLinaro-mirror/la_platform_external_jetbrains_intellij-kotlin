@@ -104,7 +104,7 @@ object GrazieReplaceTypoQuickFix {
   fun getReplacementFixes(problem: TextProblem, underlineRanges: List<SmartPsiFileRange>): List<LocalQuickFix> {
     val file = problem.text.containingFile
     val spm = SmartPointerManager.getInstance(file.project)
-    @Suppress("HardCodedStringLiteral") val familyName: @IntentionFamilyName String = familyName(problem)
+    val familyName: @IntentionFamilyName String = familyName(problem)
     val result = arrayListOf<LocalQuickFix>(ReplaceTypoTitleAction(familyName, problem.shortMessage))
     problem.suggestions.forEachIndexed { index, suggestion ->
       val changes = suggestion.changes
@@ -124,15 +124,25 @@ object GrazieReplaceTypoQuickFix {
     val commonSuffix =
       min(commonSuffixLength(suggestion, replacedText), min(suggestion.length, replacementRange.length) - commonPrefix)
     val localRange = TextRange(replacementRange.startOffset + commonPrefix, replacementRange.endOffset - commonSuffix)
-    val replacement = suggestion.substring(commonPrefix, suggestion.length - commonSuffix)
+    var replacement = suggestion.substring(commonPrefix, suggestion.length - commonSuffix)
 
     val file = text.containingFile
     val spm = SmartPointerManager.getInstance(file.project)
     val shreds = text.intersection(text.textRangeToFile(localRange))
     if (shreds.isEmpty()) return emptyList()
 
+    if (replacement.isEmpty() && removalWouldGlueUnrelatedTokens(localRange, text)) {
+      replacement = " ";
+    }
+
     val best = if (isWordMiddle(text, localRange.endOffset)) shreds.last() else shreds.first()
     return shreds.map { spm.createSmartPsiFileRangePointer(file, it) to (if (it === best) replacement else "") }
+  }
+
+  private fun removalWouldGlueUnrelatedTokens(removedRange: TextRange, text: TextContent): Boolean {
+    val prevFileIndex = text.textOffsetToFile(0) - 1
+    return removedRange.endOffset < text.length && text[removedRange.endOffset].isLetterOrDigit() &&
+           prevFileIndex > 0 && text.containingFile.viewProvider.contents[prevFileIndex].isLetterOrDigit()
   }
 
   private fun isWordMiddle(text: CharSequence, index: Int) =

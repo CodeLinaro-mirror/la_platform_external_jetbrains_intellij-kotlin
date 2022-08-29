@@ -5,7 +5,7 @@ package org.jetbrains.kotlin.idea.caches.resolve
 import com.intellij.openapi.util.Key
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.descriptors.*
-import org.jetbrains.kotlin.idea.analysis.analyzeInContext
+import org.jetbrains.kotlin.idea.caches.resolve.analyzeInContext
 import org.jetbrains.kotlin.idea.caches.resolve.util.analyzeControlFlow
 import org.jetbrains.kotlin.idea.project.ResolveElementCache
 import org.jetbrains.kotlin.idea.util.getResolutionScope
@@ -24,6 +24,8 @@ import org.jetbrains.kotlin.resolve.scopes.utils.addImportingScopes
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.idea.core.util.externalDescriptors
+import org.jetbrains.kotlin.psi.psiUtil.lastBlockStatementOrThis
+import org.jetbrains.kotlin.resolve.BindingContext.USED_AS_EXPRESSION
 import org.jetbrains.kotlin.types.expressions.ExpressionTypingServices
 import javax.inject.Inject
 
@@ -56,6 +58,7 @@ class CodeFragmentAnalyzer(
                     expressionTypingServices = expressionTypingServices
                 )
                 analyzeControlFlow(resolveSession, contentElement, bindingTrace)
+                bindingTrace.record(USED_AS_EXPRESSION, contentElement.lastBlockStatementOrThis())
             }
 
             is KtTypeReference -> {
@@ -167,7 +170,7 @@ class CodeFragmentAnalyzer(
 
     private fun refineContextElement(context: PsiElement?): KtElement? {
         return when (context) {
-            is KtParameter -> context.getParentOfType<KtFunction>(true)?.let { it }
+            is KtParameter -> context.getParentOfType<KtFunction>(true)
             is KtProperty -> context.delegateExpressionOrInitializer
             is KtConstructor<*> -> context
             is KtFunctionLiteral -> context.bodyExpression?.statements?.lastOrNull()

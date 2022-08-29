@@ -36,8 +36,8 @@ import kotlin.reflect.KProperty
 
 private val LOG = logger<AbstractCommitWorkflow>()
 
-internal fun CommitOptions.saveState() = allOptions.forEach { it.saveState() }
-internal fun CommitOptions.restoreState() = allOptions.forEach { it.restoreState() }
+fun CommitOptions.saveState() = allOptions.forEach { it.saveState() }
+fun CommitOptions.restoreState() = allOptions.forEach { it.restoreState() }
 
 private class CommitProperty<T>(private val key: Key<T>, private val defaultValue: T) : ReadWriteProperty<CommitContext, T> {
   override fun getValue(thisRef: CommitContext, property: KProperty<*>): T = thisRef.getUserData(key) ?: defaultValue
@@ -237,7 +237,7 @@ abstract class AbstractCommitWorkflow(val project: Project) {
       }
     }
 
-  protected fun runBeforeCommitHandlersChecks(executor: CommitExecutor?, handlers: List<CheckinHandler>): CheckinHandler.ReturnResult {
+  fun runBeforeCommitHandlersChecks(executor: CommitExecutor?, handlers: List<CheckinHandler>): CheckinHandler.ReturnResult {
     handlers.forEachLoggingErrors(LOG) { handler ->
       try {
         val result = runBeforeCommitHandler(handler, executor)

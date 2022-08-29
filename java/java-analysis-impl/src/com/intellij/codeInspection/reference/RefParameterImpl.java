@@ -1,5 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
-
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.codeInspection.reference;
 
 import com.intellij.openapi.application.ApplicationManager;
@@ -8,6 +7,7 @@ import com.intellij.openapi.util.Comparing;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiModifierListOwner;
+import com.intellij.psi.PsiRecordComponent;
 import com.intellij.psi.PsiResolveHelper;
 import com.intellij.psi.util.PsiFormatUtil;
 import com.intellij.util.ObjectUtils;
@@ -25,7 +25,7 @@ public class RefParameterImpl extends RefJavaElementImpl implements RefParameter
 
   private final short myIndex;
   private Object myActualValueTemplate; // guarded by this
-  private int myUsageCount; // guarded by this
+  private short myUsageCount; // guarded by this
 
   RefParameterImpl(UParameter parameter, PsiElement psi, int index, RefManager manager, RefElement refElement) {
     super(parameter, psi, manager);
@@ -37,9 +37,16 @@ public class RefParameterImpl extends RefJavaElementImpl implements RefParameter
       owner.add(this);
     }
 
-    //TODO kotlin receiver parameter must be used
-    if (myIndex == 0 && "$receiver".equals(getName())) {
+    if (psi instanceof PsiRecordComponent) {
       setUsedForReading();
+    }
+
+    //TODO kotlin receiver parameter must be used
+    if (myIndex == 0) {
+      String name = getName();
+      if ("$receiver".equals(name) || name.startsWith("$this$")) {
+        setUsedForReading();
+      }
     }
   }
 
@@ -189,7 +196,7 @@ public class RefParameterImpl extends RefJavaElementImpl implements RefParameter
     String qName = ((UClass)fieldContainingClass).getQualifiedName();
     if (qName == null) return false;
     String fieldQName = qName + "." + field.getName();
-    return PsiResolveHelper.SERVICE.getInstance(place.getProject()).resolveReferencedVariable(fieldQName, place) != null;
+    return PsiResolveHelper.getInstance(place.getProject()).resolveReferencedVariable(fieldQName, place) != null;
   }
 
   @Nullable

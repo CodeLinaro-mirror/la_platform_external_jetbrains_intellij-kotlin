@@ -20,10 +20,9 @@ internal class CommentProblemFilter : ProblemFilter() {
       if (problem.rule.globalId.startsWith("LanguageTool.") && isAboutIdentifierParts(problem, text)) {
         return true
       }
-    }
-
-    if (domain == DOCUMENTATION) {
-      return isInFirstSentence(problem) && problem.fitsGroup(RuleGroup(RuleGroup.INCOMPLETE_SENTENCE))
+      if (isInFirstSentence(problem) && problem.fitsGroup(RuleGroup(RuleGroup.INCOMPLETE_SENTENCE))) {
+        return true
+      }
     }
 
     if (domain == COMMENTS) {
@@ -51,6 +50,6 @@ internal class CommentProblemFilter : ProblemFilter() {
 
   // the _todo_ word spoils the grammar of what follows
   private fun isTodoComment(file: PsiFile, text: TextContent) =
-    PsiTodoSearchHelper.SERVICE.getInstance(file.project).findTodoItems(file).any { text.intersectsRange(it.textRange) }
+    PsiTodoSearchHelper.getInstance(file.project).findTodoItems(file).any { text.intersectsRange(it.textRange) }
 
 }

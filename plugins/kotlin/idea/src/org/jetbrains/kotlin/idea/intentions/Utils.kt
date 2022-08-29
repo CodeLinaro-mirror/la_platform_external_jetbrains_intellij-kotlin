@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.intentions
 
@@ -38,7 +38,6 @@ import org.jetbrains.kotlin.types.typeUtil.builtIns
 import org.jetbrains.kotlin.types.typeUtil.isUnit
 import org.jetbrains.kotlin.util.OperatorChecks
 import org.jetbrains.kotlin.util.OperatorNameConventions
-import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 fun KtContainerNode.description(): String? {
     when (node.elementType) {
@@ -89,10 +88,8 @@ val KtQualifiedExpression.callExpression: KtCallExpression?
 val KtQualifiedExpression.calleeName: String?
     get() = (callExpression?.calleeExpression as? KtNameReferenceExpression)?.text
 
-fun KtQualifiedExpression.toResolvedCall(bodyResolveMode: BodyResolveMode): ResolvedCall<out CallableDescriptor>? {
-    val callExpression = callExpression ?: return null
-    return callExpression.resolveToCall(bodyResolveMode) ?: return null
-}
+fun KtQualifiedExpression.toResolvedCall(bodyResolveMode: BodyResolveMode): ResolvedCall<out CallableDescriptor>? =
+    callExpression?.resolveToCall(bodyResolveMode)
 
 fun KtExpression.isExitStatement(): Boolean = when (this) {
     is KtContinueExpression, is KtBreakExpression, is KtThrowExpression, is KtReturnExpression -> true
@@ -254,8 +251,7 @@ fun KtDotQualifiedExpression.replaceFirstReceiver(
     val replaced = (if (safeAccess) {
         this.replaced(factory.createExpressionByPattern("$0?.$1", receiverExpression, selectorExpression!!))
     } else this) as KtQualifiedExpression
-    val receiver = replaced.receiverExpression
-    when (receiver) {
+    when (val receiver = replaced.receiverExpression) {
         is KtDotQualifiedExpression -> {
             receiver.replace(receiver.replaceFirstReceiver(factory, newReceiver, safeAccess))
         }
@@ -267,23 +263,24 @@ fun KtDotQualifiedExpression.replaceFirstReceiver(
 }
 
 fun KtDotQualifiedExpression.deleteFirstReceiver(): KtExpression {
-    val receiver = receiverExpression
-    when (receiver) {
+    when (val receiver = receiverExpression) {
         is KtDotQualifiedExpression -> receiver.deleteFirstReceiver()
         else -> selectorExpression?.let { return this.replace(it) as KtExpression }
     }
     return this
 }
 
-private val ARRAY_OF_METHODS = setOf(ArrayFqNames.ARRAY_OF_FUNCTION) +
+private val ARRAY_OF_FUNCTION_NAMES = setOf(ArrayFqNames.ARRAY_OF_FUNCTION) +
         ArrayFqNames.PRIMITIVE_TYPE_TO_ARRAY.values.toSet() +
         Name.identifier("emptyArray")
 
-fun KtCallExpression.isArrayOfMethod(): Boolean {
+fun KtCallExpression.isArrayOfFunction(): Boolean {
+    val functionName = calleeExpression?.text ?: return false
+    if (!ARRAY_OF_FUNCTION_NAMES.any { it.asString() == functionName }) return false
     val resolvedCall = resolveToCall() ?: return false
     val descriptor = resolvedCall.candidateDescriptor
     return (descriptor.containingDeclaration as? PackageFragmentDescriptor)?.fqName == StandardNames.BUILT_INS_PACKAGE_FQ_NAME &&
-            ARRAY_OF_METHODS.contains(descriptor.name)
+            ARRAY_OF_FUNCTION_NAMES.contains(descriptor.name)
 }
 
 fun KtBlockExpression.getParentLambdaLabelName(): String? {
@@ -400,13 +397,29 @@ fun BuilderByPattern<KtExpression>.appendCallOrQualifiedExpression(
     val callOrQualified = call.getQualifiedExpressionForSelector() ?: call
     if (callOrQualified is KtQualifiedExpression) {
         appendExpression(callOrQualified.receiverExpression)
+        if (callOrQualified is KtSafeQualifiedExpression) appendFixedText("?")
         appendFixedText(".")
     }
     appendNonFormattedText(newFunctionName)
     call.valueArgumentList?.let { appendNonFormattedText(it.text) }
-    call.lambdaArguments.firstOrNull()?.let { appendNonFormattedText(it.text) }
+    call.lambdaArguments.firstOrNull()?.let {
+        if (it.getArgumentExpression() is KtLabeledExpression) appendFixedText(" ")
+        appendNonFormattedText(it.text)
+    }
 }
 
 fun KtCallExpression.singleLambdaArgumentExpression(): KtLambdaExpression? {
-    return lambdaArguments.singleOrNull()?.getArgumentExpression().safeAs<KtLambdaExpression>() ?: getLastLambdaExpression()
+    return lambdaArguments.singleOrNull()?.getArgumentExpression()?.unpackFunctionLiteral() ?: getLastLambdaExpression()
+}
+
+private val rangeTypes = setOf(
+    "kotlin.ranges.IntRange",
+    "kotlin.ranges.CharRange",
+    "kotlin.ranges.LongRange",
+    "kotlin.ranges.UIntRange",
+    "kotlin.ranges.ULongRange"
+)
+
+fun ClassDescriptor.isRange(): Boolean {
+    return rangeTypes.any { this.fqNameUnsafe.asString() == it }
 }

@@ -1,5 +1,5 @@
 // Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-@file:Suppress("HardCodedStringLiteral", "ReplaceGetOrSet")
+@file:Suppress("ReplaceGetOrSet")
 package org.jetbrains.builtInWebServer
 
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -325,7 +325,7 @@ fun compareNameAndProjectBasePath(projectName: String, project: Project): Boolea
 
 fun findIndexFile(basedir: VirtualFile): VirtualFile? {
   val children = basedir.children
-  if (children == null || children.isEmpty()) {
+  if (children.isNullOrEmpty()) {
     return null
   }
 

@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.codeWithMe
 
 import com.intellij.openapi.Disposable
@@ -47,7 +47,7 @@ data class ClientId(val value: String) {
     /**
      * Specifies behavior for [ClientId.current]
      */
-    var AbsenceBehaviorValue: AbsenceBehavior = AbsenceBehavior.RETURN_LOCAL
+    private var AbsenceBehaviorValue: AbsenceBehavior = AbsenceBehavior.RETURN_LOCAL
 
     /**
      * Controls propagation behavior. When false, decorateRunnable does nothing.
@@ -174,7 +174,9 @@ data class ClientId(val value: String) {
      * Consider using a lifetime that is usually passed along with the ID
      */
     @JvmStatic
-    fun ClientId?.toDisposable(): Disposable {
+    @Deprecated("Use create a per-client service that implements disposable to get proper disposable associated with the client id")
+        fun ClientId?.toDisposable(): Disposable {
+          @Suppress("DEPRECATION")
       return getCachedService()?.toDisposable(this) ?: Disposer.newDisposable()
     }
 
@@ -199,14 +201,14 @@ data class ClientId(val value: String) {
      */
     @JvmStatic
     inline fun <T> withClientId(clientId: ClientId?, action: () -> T): T {
-      val service = ClientIdService.tryGetInstance() ?: return action()
+      val service = getCachedService() ?: return action()
 
-      val newClientIdValue = if (!service.isValid(clientId)) {
-        getClientIdLogger().trace { "Invalid ClientId $clientId replaced with null at ${Throwable().fillInStackTrace()}" }
-        null
+      val newClientIdValue = if (service.isValid(clientId)) {
+        clientId?.value
       }
       else {
-        clientId?.value
+        getClientIdLogger().trace { "Invalid ClientId $clientId replaced with null at ${Throwable().fillInStackTrace()}" }
+        null
       }
 
       val oldClientIdValue = service.clientIdValue
@@ -219,23 +221,32 @@ data class ClientId(val value: String) {
       }
     }
 
-    class ClientIdAccessToken(val oldClientIdValue: String?) : AccessToken() {
+    class ClientIdAccessToken(private val oldClientIdValue: String?) : AccessToken() {
       override fun finish() {
         getCachedService()?.clientIdValue = oldClientIdValue
       }
     }
+
     @JvmStatic
     fun withClientId(clientId: ClientId?): AccessToken {
       if (clientId == null) return AccessToken.EMPTY_ACCESS_TOKEN
       return withClientId(clientId.value)
     }
+
     @JvmStatic
     fun withClientId(clientIdValue: String): AccessToken {
       val service = getCachedService()
-      val oldClientIdValue: String?
-      oldClientIdValue = service?.clientIdValue
-      if (service == null || clientIdValue == oldClientIdValue) return AccessToken.EMPTY_ACCESS_TOKEN
-      val newClientIdValue = if (service.isValid(ClientId(clientIdValue))) clientIdValue
+      if (service == null) {
+        return AccessToken.EMPTY_ACCESS_TOKEN
+      }
+      val oldClientIdValue = service.clientIdValue ?: localId.value
+      if (clientIdValue == oldClientIdValue) {
+        return AccessToken.EMPTY_ACCESS_TOKEN
+      }
+
+      val newClientIdValue = if (service.isValid(ClientId(clientIdValue))) {
+        clientIdValue
+      }
       else {
         LOG.trace { "Invalid ClientId $clientIdValue replaced with null at ${Throwable().fillInStackTrace()}" }
         null
@@ -246,7 +257,8 @@ data class ClientId(val value: String) {
     }
 
     private var service:ClientIdService? = null
-    private fun getCachedService(): ClientIdService? {
+
+    fun getCachedService(): ClientIdService? {
       var cached = service
       if (cached != null) return cached
       cached = ClientIdService.tryGetInstance()
@@ -281,9 +293,11 @@ data class ClientId(val value: String) {
 
     @JvmStatic
     fun <T> decorateCallable(callable: Callable<T>): Callable<T> {
-      if (!propagateAcrossThreads) return callable
+      if (!propagateAcrossThreads) {
+        return callable
+      }
       val currentId = currentOrNull
-      return Callable { withClientId(currentId, callable) }
+      return Callable { withClientId(currentId) { callable.call() } }
     }
 
     @JvmStatic
@@ -331,7 +345,7 @@ private class ClientIdElement(private val clientId: ClientId) : ThreadContextEle
     return ClientId.withClientId(clientId)
   }
 
-  override fun restoreThreadContext(context: CoroutineContext, oldState: AccessToken): Unit {
+  override fun restoreThreadContext(context: CoroutineContext, oldState: AccessToken) {
     oldState.finish()
   }
 }

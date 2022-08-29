@@ -186,7 +186,7 @@ class ExpressionsOfTypeProcessor(
         }
 
         val qualifiedName = runReadAction { psiClass.qualifiedName }
-        if (qualifiedName == null || qualifiedName.isEmpty()) {
+        if (qualifiedName.isNullOrEmpty()) {
             return false
         }
 
@@ -395,7 +395,6 @@ class ExpressionsOfTypeProcessor(
             return
         }
 
-        @Suppress("NAME_SHADOWING")
         data class ProcessCallableUsagesTask(
             val declaration: PsiElement,
             val processor: ReferenceProcessor,

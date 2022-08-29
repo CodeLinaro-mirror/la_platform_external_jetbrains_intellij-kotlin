@@ -740,6 +740,11 @@ public abstract class HighLevelQuickFixTestGenerated extends AbstractHighLevelQu
             runTest("../idea/tests/testData/quickfix/expressions/unnecessaryNonNullAssertion3.kt");
         }
 
+        @TestMetadata("unnecessaryNonNullAssertion4.kt")
+        public void testUnnecessaryNonNullAssertion4() throws Exception {
+            runTest("../idea/tests/testData/quickfix/expressions/unnecessaryNonNullAssertion4.kt");
+        }
+
         @TestMetadata("unnecessarySafeCall1.kt")
         public void testUnnecessarySafeCall1() throws Exception {
             runTest("../idea/tests/testData/quickfix/expressions/unnecessarySafeCall1.kt");

@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.codeInsight.daemon.impl;
 
 import com.intellij.codeInsight.daemon.HighlightDisplayKey;
@@ -90,12 +90,12 @@ class InspectionRunner {
                                                      @NotNull BiPredicate<? super ProblemDescriptor, ? super LocalInspectionToolWrapper> applyIncrementallyCallback,
                                                      @NotNull Consumer<? super InspectionContext> afterInsideProcessedCallback,
                                                      @NotNull Consumer<? super InspectionContext> afterOutsideProcessedCallback) {
-    if (!shouldRun()) {
+    if (!shouldInspect(myPsiFile)) {
       return Collections.emptyList();
     }
     List<Divider.DividedElements> allDivided = new ArrayList<>();
     Divider.divideInsideAndOutsideAllRoots(myPsiFile, myRestrictRange, myPriorityRange,
-                                           file -> HighlightingLevelManager.getInstance(file.getProject()).shouldInspect(file), new CommonProcessors.CollectProcessor<>(allDivided));
+                                           file -> shouldInspect(file), new CommonProcessors.CollectProcessor<>(allDivided));
     List<PsiElement> inside = ContainerUtil.concat((List<List<PsiElement>>)ContainerUtil.map(allDivided, d -> d.inside));
     // might be different from myPriorityRange because DividedElements can cache not exact but containing ranges
     long finalPriorityRange = finalPriorityRange(myPriorityRange, allDivided);
@@ -293,7 +293,7 @@ class InspectionRunner {
       ((JobLauncherImpl)JobLauncher.getInstance()).processQueue(contexts, new LinkedBlockingQueue<>(), new SensitiveProgressWrapper(myProgress), TOMB_STONE, context ->
         AstLoadingFilter.disallowTreeLoading(() -> AstLoadingFilter.<Boolean, RuntimeException>forceAllowTreeLoading(myPsiFile, () -> {
           Runnable runnable = () -> {
-            if (!application.tryRunReadAction(() -> {
+            Runnable action = () -> {
               InspectionProblemHolder holder = context.holder;
               int resultCount = holder.getResultCount();
               PsiElement favoriteElement = context.myFavoriteElement;
@@ -321,7 +321,8 @@ class InspectionRunner {
                 }
               }
               afterProcessCallback.accept(context);
-            })) {
+            };
+            if (!application.tryRunReadAction(action)) {
               throw new ProcessCanceledException();
             }
           };
@@ -392,7 +393,7 @@ class InspectionRunner {
              return true;
            };
 
-           if (HighlightingLevelManager.getInstance(injectedPsi.getProject()).shouldInspect(injectedPsi)) {
+           if (shouldInspect(injectedPsi)) {
              InspectionRunner injectedRunner =
                new InspectionRunner(injectedPsi, injectedPsi.getTextRange(), injectedPsi.getTextRange(), false, myIsOnTheFly, myProgress,
                                     myIgnoreSuppressed, myInspectionProfileWrapper, mySuppressedElements);
@@ -452,9 +453,11 @@ class InspectionRunner {
     }
   }
 
-  private boolean shouldRun() {
-    HighlightingLevelManager highlightingLevelManager = HighlightingLevelManager.getInstance(myPsiFile.getProject());
+  private static boolean shouldInspect(@NotNull PsiFile file) {
+    HighlightingLevelManager highlightingLevelManager = HighlightingLevelManager.getInstance(file.getProject());
     // for ESSENTIAL mode, it depends on the current phase: when we run regular LocalInspectionPass then don't, when we run Save All handler then run everything
-    return highlightingLevelManager.shouldInspect(myPsiFile) && !highlightingLevelManager.runEssentialHighlightingOnly(myPsiFile);
+    return highlightingLevelManager != null
+           && highlightingLevelManager.shouldInspect(file)
+           && !highlightingLevelManager.runEssentialHighlightingOnly(file);
   }
 }

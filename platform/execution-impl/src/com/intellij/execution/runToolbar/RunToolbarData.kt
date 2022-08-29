@@ -30,9 +30,6 @@ interface RunToolbarData {
     @JvmField val RUN_TOOLBAR_POPUP_STATE_KEY: DataKey<Boolean> = DataKey.create("RUN_TOOLBAR_POPUP_STATE_KEY")
     @JvmField val RUN_TOOLBAR_MAIN_STATE: DataKey<RunToolbarMainSlotState> = DataKey.create("RUN_TOOLBAR_MAIN_STATE")
 
-    @ApiStatus.Internal
-    @JvmField val RUN_TOOLBAR_SUPPRESS_MAIN_SLOT_USER_DATA_KEY = Key<Boolean>("RUN_TOOLBAR_SUPPRESS_MAIN_SLOT_USER_DATA_KEY")
-
     internal fun prepareDescription(@Nls text: String, @Nls description: String): @Nls String {
       return HtmlBuilder().append(text)
           .br()
@@ -47,7 +44,6 @@ interface RunToolbarData {
   val id: String
   var configuration: RunnerAndConfigurationSettings?
   val environment: ExecutionEnvironment?
-  val waitingForAProcesses: WaitingForAProcesses
 
   fun clear()
 }
@@ -67,9 +63,7 @@ fun DataContext.runToolbarData(): RunToolbarData? {
 }
 
 fun AnActionEvent.mainState(): RunToolbarMainSlotState? {
-  return this.dataContext.getData(RunToolbarData.RUN_TOOLBAR_MAIN_STATE) ?: this.project?.let {
-    if(RunToolbarSlotManager.getInstance(it).mainSlotData == this.runToolbarData()) RunToolbarMainSlotState.CONFIGURATION else null
-  }
+  return this.dataContext.getData(RunToolbarData.RUN_TOOLBAR_MAIN_STATE)
 }
 
 internal fun DataContext.configuration(): RunnerAndConfigurationSettings? {
@@ -82,10 +76,6 @@ private fun getConfiguration(dataContext: DataContext): RunnerAndConfigurationSe
 
 internal fun AnActionEvent.isActiveProcess(): Boolean {
   return this.environment() != null
-}
-
-fun RunToolbarData.startWaitingForAProcess(project: Project, settings: RunnerAndConfigurationSettings, executorId: String) {
-  RunToolbarSlotManager.getInstance(project).startWaitingForAProcess(this, settings, executorId)
 }
 
 internal fun AnActionEvent.setConfiguration(value: RunnerAndConfigurationSettings?) {

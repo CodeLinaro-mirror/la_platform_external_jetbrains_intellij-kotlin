@@ -102,6 +102,9 @@ class TypeDfaInstance implements DfaInstance<TypeDfaState> {
 
   private TypeDfaState handleFunctionalExpression(@NotNull TypeDfaState state) {
     ClosureFrame currentClosureFrame = state.getTopClosureFrame();
+    if (currentClosureFrame == null) {
+      return state;
+    }
     if (currentClosureFrame.getStartInstructionState() == state || hasNoChanges(currentClosureFrame.getStartInstructionState(), state.getRawVarTypes())) {
       return currentClosureFrame.getStartInstructionState().withRemovedBindings(state.getRemovedBindings());
     }
@@ -231,7 +234,7 @@ class TypeDfaInstance implements DfaInstance<TypeDfaState> {
     return state.withNewType(descriptorId, type);
   }
 
-  private <T> T runWithoutCaching(@NotNull TypeDfaState state, Supplier<T> computation) {
+  private <T> T runWithoutCaching(@NotNull TypeDfaState state, Supplier<? extends T> computation) {
     Map<VariableDescriptor, DFAType> unwrappedVariables = getCurrentVariableTypes(state);
     return TypeInferenceHelper.doInference(unwrappedVariables, computation);
   }

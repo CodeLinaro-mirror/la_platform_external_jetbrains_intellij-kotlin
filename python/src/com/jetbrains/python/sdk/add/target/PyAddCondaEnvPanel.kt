@@ -58,7 +58,7 @@ open class PyAddCondaEnvPanel(
   protected val languageLevelsField: JComboBox<String>
   protected val condaPathField = TextFieldWithBrowseButton().apply {
     // TODO [targets] Requires target-based discovery
-    val path = PyCondaPackageService.getCondaExecutable(null)
+    val path = if (targetEnvironmentConfiguration.isLocal()) PyCondaPackageService.getCondaExecutable(null) else null
     path?.let {
       text = it
     }
@@ -143,11 +143,12 @@ open class PyAddCondaEnvPanel(
     add(formPanel, BorderLayout.NORTH)
   }
 
-  override fun validateAll(): List<ValidationInfo> =
-    if (interpreterCombobox.selectedItem is NewPySdkComboBoxItem)
-      listOfNotNull(CondaEnvSdkFlavor.validateCondaPath(condaPathField.text), validateEnvironmentDirectoryLocation(pathField))
+  override fun validateAll(): List<ValidationInfo> {
+    return if (interpreterCombobox.selectedItem is NewPySdkComboBoxItem)
+      listOfNotNull(CondaEnvSdkFlavor.validateCondaPath(condaPathField.text, pathInfoProvider), validateEnvironmentDirectoryLocation(pathField, pathInfoProvider))
     else
-      listOfNotNull(validateSdkComboBox(interpreterCombobox, this), CondaEnvSdkFlavor.validateCondaPath(condaPathField.text))
+      listOfNotNull(validateSdkComboBox(interpreterCombobox, this), CondaEnvSdkFlavor.validateCondaPath(condaPathField.text, pathInfoProvider))
+  }
 
   override fun getOrCreateSdk(): Sdk? = getOrCreateSdk(targetEnvironmentConfiguration = null)
 

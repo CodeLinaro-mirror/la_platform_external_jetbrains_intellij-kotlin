@@ -31,6 +31,7 @@ import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
 class StartUpPerformanceReporter : StartupActivity, StartUpPerformanceService {
@@ -49,7 +50,7 @@ class StartUpPerformanceReporter : StartupActivity, StartUpPerformanceService {
   companion object {
     internal val LOG = logger<StartUpMeasurer>()
 
-    internal const val VERSION = "35"
+    internal const val VERSION = "36"
 
     internal fun sortItems(items: MutableList<ActivityImpl>) {
       items.sortWith(Comparator { o1, o2 ->
@@ -216,6 +217,12 @@ private fun doLogStats(projectName: String): StartUpPerformanceReporterValues {
   if (!classReport.isNullOrBlank()) {
     generateJarAccessLog(Path.of(FileUtil.expandUserHome(classReport)))
   }
+
+  for (instantEvent in instantEvents.filter { setOf("splash shown", "splash hidden").contains(it.name) }) {
+    w.publicStatMetrics.put("event:${instantEvent.name}",
+                            TimeUnit.NANOSECONDS.toMillis(instantEvent.start - StartUpMeasurer.getStartTime()).toInt())
+  }
+
   return StartUpPerformanceReporterValues(pluginCostMap, currentReport, w.publicStatMetrics)
 }
 

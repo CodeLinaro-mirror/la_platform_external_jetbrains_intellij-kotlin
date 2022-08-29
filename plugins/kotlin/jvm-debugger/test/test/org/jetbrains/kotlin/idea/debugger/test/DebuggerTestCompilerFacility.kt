@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.config.JVMConfigurationKeys
 import org.jetbrains.kotlin.config.JvmTarget
 import org.jetbrains.kotlin.diagnostics.rendering.DefaultErrorMessages
 import org.jetbrains.kotlin.idea.artifacts.KotlinArtifacts
-import org.jetbrains.kotlin.idea.resolve.getLanguageVersionSettings
+import org.jetbrains.kotlin.idea.resolve.languageVersionSettings
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.idea.test.KotlinBaseTest.TestFile
 import org.jetbrains.kotlin.idea.test.KotlinCompilerStandalone
@@ -188,7 +188,7 @@ class DebuggerTestCompilerFacility(
         val analysisResult = resolutionFacade.analyzeWithAllCompilerChecks(jvmKtFiles)
         analysisResult.throwIfError()
 
-        return findMainClass(analysisResult.bindingContext, resolutionFacade.getLanguageVersionSettings(), jvmKtFiles)?.asString()
+        return findMainClass(analysisResult.bindingContext, resolutionFacade.languageVersionSettings, jvmKtFiles)?.asString()
             ?: error("Cannot find main class name")
     }
 
@@ -221,7 +221,7 @@ class DebuggerTestCompilerFacility(
 
         compile(analysisResult)
 
-        return findMainClass(analysisResult.bindingContext, resolutionFacade.getLanguageVersionSettings(), files)?.asString()
+        return findMainClass(analysisResult.bindingContext, resolutionFacade.languageVersionSettings, files)?.asString()
             ?: error("Cannot find main class name")
     }
 

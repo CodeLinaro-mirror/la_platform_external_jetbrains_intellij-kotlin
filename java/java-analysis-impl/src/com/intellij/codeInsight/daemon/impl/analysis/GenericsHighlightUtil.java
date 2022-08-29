@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.codeInsight.daemon.impl.analysis;
 
 import com.intellij.codeInsight.daemon.JavaErrorBundle;
@@ -775,7 +775,7 @@ public final class GenericsHighlightUtil {
           }
         }
       }
-      else {
+      else if (!typeElement.isInferredType()){
         String description = JavaErrorBundle.message("generics.wildcards.may.be.used.only.as.reference.parameters");
         return HighlightInfo.newHighlightInfo(HighlightInfoType.ERROR).range(typeElement).descriptionAndTooltip(description).create();
       }
@@ -1060,6 +1060,11 @@ public final class GenericsHighlightUtil {
   static HighlightInfo checkOverrideAnnotation(@NotNull PsiMethod method,
                                                @NotNull PsiAnnotation overrideAnnotation,
                                                @NotNull LanguageLevel languageLevel) {
+    if (method.hasModifierProperty(PsiModifier.STATIC)) {
+      return HighlightInfo.newHighlightInfo(HighlightInfoType.ERROR).range(overrideAnnotation)
+        .descriptionAndTooltip(
+          JavaErrorBundle.message("static.method.cannot.be.annotated.with.override")).create();
+    }
     try {
       MethodSignatureBackedByPsiMethod superMethod = SuperMethodsSearch.search(method, null, true, false).findFirst();
       if (superMethod != null && method.getContainingClass().isInterface()) {
@@ -1458,7 +1463,7 @@ public final class GenericsHighlightUtil {
     for (PsiClassType superType : aClass.getSuperTypes()) {
       HashSet<PsiClass> checked = new HashSet<>();
       checked.add(aClass);
-      String notAccessibleErrorMessage = isTypeAccessible(superType, checked, checkParameters, resolveScope, factory);
+      String notAccessibleErrorMessage = isTypeAccessible(superType, checked, checkParameters, true, resolveScope, factory);
       if (notAccessibleErrorMessage != null) {
         return HighlightInfo.newHighlightInfo(HighlightInfoType.ERROR)
           .descriptionAndTooltip(notAccessibleErrorMessage);
@@ -1480,10 +1485,10 @@ public final class GenericsHighlightUtil {
         PsiSubstitutor substitutor = resolveResult.getSubstitutor();
         GlobalSearchScope resolveScope = ref.getResolveScope();
 
-        message = isTypeAccessible(substitutor.substitute(method.getReturnType()), classes, false, resolveScope, facade);
+        message = isTypeAccessible(substitutor.substitute(method.getReturnType()), classes, false, true, resolveScope, facade);
         if (message == null) {
           for (PsiType type : method.getSignature(substitutor).getParameterTypes()) {
-            message = isTypeAccessible(type, classes, false, resolveScope, facade);
+            message = isTypeAccessible(type, classes, false, true, resolveScope, facade);
             if (message != null) {
               break;
             }
@@ -1496,7 +1501,7 @@ public final class GenericsHighlightUtil {
       if (resolve instanceof PsiField) {
         GlobalSearchScope resolveScope = ref.getResolveScope();
         JavaPsiFacade facade = JavaPsiFacade.getInstance(ref.getProject());
-        message = isTypeAccessible(((PsiField)resolve).getType(), new HashSet<>(), false, resolveScope, facade);
+        message = isTypeAccessible(((PsiField)resolve).getType(), new HashSet<PsiClass>(), false, true, resolveScope, facade);
       }
     }
 
@@ -1513,7 +1518,8 @@ public final class GenericsHighlightUtil {
   @Nullable
   private static @NlsContexts.DetailedDescription String isTypeAccessible(@Nullable PsiType type,
                                                                           @NotNull Set<? super PsiClass> classes,
-                                                                          boolean checkParameters,
+                                                                          boolean checkParameters, 
+                                                                          boolean checkSuperTypes,
                                                                           @NotNull GlobalSearchScope resolveScope,
                                                                           @NotNull JavaPsiFacade factory) {
     type = PsiClassImplUtil.correctType(type, resolveScope);
@@ -1540,16 +1546,20 @@ public final class GenericsHighlightUtil {
 
       if (type instanceof PsiClassType) {
         for (PsiType parameterType : ((PsiClassType)type).getParameters()) {
-          String notAccessibleMessage = isTypeAccessible(parameterType, classes, true, resolveScope, factory);
+          String notAccessibleMessage = isTypeAccessible(parameterType, classes, true, false, resolveScope, factory);
           if (notAccessibleMessage != null) {
             return notAccessibleMessage;
           }
         }
       }
 
+      if (!checkSuperTypes) {
+        return null;
+      }
+
       boolean isInLibrary = !index.isInContent(vFile);
       for (PsiClassType superType : aClass.getSuperTypes()) {
-        String notAccessibleMessage = isTypeAccessible(superType, classes, !isInLibrary, resolveScope, factory);
+        String notAccessibleMessage = isTypeAccessible(superType, classes, !isInLibrary, true, resolveScope, factory);
         if (notAccessibleMessage != null) {
           return notAccessibleMessage;
         }

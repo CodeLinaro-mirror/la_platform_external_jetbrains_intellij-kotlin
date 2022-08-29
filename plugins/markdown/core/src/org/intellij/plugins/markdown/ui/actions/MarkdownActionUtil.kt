@@ -14,18 +14,21 @@ import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilBase
-import com.intellij.util.application
+import com.intellij.util.concurrency.annotations.RequiresEdt
 import org.intellij.plugins.markdown.lang.MarkdownLanguage
+import org.intellij.plugins.markdown.lang.MarkdownLanguageUtils.isMarkdownLanguage
 import org.intellij.plugins.markdown.ui.preview.MarkdownEditorWithPreview
 import org.intellij.plugins.markdown.ui.preview.MarkdownPreviewFileEditor
 
 internal object MarkdownActionUtil {
+  @RequiresEdt
   @JvmStatic
   fun findSplitEditor(event: AnActionEvent): MarkdownEditorWithPreview? {
     val editor = event.getData(PlatformCoreDataKeys.FILE_EDITOR)
     return findSplitEditor(editor)
   }
 
+  @RequiresEdt
   @JvmStatic
   fun findSplitEditor(editor: FileEditor?): MarkdownEditorWithPreview? {
     return when (editor) {
@@ -34,6 +37,7 @@ internal object MarkdownActionUtil {
     }
   }
 
+  @RequiresEdt
   @JvmStatic
   fun findMarkdownPreviewEditor(event: AnActionEvent): MarkdownPreviewFileEditor? {
     val splitEditor = findSplitEditor(event) ?: return null
@@ -48,10 +52,9 @@ internal object MarkdownActionUtil {
   fun findMarkdownTextEditor(event: AnActionEvent): Editor? {
     val splitEditor = findSplitEditor(event)
     if (splitEditor == null) {
-      // This fallback is used primarily for testing
       val psiFile = event.getData(CommonDataKeys.PSI_FILE) ?: return null
-      return when {
-        psiFile.language == MarkdownLanguage.INSTANCE && application.isUnitTestMode -> event.getData(CommonDataKeys.EDITOR)
+      return when (psiFile.language) {
+        MarkdownLanguage.INSTANCE -> event.getData(CommonDataKeys.EDITOR)
         else -> null
       }
     }
@@ -59,6 +62,14 @@ internal object MarkdownActionUtil {
     return when {
       !mainEditor.component.isVisible -> null
       else -> mainEditor.editor
+    }
+  }
+
+  fun findMarkdownTextEditorByPsiFile(event: AnActionEvent): Editor? {
+    val psiFile = event.getData(CommonDataKeys.PSI_FILE) ?: return null
+    return when {
+      psiFile.language.isMarkdownLanguage() -> event.getData(CommonDataKeys.EDITOR)
+      else -> null
     }
   }
 

@@ -72,7 +72,6 @@
     <orderEntry type="library" name="StreamEx" level="project" />
     <orderEntry type="library" name="jediterm-pty" level="project" />
     <orderEntry type="library" name="kotlinx-coroutines-jdk8" level="project" />
-    <orderEntry type="library" name="fluent-hc" level="project" />
     <orderEntry type="library" name="netty-codec-http" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="error-prone-annotations" level="project" />
     <orderEntry type="library" name="jackson" level="project" />
@@ -90,7 +89,6 @@
     <orderEntry type="module" module-name="intellij.platform.externalSystem.impl" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.platform.serviceContainer" />
     <orderEntry type="library" name="jcef" level="project" />
-    <orderEntry type="module" module-name="intellij.platform.diagnostic" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.platform.statistics" />
     <orderEntry type="module" module-name="intellij.platform.statistics.devkit" scope="RUNTIME" />
     <orderEntry type="module-library">
@@ -142,5 +140,10 @@
     <orderEntry type="library" name="kotlinx-serialization-json" level="project" />
     <orderEntry type="library" name="kotlinx-serialization-core" level="project" />
     <orderEntry type="library" scope="TEST" name="assertJ" level="project" />
+    <orderEntry type="module" module-name="intellij.platform.util.jdom" />
+    <orderEntry type="library" name="jvm-native-trusted-roots" level="project" />
+    <orderEntry type="library" name="opentelemetry" level="project" />
+    <orderEntry type="module" module-name="intellij.platform.diagnostic" />
+    <orderEntry type="module" module-name="intellij.platform.diagnostic.telemetry" />
   </component>
 </module>

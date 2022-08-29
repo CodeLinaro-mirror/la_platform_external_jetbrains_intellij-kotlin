@@ -1,11 +1,10 @@
-/*
- * Copyright 2010-2020 JetBrains s.r.o. and Kotlin Programming Language contributors.
- * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
- */
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.caches.project
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.LibraryOrderEntry
 import com.intellij.openapi.roots.OrderRootType
@@ -19,6 +18,7 @@ import com.intellij.util.indexing.DumbModeAccessType
 import com.intellij.util.indexing.FileBasedIndex
 import org.jetbrains.kotlin.caches.project.cacheInvalidatingOnRootModifications
 import org.jetbrains.kotlin.idea.configuration.IdeBuiltInsLoadingState
+import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.jetbrains.kotlin.idea.vfilefinder.KotlinStdlibIndex
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
@@ -121,13 +121,14 @@ class KotlinStdlibCacheImpl(val project: Project) : KotlinStdlibCache {
         val stdlibDependency = moduleStdlibDependencyCache.getOrPut(module) {
             val moduleSourceInfo = module.safeAs<ModuleSourceInfo>()
             val stdLib = moduleSourceInfo?.module?.moduleWithLibrariesScope?.let index@{ scope ->
-                val stdlibManifests =
+                val stdlibManifests = DumbModeAccessType.RELIABLE_DATA_ONLY.ignoreDumbMode(ThrowableComputable {
                     FileBasedIndex.getInstance().getContainingFiles(
                         KotlinStdlibIndex.KEY,
                         KotlinStdlibIndex.KOTLIN_STDLIB_NAME,
                         scope
                     )
-                val index = ProjectFileIndex.SERVICE.getInstance(project)
+                })
+                val index = ProjectFileIndex.getInstance(project)
                 for (manifest in stdlibManifests) {
                     val orderEntries = index.getOrderEntriesForFile(manifest)
                     orderEntries.firstNotNullOfOrNull { it.safeAs<LibraryOrderEntry>()?.library.safeAs<LibraryEx>() }?.let {
@@ -140,6 +141,10 @@ class KotlinStdlibCacheImpl(val project: Project) : KotlinStdlibCache {
             } ?: module.safeAs<LibraryInfo>()?.takeIf(::isStdlib) ?: module.dependencies().firstOrNull {
                 it is LibraryInfo && isStdlib(it)
             } as LibraryInfo?
+
+            if (stdLib == null && runReadAction { project.isDisposed || DumbService.isDumb(project) }) {
+                throw ProcessCanceledException()
+            }
 
             val stdlibDependency = StdlibDependency(stdLib)
             moduleSourceInfo?.let { _ ->

@@ -446,7 +446,8 @@
 
     <intentionAction>
       <className>org.jetbrains.kotlin.idea.intentions.AddJvmInlineIntention</className>
-      <category>Kotlin</category>
+      <bundleName>messages.KotlinBundle</bundleName>
+      <categoryKey>group.names.kotlin</categoryKey>
     </intentionAction>
 
     <intentionAction>
@@ -1097,6 +1098,10 @@
       <categoryKey>group.names.kotlin</categoryKey>
     </intentionAction>
 
+    <intentionAction>
+      <className>org.jetbrains.kotlin.idea.codeInsight.hints.KotlinInlayHintToggleAction</className>
+    </intentionAction>
+
     <lang.inspectionSuppressor language="kotlin" implementationClass="org.jetbrains.kotlin.idea.inspections.KotlinInspectionSuppressor"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.intentions.ObjectLiteralToLambdaInspection"
@@ -1262,7 +1267,6 @@
                      enabledByDefault="true"
                      level="WARNING"
                      language="kotlin"
-                     suppressId="unused"
                      key="inspection.unused.receiver.parameter.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.KotlinUnusedImportInspection"
@@ -1290,15 +1294,6 @@
                      level="INFO"
                      language="kotlin"
                      key="inspection.unsafe.cast.from.dynamic.display.name" bundle="messages.KotlinBundle"/>
-
-    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.OverridingDeprecatedMemberInspection"
-                     shortName="OverridingDeprecatedMember"
-                     groupPath="Kotlin"
-                     groupBundle="messages.KotlinBundle" groupKey="group.names.other.problems"
-                     enabledByDefault="true"
-                     level="WARNING"
-                     language="kotlin"
-                     key="inspection.overriding.deprecated.member.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.kdoc.KDocUnresolvedReferenceInspection"
                      groupPath="Kotlin"
@@ -1806,6 +1801,7 @@
                      enabledByDefault="true"
                      level="INFO"
                      language="kotlin"
+                     runForWholeFile="true"
                      key="inspection.member.visibility.can.be.private.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.NullableBooleanElvisInspection"
@@ -2034,6 +2030,15 @@
                      language="kotlin"
                      suppressId="RedundantOverride"
                      key="inspection.kotlin.redundant.override.display.name" bundle="messages.KotlinBundle"/>
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.KotlinRedundantDiagnosticSuppressInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.redundant.constructs"
+                     enabledByDefault="true"
+                     runForWholeFile="true"
+                     level="WARNING"
+                     language="kotlin"
+                     key="inspection.kotlin.redundant.suppression.display.name" bundle="messages.KotlinBundle"/>
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.SuspiciousEqualsCombination"
                      groupPath="Kotlin"
@@ -2406,6 +2411,15 @@
                      language="kotlin"
                      key="inspection.ambiguous.expression.when.branch.migration.display.name" bundle="messages.KotlinBundle"/>
 
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.CastDueToProgressionResolutionChangeMigrationInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
+                     enabledByDefault="false"
+                     cleanupTool="true"
+                     level="WARNING"
+                     language="kotlin"
+                     key="inspection.progression.resolution.change.migration.display.name" bundle="messages.KotlinBundle"/>
+
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.AddConversionCallMigrationInspection"
                      groupPath="Kotlin"
                      groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
@@ -2461,7 +2475,7 @@
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.migration.NonExhaustiveWhenStatementMigrationInspection"
                      groupPath="Kotlin"
-                     groupName="Migration"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.migration"
                      enabledByDefault="false"
                      level="WARNING"
                      language="kotlin"
@@ -2894,6 +2908,7 @@
                      groupPath="Kotlin"
                      groupBundle="messages.KotlinBundle" groupKey="group.names.redundant.constructs"
                      enabledByDefault="true"
+                     cleanupTool="true"
                      level="WARNING"
                      language="kotlin"
                      key="inspection.redundant.nullable.return.type.display.name" bundle="messages.KotlinBundle"/>
@@ -2981,12 +2996,29 @@
 
     <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.UnnecessaryOptInAnnotationInspection"
                      groupPath="Kotlin"
-                     groupName="Redundant constructs"
+                     groupBundle="messages.KotlinBundle"
+                     groupKey="group.names.redundant.constructs"
                      enabledByDefault="true"
                      level="WEAK WARNING"
                      language="kotlin"
                      runForWholeFile="true"
                      key="inspection.unnecessary.opt_in.annotation.display.name" bundle="messages.KotlinBundle"/>
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.KotlinJvmAnnotationInJavaInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.java.interop.issues"
+                     enabledByDefault="true"
+                     level="WARNING"
+                     language="JAVA"
+                     key="inspection.kotlin.jvm.annotation.in.java.display.name" bundle="messages.KotlinBundle"/>
+
+    <localInspection implementationClass="org.jetbrains.kotlin.idea.inspections.VerboseNullabilityAndEmptinessInspection"
+                     groupPath="Kotlin"
+                     groupBundle="messages.KotlinBundle" groupKey="group.names.style.issues"
+                     enabledByDefault="true"
+                     level="WEAK WARNING"
+                     language="kotlin"
+                     key="inspection.verbose.nullability.and.emptiness.display.name" bundle="messages.KotlinBundle"/>
   </extensions>
 
 </idea-plugin>

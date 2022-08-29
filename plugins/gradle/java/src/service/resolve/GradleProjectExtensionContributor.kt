@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.plugins.gradle.service.resolve
 
 import com.intellij.psi.*
@@ -17,7 +17,7 @@ import org.jetbrains.plugins.groovy.lang.resolve.shouldProcessProperties
 
 class GradleProjectExtensionContributor : NonCodeMembersContributor() {
 
-  override fun getParentClassName(): String? = GRADLE_API_PROJECT
+  override fun getParentClassName(): String = GRADLE_API_PROJECT
 
   override fun processDynamicElements(qualifierType: PsiType,
                                       aClass: PsiClass?,
@@ -44,7 +44,11 @@ class GradleProjectExtensionContributor : NonCodeMembersContributor() {
     val manager = containingFile.manager
 
     for (extension in extensions) {
-      val type = GradleExtensionType(factory.createTypeByFQClassName(extension.rootTypeFqn, place.resolveScope))
+      val delegateType = factory.createTypeFromText(extension.rootTypeFqn, place)
+      if (delegateType !is PsiClassType) {
+        continue
+      }
+      val type = GradleExtensionType(delegateType)
       if (processProperties) {
         val extensionProperty = GradleExtensionProperty(extension.name, type, containingFile)
         if (!processor.execute(extensionProperty, state)) {
@@ -54,6 +58,7 @@ class GradleProjectExtensionContributor : NonCodeMembersContributor() {
       if (processMethods) {
         val extensionMethod = GrLightMethodBuilder(manager, extension.name).apply {
           returnType = type
+          containingClass = aClass
           addAndGetParameter("configuration", createType(GROOVY_LANG_CLOSURE, containingFile))
             .putUserData(DELEGATES_TO_KEY, DelegatesToInfo(type, Closure.DELEGATE_FIRST))
         }

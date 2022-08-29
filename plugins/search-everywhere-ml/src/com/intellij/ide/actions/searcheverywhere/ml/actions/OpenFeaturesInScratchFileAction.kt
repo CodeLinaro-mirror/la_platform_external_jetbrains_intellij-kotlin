@@ -10,6 +10,7 @@ import com.intellij.ide.scratch.ScratchFileCreationHelper
 import com.intellij.ide.scratch.ScratchFileService
 import com.intellij.ide.scratch.ScratchRootType
 import com.intellij.json.JsonFileType
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -21,11 +22,17 @@ class OpenFeaturesInScratchFileAction : AnAction() {
   companion object {
     private const val SHOULD_ORDER_BY_ML_KEY = "shouldOrderByMl"
     private const val CONTEXT_INFO_KEY = "contextInfo"
+    private const val SEARCH_STATE_FEATURES_KEY = "searchStateFeatures"
+    private const val CONTRIBUTORS_KEY = "contributors"
     private const val FOUND_ELEMENTS_KEY = "foundElements"
   }
 
   override fun update(e: AnActionEvent) {
     e.presentation.isEnabled = shouldActionBeEnabled(e)
+  }
+
+  override fun getActionUpdateThread(): ActionUpdateThread {
+    return ActionUpdateThread.EDT
   }
 
   private fun shouldActionBeEnabled(e: AnActionEvent): Boolean {
@@ -52,36 +59,32 @@ class OpenFeaturesInScratchFileAction : AnAction() {
   private fun getFeaturesReport(searchEverywhereUI: SearchEverywhereUI): Map<String, Any> {
     val mlSessionService = SearchEverywhereMlSessionService.getService()
     val searchSession = mlSessionService.getCurrentSession()!!
+    val state = searchSession.getCurrentSearchState()
 
+    val tabId = searchEverywhereUI.selectedTabID
     val features = searchEverywhereUI.foundElementsInfo.map { info ->
       val rankingWeight = info.priority
       val contributor = info.contributor.searchProviderId
       val elementName = StringUtil.notNullize(info.element.toString(), "undefined")
-      if (searchSession.itemIdProvider.isElementSupported(info.element)) {
-        val id = searchSession.itemIdProvider.getId(info.element)
-        val mlWeight = if (isTabWithMl(searchEverywhereUI.selectedTabID)) {
-          mlSessionService.getMlWeight(info.contributor, info.element, rankingWeight)
-        } else {
-          null
-        }
+      val mlWeight = if (isTabWithMl(tabId)) mlSessionService.getMlWeight(info.contributor, info.element, rankingWeight) else null
 
-        val state = searchSession.getCurrentSearchState()
-        return@map ElementFeatures(
-          elementName,
-          mlWeight,
-          rankingWeight,
-          contributor,
-          state!!.getElementFeatures(id, info.element, info.contributor, rankingWeight).features.toSortedMap()
-        )
-      }
-      else {
-        return@map ElementFeatures(elementName, null, rankingWeight, contributor, emptyMap())
-      }
+      val elementId = searchSession.itemIdProvider.getId(info.element)
+      return@map ElementFeatures(
+        elementId,
+        elementName,
+        mlWeight,
+        rankingWeight,
+        contributor,
+        state!!.getElementFeatures(elementId, info.element, info.contributor, rankingWeight).featuresAsMap().toSortedMap()
+      )
     }
 
+    val contributors = searchEverywhereUI.foundElementsInfo.map { info -> info.contributor }.toHashSet()
     return mapOf(
-      SHOULD_ORDER_BY_ML_KEY to mlSessionService.shouldOrderByMl(searchEverywhereUI.selectedTabID),
-      CONTEXT_INFO_KEY to searchSession.cachedContextInfo,
+      SHOULD_ORDER_BY_ML_KEY to mlSessionService.shouldOrderByMl(),
+      CONTEXT_INFO_KEY to searchSession.cachedContextInfo.features.associate { it.field.name to it.data },
+      SEARCH_STATE_FEATURES_KEY to state!!.searchStateFeatures.associate { it.field.name to it.data },
+      CONTRIBUTORS_KEY to contributors.map { c -> ContributorInfo(c.searchProviderId, c.sortWeight) },
       FOUND_ELEMENTS_KEY to features
     )
   }
@@ -105,10 +108,14 @@ class OpenFeaturesInScratchFileAction : AnAction() {
     FileEditorManager.getInstance(project).openFile(file, true)
   }
 
-  @JsonPropertyOrder("name", "mlWeight", "rankingWeight", "contributor", "features")
-  private data class ElementFeatures(val name: String,
+  @JsonPropertyOrder("id", "name", "mlWeight", "rankingWeight", "contributor", "features")
+  private data class ElementFeatures(val id: Int?,
+                                     val name: String,
                                      val mlWeight: Double?,
                                      val rankingWeight: Int,
                                      val contributor: String,
                                      val features: Map<String, Any>)
+
+  @JsonPropertyOrder("id", "weight")
+  private data class ContributorInfo(val id: String, val weight: Int)
 }

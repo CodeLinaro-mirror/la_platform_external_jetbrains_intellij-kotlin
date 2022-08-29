@@ -47,70 +47,73 @@ private class KotlinIdeDeclarationProvider(
         return result
     }
 
-
-    override fun getClassesByClassId(classId: ClassId): Collection<KtClassOrObject> {
+    override fun getClassLikeDeclarationByClassId(classId: ClassId): KtClassLikeDeclaration? {
+        return firstMatchingOrNull<String, KtClassOrObject>(
+            KotlinFullClassNameIndex.KEY,
+            key = classId.asStringForIndexes(),
+        ) { candidate -> candidate.getClassId() == classId }
+            ?: getTypeAliasByClassId(classId)
+    }
+    override fun getAllClassesByClassId(classId: ClassId): Collection<KtClassOrObject> {
         return KotlinFullClassNameIndex
-            .getInstance()[classId.asStringForIndexes(), project, searchScope]
+            .get(classId.asStringForIndexes(), project, searchScope)
             .filter { candidate -> candidate.containingKtFile.packageFqName == classId.packageFqName }
     }
 
-    override fun getTypeAliasesByClassId(classId: ClassId): Collection<KtTypeAlias> {
+    override fun getAllTypeAliasesByClassId(classId: ClassId): Collection<KtTypeAlias> {
         return listOfNotNull(getTypeAliasByClassId(classId)) //todo
     }
 
     override fun getTypeAliasNamesInPackage(packageFqName: FqName): Set<Name> {
         return KotlinTopLevelTypeAliasByPackageIndex
-            .getInstance()[packageFqName.asStringForIndexes(), project, searchScope]
+            .get(packageFqName.asStringForIndexes(), project, searchScope)
             .mapNotNullTo(mutableSetOf()) { it.nameAsName }
     }
 
     override fun getPropertyNamesInPackage(packageFqName: FqName): Set<Name> {
         return KotlinTopLevelPropertyByPackageIndex
-            .getInstance()[packageFqName.asStringForIndexes(), project, searchScope]
+            .get(packageFqName.asStringForIndexes(), project, searchScope)
             .mapNotNullTo(mutableSetOf()) { it.nameAsName }
     }
 
     override fun getFunctionsNamesInPackage(packageFqName: FqName): Set<Name> {
         return KotlinTopLevelFunctionByPackageIndex
-            .getInstance()[packageFqName.asStringForIndexes(), project, searchScope]
+            .get(packageFqName.asStringForIndexes(), project, searchScope)
             .mapNotNullTo(mutableSetOf()) { it.nameAsName }
     }
 
     override fun getFacadeFilesInPackage(packageFqName: FqName): Collection<KtFile> {
-        return KotlinFileFacadeClassByPackageIndex.getInstance()
+        return KotlinFileFacadeClassByPackageIndex
             .get(packageFqName.asString(), project, searchScope)
     }
 
-
     override fun findFilesForFacade(facadeFqName: FqName): Collection<KtFile> {
-        return KotlinFileFacadeFqNameIndex.INSTANCE.get(
+        return KotlinFileFacadeFqNameIndex.get(
             key = facadeFqName.asString(),
             project = project,
             scope = searchScope
         ) //TODO original LC has platformSourcesFirst()
     }
 
-    private fun getTypeAliasByClassId(classId: ClassId): KtTypeAlias? = firstMatchingOrNull<String, KtTypeAlias>(
-        KotlinTopLevelTypeAliasFqNameIndex.KEY,
-        key = classId.asStringForIndexes(),
-    ) { candidate -> candidate.containingKtFile.packageFqName == classId.packageFqName }
-        ?: firstMatchingOrNull<String, KtTypeAlias>(
-            KotlinInnerTypeAliasClassIdIndex.KEY,
-            key = classId.asString(),
-        )
+    private fun getTypeAliasByClassId(classId: ClassId): KtTypeAlias? {
+        return firstMatchingOrNull(
+            stubKey = KotlinTopLevelTypeAliasFqNameIndex.KEY,
+            key = classId.asStringForIndexes(),
+            filter = { candidate -> candidate.getClassId() == classId }
+        ) ?: firstMatchingOrNull(stubKey = KotlinInnerTypeAliasClassIdIndex.key, key = classId.asString())
+    }
 
     override fun getTopLevelProperties(callableId: CallableId): Collection<KtProperty> =
-        KotlinTopLevelPropertyFqnNameIndex.getInstance()[callableId.asStringForIndexes(), project, searchScope]
+        KotlinTopLevelPropertyFqnNameIndex.get(callableId.asStringForIndexes(), project, searchScope)
 
     override fun getTopLevelFunctions(callableId: CallableId): Collection<KtNamedFunction> =
-        KotlinTopLevelFunctionFqnNameIndex.getInstance()[callableId.asStringForIndexes(), project, searchScope]
+        KotlinTopLevelFunctionFqnNameIndex.get(callableId.asStringForIndexes(), project, searchScope)
 
 
     override fun getClassNamesInPackage(packageFqName: FqName): Set<Name> =
-        KotlinTopLevelClassByPackageIndex.getInstance()
+        KotlinTopLevelClassByPackageIndex
             .get(packageFqName.asStringForIndexes(), project, searchScope)
             .mapNotNullTo(hashSetOf()) { it.nameAsName }
-
 
     companion object {
         private fun CallableId.asStringForIndexes(): String =

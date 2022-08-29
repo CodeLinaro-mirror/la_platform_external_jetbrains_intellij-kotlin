@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.debugger.engine;
 
 import com.intellij.debugger.JavaDebuggerBundle;
@@ -26,6 +26,7 @@ import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.ui.ExecutionConsole;
 import com.intellij.execution.ui.ExecutionConsoleEx;
 import com.intellij.execution.ui.RunnerLayoutUi;
+import com.intellij.execution.ui.UIExperiment;
 import com.intellij.execution.ui.layout.PlaceInGrid;
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.extensions.ExtensionPointListener;
@@ -78,7 +79,8 @@ public class JavaDebugProcess extends XDebugProcess {
     process -> new JavaBreakpointHandler.JavaExceptionBreakpointHandler(process),
     process -> new JavaBreakpointHandler.JavaFieldBreakpointHandler(process),
     process -> new JavaBreakpointHandler.JavaMethodBreakpointHandler(process),
-    process -> new JavaBreakpointHandler.JavaWildcardBreakpointHandler(process)
+    process -> new JavaBreakpointHandler.JavaWildcardBreakpointHandler(process),
+    process -> new JavaBreakpointHandler.JavaCollectionBreakpointHandler(process)
   };
 
   public static JavaDebugProcess create(@NotNull final XDebugSession session, @NotNull final DebuggerSession javaSession) {
@@ -416,7 +418,7 @@ public class JavaDebugProcess extends XDebugProcess {
   public void registerAdditionalActions(@NotNull DefaultActionGroup leftToolbar,
                                         @NotNull DefaultActionGroup topToolbar,
                                         @NotNull DefaultActionGroup settings) {
-    if (!Registry.is("debugger.new.tool.window.layout")) {
+    if (!UIExperiment.isNewDebuggerUIEnabled()) {
       Constraints beforeRunner = new Constraints(Anchor.BEFORE, "Runner.Layout");
       leftToolbar.add(Separator.getInstance(), beforeRunner);
       leftToolbar.add(ActionManager.getInstance().getAction("DumpThreads"), beforeRunner);

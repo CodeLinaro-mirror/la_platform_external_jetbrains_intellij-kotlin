@@ -1,5 +1,4 @@
 // Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-@file:Suppress("UsePropertyAccessSyntax")
 
 package com.intellij.toolWindow
 
@@ -50,7 +49,7 @@ private inline fun Logger.debug(project: Project, lazyMessage: (project: String)
 internal class InitToolWindowSetActivity : StartupActivity {
   override fun runActivity(project: Project) {
     val app = ApplicationManager.getApplication()
-    if (app.isHeadlessEnvironment) {
+    if (app.isHeadlessEnvironment || app.isUnitTestMode) {
       return
     }
 
@@ -80,7 +79,7 @@ internal class InitToolWindowSetActivity : StartupActivity {
   }
 }
 
-internal class ToolWindowSetInitializer(private val project: Project, private val manager: ToolWindowManagerImpl) {
+class ToolWindowSetInitializer(private val project: Project, private val manager: ToolWindowManagerImpl) {
   @Volatile
   private var isInitialized = false
 
@@ -194,6 +193,8 @@ internal class ToolWindowSetInitializer(private val project: Project, private va
           LOG.error(PluginException("Cannot init toolwindow ${task.contentFactory}", e, task.pluginDescriptor?.pluginId))
         }
       }
+
+      toolWindowPane.buttonManager.initMoreButton()
 
       project.messageBus.syncPublisher(ToolWindowManagerListener.TOPIC).toolWindowsRegistered(entries, manager)
       toolWindowPane.buttonManager.revalidateNotEmptyStripes()

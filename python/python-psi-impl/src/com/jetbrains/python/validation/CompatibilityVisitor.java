@@ -7,6 +7,7 @@ import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.util.InspectionMessage;
 import com.intellij.lang.ASTNode;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Condition;
 import com.intellij.openapi.util.NlsSafe;
 import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.util.TextRange;
@@ -90,6 +91,12 @@ public abstract class CompatibilityVisitor extends PyAnnotator {
                                        new ReplaceExceptPartQuickFix());
       }
     }
+    PsiElement star = PyPsiUtils.getFirstChildOfType(node, PyTokenTypes.MULT);
+    if (star != null) {
+      registerForAllMatchingVersions(level -> level.isOlderThan(LanguageLevel.PYTHON311),
+                                     PyPsiBundle.message("INSP.compatibility.feature.support.starred.except.part"),
+                                     star);
+    }
   }
 
   @Override
@@ -151,7 +158,30 @@ public abstract class CompatibilityVisitor extends PyAnnotator {
                                          PyPsiBundle.message("INSP.compatibility.feature.support.unpacking.without.parentheses.in.yield.statements"),
                                          node);
         }
+
+        if (tupleParent instanceof PySubscriptionExpression) {
+          registerForAllMatchingVersions(level -> level.isAtLeast(LanguageLevel.PYTHON35) &&
+                                                  level.isOlderThan(LanguageLevel.PYTHON311) &&
+                                                  registerForLanguageLevel(level),
+                                         PyPsiBundle.message("INSP.compatibility.feature.support.starred.expressions.in.subscriptions"),
+                                         node);
+        }
       }
+      if (node.getParent() instanceof PySubscriptionExpression || node.getParent() instanceof PySliceItem) {
+        registerForAllMatchingVersions(level -> level.isAtLeast(LanguageLevel.PYTHON35) &&
+                                                level.isOlderThan(LanguageLevel.PYTHON311) &&
+                                                registerForLanguageLevel(level),
+                                       PyPsiBundle.message("INSP.compatibility.feature.support.starred.expressions.in.subscriptions"),
+                                       node);
+      }
+    }
+
+    PsiElement parent = node.getParent();
+    if (parent instanceof PyAnnotation && StarAnnotator.isVariadicArg(parent.getParent())) {
+      registerForAllMatchingVersions(level -> level.isOlderThan(LanguageLevel.PYTHON311) &&
+                                              registerForLanguageLevel(level),
+                                     PyPsiBundle.message("INSP.compatibility.feature.support.starred.expressions.in.type.annotations"),
+                                     node);
     }
   }
 
@@ -354,10 +384,10 @@ public abstract class CompatibilityVisitor extends PyAnnotator {
     super.visitPyPrintStatement(node);
 
     final PsiElement[] arguments = node.getChildren();
-    final Predicate<PsiElement> nonParenthesesPredicate =
+    final Condition<PsiElement> nonParenthesesPredicate =
       element -> !(element instanceof PyParenthesizedExpression || element instanceof PyTupleExpression);
 
-    if (arguments.length == 0 || Arrays.stream(arguments).anyMatch(nonParenthesesPredicate)) {
+    if (arguments.length == 0 || ContainerUtil.exists(arguments, nonParenthesesPredicate)) {
       registerForAllMatchingVersions(level -> level.isPy3K() && registerForLanguageLevel(level),
                                      PyPsiBundle.message("INSP.compatibility.feature.support.print.statement"),
                                      node,

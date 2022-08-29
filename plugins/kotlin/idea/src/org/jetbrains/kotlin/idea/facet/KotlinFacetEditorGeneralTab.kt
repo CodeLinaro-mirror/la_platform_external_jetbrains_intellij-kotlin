@@ -1,10 +1,12 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.facet
 
 import com.intellij.facet.ui.*
+import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.ShowSettingsUtilImpl
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.RootsChangeRescanningInfo
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.ui.HoverHyperlinkLabel
@@ -19,6 +21,7 @@ import org.jetbrains.kotlin.idea.roots.invalidateProjectRoots
 import org.jetbrains.kotlin.idea.util.application.runWriteAction
 import org.jetbrains.kotlin.platform.*
 import org.jetbrains.kotlin.platform.js.isJs
+import org.jetbrains.kotlin.platform.jvm.JdkPlatform
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import org.jetbrains.kotlin.platform.jvm.isJvm
 import java.awt.BorderLayout
@@ -76,18 +79,25 @@ class KotlinFacetEditorGeneralTab(
         lateinit var targetPlatformWrappers: List<TargetPlatformWrapper>
         lateinit var targetPlatformLabel: JLabel //JTextField?
         var targetPlatformsCurrentlySelected: TargetPlatform? = null
-
         private lateinit var projectSettingsLink: HoverHyperlinkLabel
+        lateinit var targetPlatformFacetLabel: JLabel
+        lateinit var useProjectSettingsWarningLabel: JLabel
+
+        @Volatile
+        private var isInTargetPlatformChangeAction = false
 
         private fun FormBuilder.addTargetPlatformComponents(): FormBuilder {
+            targetPlatformFacetLabel = JLabel(KotlinBundle.message("facet.label.text.target.platform"))
             return if (configuration?.settings?.mppVersion?.isHmpp == true) {
                 targetPlatformLabel.toolTipText =
                     KotlinBundle.message("facet.label.text.the.project.is.imported.from.external.build.system.and.could.not.be.edited")
-                this.addLabeledComponent(
-                    KotlinBundle.message("facet.label.text.selected.target.platforms"), targetPlatformLabel)
+                addLabeledComponent(
+                    KotlinBundle.message("facet.label.text.selected.target.platforms"), targetPlatformLabel
+                )
             } else {
-                this.addLabeledComponent(
-                    KotlinBundle.message("facet.label.text.target.platform"), targetPlatformSelectSingleCombobox)
+                addLabeledComponent(
+                    targetPlatformFacetLabel, targetPlatformSelectSingleCombobox
+                )
             }
         }
 
@@ -133,7 +143,15 @@ class KotlinFacetEditorGeneralTab(
                 isMultiEditor
             )
 
-            useProjectSettingsCheckBox = ThreeStateCheckBox(KotlinBundle.message("facet.checkbox.text.use.project.settings")).apply { isThirdStateEnabled = isMultiEditor }
+            useProjectSettingsCheckBox = ThreeStateCheckBox(KotlinBundle.message("facet.checkbox.text.use.project.settings")).apply {
+                isThirdStateEnabled = isMultiEditor
+            }
+            useProjectSettingsWarningLabel = JLabel().apply {
+                icon = AllIcons.General.WarningDialog
+                text = KotlinBundle.message("facet.label.text.project.settings.that.are.used.for.this.facet")
+                iconTextGap = 5
+                isVisible = false
+            }
             dependsOnLabel = JLabel()
 
             targetPlatformWrappers = CommonPlatforms.allDefaultTargetPlatforms.sortedBy { unifyJvmVersion(it.oldFashionedDescription) }
@@ -150,10 +168,12 @@ class KotlinFacetEditorGeneralTab(
                             cellHasFocus: Boolean
                         ): Component {
                             return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus).apply {
-                                text =
-                                    (value as? TargetPlatformWrapper)?.targetPlatform?.componentPlatforms?.singleOrNull()
-                                        ?.oldFashionedDescription
-                                        ?: KotlinBundle.message("facet.text.multiplatform")
+                                val specificPlatform = (value as? TargetPlatformWrapper)?.targetPlatform?.componentPlatforms?.singleOrNull()
+                                text = specificPlatform?.oldFashionedDescription ?: KotlinBundle.message("facet.text.multiplatform")
+
+                                if (specificPlatform is JdkPlatform && specificPlatform.targetVersion == JvmTarget.JVM_1_6) {
+                                    text += " " + KotlinBundle.message("deprecated.jvm.version")
+                                }
                             }
                         }
                     })
@@ -174,7 +194,9 @@ class KotlinFacetEditorGeneralTab(
                 .addComponent(JPanel(BorderLayout()).apply {
                     add(useProjectSettingsCheckBox, BorderLayout.WEST)
                     add(projectSettingsLink, BorderLayout.EAST)
-                }).addTargetPlatformComponents()
+                })
+                .addComponent(useProjectSettingsWarningLabel)
+                .addTargetPlatformComponents()
                 .addComponent(dependsOnLabel)
                 .addComponent(compilerConfigurable.createComponent()!!.apply {
                     border = null
@@ -189,12 +211,16 @@ class KotlinFacetEditorGeneralTab(
                 updateCompilerConfigurable()
             }
             targetPlatformSelectSingleCombobox.addActionListener {
+                isInTargetPlatformChangeAction = true
                 updateCompilerConfigurable()
+                isInTargetPlatformChangeAction = false
             }
         }
 
         internal fun updateCompilerConfigurable() {
             val useProjectSettings = useProjectSettingsCheckBox.isSelected
+
+            useProjectSettingsWarningLabel.isVisible = useProjectSettings
             compilerConfigurable.setTargetPlatform(getChosenPlatform()?.idePlatformKind)
             compilerConfigurable.setEnabled(!useProjectSettings)
             if (useProjectSettings) {
@@ -209,6 +235,31 @@ class KotlinFacetEditorGeneralTab(
                 compilerConfigurable.compilerSettings = editableCompilerSettings
             }
             compilerConfigurable.reset()
+            setupTargetPlatformCombobox(useProjectSettings)
+        }
+
+        private fun setupTargetPlatformCombobox(useProjectSettings: Boolean) {
+            val target = if (useProjectSettings) {
+                targetPlatformWrappers.toTypedArray()
+                    .mapNotNull { it.targetPlatform.componentPlatforms.singleOrNull() }
+                    .filter { it.platformName == "JVM" && it.targetPlatformVersion.description == compilerConfigurable.selectedJvmVersion }
+            } else {
+                configuration?.settings?.targetPlatform
+            }
+
+            if (useProjectSettings || (!isInTargetPlatformChangeAction && !target.isNullOrEmpty())) {
+                targetPlatformSelectSingleCombobox.selectedItem = TargetPlatform(target!!.toSet()).let {
+                    val index = targetPlatformWrappers.indexOf(TargetPlatformWrapper(it))
+                    if (index >= 0) {
+                        targetPlatformWrappers[index]
+                    } else {
+                        null
+                    }
+                }
+            }
+
+            targetPlatformSelectSingleCombobox.isEnabled = !useProjectSettings
+            targetPlatformFacetLabel.isEnabled = !useProjectSettings
         }
 
         fun getChosenPlatform(): TargetPlatform? {
@@ -223,7 +274,8 @@ class KotlinFacetEditorGeneralTab(
     inner class ArgumentConsistencyValidator : FacetEditorValidator() {
         override fun check(): ValidationResult {
             val platform = editor.getChosenPlatform() ?: return ValidationResult(
-                KotlinBundle.message("facet.error.text.at.least.one.target.platform.should.be.selected"))
+                KotlinBundle.message("facet.error.text.at.least.one.target.platform.should.be.selected")
+            )
             val primaryArguments = platform.createArguments {
                 editor.compilerConfigurable.applyTo(
                     this,
@@ -272,7 +324,8 @@ class KotlinFacetEditorGeneralTab(
                             append("<br/>")
                         }
                         append(
-                            KotlinBundle.message("facet.text.following.arguments.are.redundant", redundantArguments.joinToString()))
+                            KotlinBundle.message("facet.text.following.arguments.are.redundant", redundantArguments.joinToString())
+                        )
                     }
                 }
                 return ValidationResult(message)
@@ -364,8 +417,8 @@ class KotlinFacetEditorGeneralTab(
 
         // work-around for hacked equals in JvmPlatform
         if (!configuration.settings.mppVersion.isHmpp) {
-            if (configuration.settings.targetPlatform?.let { TargetPlatformWrapper(it) } != editor.targetPlatformSelectSingleCombobox
-                    .selectedItemTyped) {
+            if (!editor.useProjectSettingsCheckBox.isSelected
+                && configuration.settings.targetPlatform?.let { TargetPlatformWrapper(it) } != editor.targetPlatformSelectSingleCombobox.selectedItemTyped) {
                 return true
             }
         }
@@ -388,7 +441,10 @@ class KotlinFacetEditorGeneralTab(
                     ?: "<none>"
             editor.dependsOnLabel.isVisible = configuration.settings.dependsOnModuleNames.isNotEmpty()
             editor.dependsOnLabel.text =
-                KotlinBundle.message("facets.editor.general.tab.label.depends.on.0", configuration.settings.dependsOnModuleNames.joinToString())
+                KotlinBundle.message(
+                    "facets.editor.general.tab.label.depends.on.0",
+                    configuration.settings.dependsOnModuleNames.joinToString()
+                )
 
             editor.targetPlatformSelectSingleCombobox.selectedItem = configuration.settings.targetPlatform?.let {
                 val index = editor.targetPlatformWrappers.indexOf(TargetPlatformWrapper(it))
@@ -430,7 +486,7 @@ class KotlinFacetEditorGeneralTab(
                 updateMergedArguments()
 
                 // Force code analysis with modified settings
-                runWriteAction { editorContext.project.invalidateProjectRoots() }
+                runWriteAction { editorContext.project.invalidateProjectRoots(RootsChangeRescanningInfo.NO_RESCAN_NEEDED) }
             }
         }
     }

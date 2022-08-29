@@ -120,13 +120,14 @@ class InlayHintsSettings : PersistentStateComponent<InlayHintsSettings.State> {
       val element = myState.settingsMapElement.clone()
       element.removeChild(fullId)
       val serialized = serialize(value)
-      if (serialized != null) {
+      if (serialized == null) {
+        myState.settingsMapElement = element
+      }
+      else {
         val storeElement = Element(fullId)
         val wrappedSettingsElement = storeElement.addContent(serialized)
         myState.settingsMapElement = element.addContent(wrappedSettingsElement)
         element.sortAttributes(compareBy { it.name })
-      } else {
-        myState.settingsMapElement = element
       }
     }
     listener.settingsChanged()
@@ -172,19 +173,23 @@ class InlayHintsSettings : PersistentStateComponent<InlayHintsSettings.State> {
 
   // may return parameter settings object or cached object
   private fun <T : Any> getSettingCached(id: String, settings: ()->T): T {
-    @Suppress("UNCHECKED_CAST")
-    val cachedValue = myCachedSettingsMap[id] as T?
-    if (cachedValue != null) return cachedValue
-    return getSettingNotCached(id, settings())
+    synchronized(lock) {
+      @Suppress("UNCHECKED_CAST")
+      val cachedValue = myCachedSettingsMap[id] as T?
+      if (cachedValue != null) return cachedValue
+      val notCachedSettings = getSettingNotCached(id, settings())
+      myCachedSettingsMap[id] = notCachedSettings
+      return notCachedSettings
+    }
   }
 
   private fun <T : Any> getSettingNotCached(id: String, settings: T): T {
     val state = myState.settingsMapElement
-    val settingsElement = state.getChild(id) ?: return settings
+    val settingsElement = state.getChild(id)
+    if (settingsElement == null) return settings
     val settingsElementChildren= settingsElement.children
     if (settingsElementChildren.isEmpty()) return settings
     settingsElementChildren.first().deserializeInto(settings)
-    myCachedSettingsMap[id] = settings
     return settings
   }
 

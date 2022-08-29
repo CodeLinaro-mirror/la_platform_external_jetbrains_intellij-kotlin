@@ -23,10 +23,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.InvalidPathException;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -863,7 +860,7 @@ public class FileUtil extends FileUtilRt {
   @Nullable
   public static String extractRootPath(@NotNull String normalizedPath) {
     if (SystemInfoRt.isWindows) {
-      if (normalizedPath.length() >= 2 && normalizedPath.charAt(1) == ':') {
+      if (OSAgnosticPathUtil.startsWithWindowsDrive(normalizedPath)) {
         // drive letter
         return StringUtil.toUpperCase(normalizedPath.substring(0, 2));
       }
@@ -1267,12 +1264,8 @@ public class FileUtil extends FileUtilRt {
   @Deprecated
   @ApiStatus.ScheduledForRemoval
   public static boolean isWindowsAbsolutePath(@NotNull String path) {
-    boolean ok = path.length() >= 2 && Character.isLetter(path.charAt(0)) && path.charAt(1) == ':';
-    if (ok && path.length() > 2) {
-      char separatorChar = path.charAt(2);
-      ok = separatorChar == '/' || separatorChar == '\\';
-    }
-    return ok;
+    return path.length() <= 2 && OSAgnosticPathUtil.startsWithWindowsDrive(path)
+           || OSAgnosticPathUtil.isAbsoluteDosPath(path);
   }
 
   @Contract("null -> null; !null -> !null")
@@ -1503,6 +1496,10 @@ public class FileUtil extends FileUtilRt {
     }
 
     return true;
+  }
+
+  public static boolean deleteWithRenamingIfExists(@NotNull Path file) {
+    return Files.exists(file) && deleteWithRenaming(file);
   }
 
   public static boolean deleteWithRenaming(@NotNull Path file) {

@@ -218,7 +218,8 @@ public class ShelvedChangesViewManager implements Disposable {
       createShelvedListsWithChangesNode(shelvedLists, createTagNode(VcsBundle.message("shelve.recently.deleted.node")));
     }
 
-    private void createShelvedListsWithChangesNode(@NotNull List<ShelvedChangeList> shelvedLists, @NotNull ChangesBrowserNode<?> parentNode) {
+    private void createShelvedListsWithChangesNode(@NotNull List<ShelvedChangeList> shelvedLists,
+                                                   @NotNull ChangesBrowserNode<?> parentNode) {
       shelvedLists.forEach(changeList -> {
         List<ShelvedWrapper> shelvedChanges = new ArrayList<>();
         requireNonNull(changeList.getChanges()).stream().map(change -> new ShelvedWrapper(change, changeList)).forEach(shelvedChanges::add);
@@ -428,7 +429,7 @@ public class ShelvedChangesViewManager implements Disposable {
           return map2Array(shelvedChanges, Change.class, s -> s.getChangeWithLocal(myProject));
         }
       }
-      else if (PlatformDataKeys.DELETE_ELEMENT_PROVIDER.is(dataId)) {
+      else if (PlatformDataKeys.DELETE_ELEMENT_PROVIDER.is(dataId) && !isEditing()) {
         return myDeleteProvider;
       }
       else if (CommonDataKeys.NAVIGATABLE_ARRAY.is(dataId)) {
@@ -487,7 +488,7 @@ public class ShelvedChangesViewManager implements Disposable {
         }
       }
     }
-    return wrappers;
+    return wrappers.asExplicitSelection();
   }
 
   @NotNull
@@ -617,6 +618,11 @@ public class ShelvedChangesViewManager implements Disposable {
     }
 
     @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+      return ActionUpdateThread.BGT;
+    }
+
+    @Override
     public void deleteElement(@NotNull DataContext dataContext) {
       List<ShelvedChangeList> shelvedListsToDelete = TreeUtil.collectSelectedObjectsOfType(myTree, ShelvedChangeList.class);
       List<ShelvedChangeList> shelvedListsFromChanges = getShelvedLists(dataContext);
@@ -628,7 +634,7 @@ public class ShelvedChangesViewManager implements Disposable {
 
     @Override
     public boolean canDeleteElement(@NotNull DataContext dataContext) {
-      return !getShelvedLists(dataContext).isEmpty();
+      return !myTree.isEditing() && !getShelvedLists(dataContext).isEmpty();
     }
   }
 
@@ -796,7 +802,7 @@ public class ShelvedChangesViewManager implements Disposable {
         }
 
         @Override
-        public void updateAvailability(@NotNull AnActionEvent event) {
+        public void updateDiffAction(@NotNull AnActionEvent event) {
           DiffShelvedChangesActionProvider.updateAvailability(event);
         }
 
@@ -824,7 +830,7 @@ public class ShelvedChangesViewManager implements Disposable {
       PreviewDiffSplitterComponent previewSplitter =
         new PreviewDiffSplitterComponent(changeProcessor, SHELVE_PREVIEW_SPLITTER_PROPORTION);
       previewSplitter.setFirstComponent(myTreeScrollPane);
-      previewSplitter.setPreviewVisible(myVcsConfiguration.SHELVE_DETAILS_PREVIEW_SHOWN, false);
+      DiffPreview.setPreviewVisible(previewSplitter, myVcsConfiguration.SHELVE_DETAILS_PREVIEW_SHOWN);
 
       myTree.addSelectionListener(() -> previewSplitter.updatePreview(false), changeProcessor);
 
@@ -883,8 +889,14 @@ public class ShelvedChangesViewManager implements Disposable {
       }
 
       @Override
+      public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.EDT;
+      }
+
+      @Override
       public void setSelected(@NotNull AnActionEvent e, boolean state) {
-        ObjectUtils.chooseNotNull(mySplitterDiffPreview, myEditorDiffPreview).setPreviewVisible(state, false);
+        DiffPreview previewSplitter = ObjectUtils.chooseNotNull(mySplitterDiffPreview, myEditorDiffPreview);
+        DiffPreview.setPreviewVisible(previewSplitter, state);
         myVcsConfiguration.SHELVE_DETAILS_PREVIEW_SHOWN = state;
       }
 

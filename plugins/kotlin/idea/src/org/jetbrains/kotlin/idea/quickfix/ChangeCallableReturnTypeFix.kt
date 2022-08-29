@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.quickfix
 
@@ -10,6 +10,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.findParentOfType
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.diagnostics.Diagnostic
@@ -30,9 +31,9 @@ import org.jetbrains.kotlin.resolve.DataClassDescriptorResolver
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
 import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
-import org.jetbrains.kotlin.types.error.ErrorUtils
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
+import org.jetbrains.kotlin.types.error.ErrorUtils
 import org.jetbrains.kotlin.types.typeUtil.isUnit
 import java.util.*
 
@@ -73,7 +74,7 @@ abstract class ChangeCallableReturnTypeFix(
     }
 
     class ForEnclosing(element: KtFunction, type: KotlinType) : ChangeCallableReturnTypeFix(element, type), HighPriorityAction {
-        override fun functionPresentation(): String? {
+        override fun functionPresentation(): String {
             val presentation = super.functionPresentation()
                 ?: return KotlinBundle.message("fix.change.return.type.presentation.enclosing.function")
             return KotlinBundle.message("fix.change.return.type.presentation.enclosing", presentation)
@@ -81,7 +82,7 @@ abstract class ChangeCallableReturnTypeFix(
     }
 
     class ForCalled(element: KtCallableDeclaration, type: KotlinType) : ChangeCallableReturnTypeFix(element, type) {
-        override fun functionPresentation(): String? {
+        override fun functionPresentation(): String {
             val presentation = super.functionPresentation()
                 ?: return KotlinBundle.message("fix.change.return.type.presentation.called.function")
             return when (element) {
@@ -153,7 +154,7 @@ abstract class ChangeCallableReturnTypeFix(
 
     object HasNextFunctionTypeMismatchFactory : KotlinSingleIntentionActionFactory() {
         override fun createAction(diagnostic: Diagnostic): IntentionAction? {
-            val expression = QuickFixUtil.getParentElementOfType(diagnostic, KtExpression::class.java)
+            val expression = diagnostic.psiElement.findParentOfType<KtExpression>(strict = false)
                 ?: error("HAS_NEXT_FUNCTION_TYPE_MISMATCH reported on element that is not within any expression")
             val context = expression.analyze(BodyResolveMode.PARTIAL)
             val resolvedCall = context[BindingContext.LOOP_RANGE_HAS_NEXT_RESOLVED_CALL, expression] ?: return null
@@ -165,7 +166,7 @@ abstract class ChangeCallableReturnTypeFix(
 
     object CompareToTypeMismatchFactory : KotlinSingleIntentionActionFactory() {
         override fun createAction(diagnostic: Diagnostic): IntentionAction? {
-            val expression = QuickFixUtil.getParentElementOfType(diagnostic, KtBinaryExpression::class.java)
+            val expression = diagnostic.psiElement.findParentOfType<KtBinaryExpression>(strict = false)
                 ?: error("COMPARE_TO_TYPE_MISMATCH reported on element that is not within any expression")
             val resolvedCall = expression.resolveToCall() ?: return null
             val compareToDescriptor = resolvedCall.candidateDescriptor
@@ -176,7 +177,7 @@ abstract class ChangeCallableReturnTypeFix(
 
     object ReturnTypeMismatchOnOverrideFactory : KotlinIntentionActionsFactory() {
         override fun doCreateActions(diagnostic: Diagnostic): List<IntentionAction> {
-            val function = QuickFixUtil.getParentElementOfType(diagnostic, KtFunction::class.java) ?: return emptyList()
+            val function = diagnostic.psiElement.findParentOfType<KtFunction>(strict = false) ?: return emptyList()
 
             val actions = LinkedList<IntentionAction>()
 
@@ -210,14 +211,14 @@ abstract class ChangeCallableReturnTypeFix(
 
     object ChangingReturnTypeToUnitFactory : KotlinSingleIntentionActionFactory() {
         override fun createAction(diagnostic: Diagnostic): IntentionAction? {
-            val function = QuickFixUtil.getParentElementOfType(diagnostic, KtFunction::class.java) ?: return null
+            val function = diagnostic.psiElement.findParentOfType<KtFunction>(strict = false) ?: return null
             return ForEnclosing(function, function.builtIns.unitType)
         }
     }
 
     object ChangingReturnTypeToNothingFactory : KotlinSingleIntentionActionFactory() {
         override fun createAction(diagnostic: Diagnostic): IntentionAction? {
-            val function = QuickFixUtil.getParentElementOfType(diagnostic, KtFunction::class.java) ?: return null
+            val function = diagnostic.psiElement.findParentOfType<KtFunction>(strict = false) ?: return null
             return ForEnclosing(function, function.builtIns.nothingType)
         }
     }
@@ -226,7 +227,7 @@ abstract class ChangeCallableReturnTypeFix(
         fun getDestructuringDeclarationEntryThatTypeMismatchComponentFunction(diagnostic: Diagnostic): KtDestructuringDeclarationEntry {
             val componentName = COMPONENT_FUNCTION_RETURN_TYPE_MISMATCH.cast(diagnostic).a
             val componentIndex = DataClassDescriptorResolver.getComponentIndex(componentName.asString())
-            val multiDeclaration = QuickFixUtil.getParentElementOfType(diagnostic, KtDestructuringDeclaration::class.java)
+            val multiDeclaration = diagnostic.psiElement.findParentOfType<KtDestructuringDeclaration>(strict = false)
                 ?: error("COMPONENT_FUNCTION_RETURN_TYPE_MISMATCH reported on expression that is not within any multi declaration")
             return multiDeclaration.entries[componentIndex - 1]
         }

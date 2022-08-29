@@ -26,11 +26,6 @@ public abstract class NewJavaToKotlinConverterSingleFileTestGenerated extends Ab
             KotlinTestUtils.runTest(this::doTest, this, testDataFilePath);
         }
 
-        @TestMetadata("annoationsOnEnumEntry.java")
-        public void testAnnoationsOnEnumEntry() throws Exception {
-            runTest("testData/newJ2k/annotations/annoationsOnEnumEntry.java");
-        }
-
         @TestMetadata("annotationArrayArgument.java")
         public void testAnnotationArrayArgument() throws Exception {
             runTest("testData/newJ2k/annotations/annotationArrayArgument.java");
@@ -79,6 +74,16 @@ public abstract class NewJavaToKotlinConverterSingleFileTestGenerated extends Ab
         @TestMetadata("annotationsOnAnnotationMethod.java")
         public void testAnnotationsOnAnnotationMethod() throws Exception {
             runTest("testData/newJ2k/annotations/annotationsOnAnnotationMethod.java");
+        }
+
+        @TestMetadata("annotationsOnEnumEntry.java")
+        public void testAnnotationsOnEnumEntry() throws Exception {
+            runTest("testData/newJ2k/annotations/annotationsOnEnumEntry.java");
+        }
+
+        @TestMetadata("forLoopParameter.java")
+        public void testForLoopParameter() throws Exception {
+            runTest("testData/newJ2k/annotations/forLoopParameter.java");
         }
 
         @TestMetadata("java9Deprecated.java")
@@ -2723,6 +2728,11 @@ public abstract class NewJavaToKotlinConverterSingleFileTestGenerated extends Ab
             runTest("testData/newJ2k/implicitCasts/operationsWithChar.java");
         }
 
+        @TestMetadata("ternary.java")
+        public void testTernary() throws Exception {
+            runTest("testData/newJ2k/implicitCasts/ternary.java");
+        }
+
         @TestMetadata("unary.java")
         public void testUnary() throws Exception {
             runTest("testData/newJ2k/implicitCasts/unary.java");
@@ -3281,6 +3291,24 @@ public abstract class NewJavaToKotlinConverterSingleFileTestGenerated extends Ab
         @TestMetadata("spaceBeforeAssignment.java")
         public void testSpaceBeforeAssignment() throws Exception {
             runTest("testData/newJ2k/issues/spaceBeforeAssignment.java");
+        }
+    }
+
+    @RunWith(JUnit3RunnerWithInners.class)
+    @TestMetadata("testData/newJ2k/javaStandardMethods")
+    public static class JavaStandardMethods extends AbstractNewJavaToKotlinConverterSingleFileTest {
+        private void runTest(String testDataFilePath) throws Exception {
+            KotlinTestUtils.runTest(this::doTest, this, testDataFilePath);
+        }
+
+        @TestMetadata("cloneable.java")
+        public void testCloneable() throws Exception {
+            runTest("testData/newJ2k/javaStandardMethods/cloneable.java");
+        }
+
+        @TestMetadata("cloneable2.java")
+        public void testCloneable2() throws Exception {
+            runTest("testData/newJ2k/javaStandardMethods/cloneable2.java");
         }
     }
 

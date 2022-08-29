@@ -25,6 +25,7 @@ import com.intellij.openapi.keymap.Keymap;
 import com.intellij.openapi.keymap.KeymapManagerListener;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Divider;
 import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.util.*;
 import com.intellij.openapi.util.text.StringUtil;
@@ -74,6 +75,7 @@ import java.util.List;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArraySet;
 
+import static com.intellij.openapi.fileEditor.impl.TabColorUtilKt.getForegroundColorForFile;
 import static com.intellij.openapi.wm.ToolWindowId.PROJECT_VIEW;
 
 @DirtyUI
@@ -435,13 +437,17 @@ public class EditorsSplitters extends IdePanePanel implements UISettingsListener
       LOG.assertTrue(composite != null);
       int index = window.findCompositeIndex(composite);
       LOG.assertTrue(index != -1);
-      window.setForegroundAt(index, getManager().getFileColor(file));
-      TextAttributes attributes = getManager().isProblem(file) ? colorScheme.getAttributes(CodeInsightColors.ERRORS_ATTRIBUTES) : null;
+      FileEditorManagerImpl manager = getManager();
+      window.setForegroundAt(index, manager.getFileColor(file));
+      var resultAttributes = new TextAttributes();
+      resultAttributes.setForegroundColor(colorScheme.getColor(getForegroundColorForFile(manager.getProject(), file)));
+      TextAttributes attributes = manager.isProblem(file) ? colorScheme.getAttributes(CodeInsightColors.ERRORS_ATTRIBUTES) : null;
       if (composite.isPreview()) {
         var italic = new TextAttributes(null, null, null, null, Font.ITALIC);
         attributes = (attributes == null) ? italic : TextAttributes.merge(italic, attributes);
       }
-      window.setTextAttributes(index, attributes);
+      resultAttributes = TextAttributes.merge(resultAttributes, attributes);
+      window.setTextAttributes(index, resultAttributes);
     }
   }
 
@@ -1040,7 +1046,7 @@ public class EditorsSplitters extends IdePanePanel implements UISettingsListener
         ApplicationManager.getApplication().invokeAndWait(() -> {
           JPanel panel = new JPanel(new BorderLayout());
           panel.setOpaque(false);
-          Splitter splitter = new OnePixelSplitter(orientation, proportion, 0.1f, 0.9f);
+          Splitter splitter = createSplitter(orientation, proportion, 0.1f, 0.9f);
           splitter.putClientProperty(SPLITTER_KEY, Boolean.TRUE);
           panel.add(splitter, BorderLayout.CENTER);
           splitter.setFirstComponent(firstComponent);
@@ -1100,6 +1106,13 @@ public class EditorsSplitters extends IdePanePanel implements UISettingsListener
       return getSplittersForProject(activeWindow, frame.getProject());
     }
 
+    if (project != null && !project.isDisposed()) {
+      FileEditorManagerEx manager = FileEditorManagerEx.getInstanceEx(project);
+      if (manager != null) { // null for default project
+        return manager.getSplitters();
+      }
+    }
+
     return null;
   }
 
@@ -1110,6 +1123,18 @@ public class EditorsSplitters extends IdePanePanel implements UISettingsListener
     }
     EditorsSplitters splitters = activeWindow == null ? null : fileEditorManager.getSplittersFor(activeWindow);
     return splitters == null ? fileEditorManager.getSplitters() : splitters;
+  }
+
+  @NotNull
+  public static OnePixelSplitter createSplitter(boolean orientation, float proportion, final float minProp, final float maxProp) {
+    return new OnePixelSplitter(orientation, proportion, minProp, maxProp) {
+      @Override
+      protected Divider createDivider() {
+        Divider divider = super.createDivider();
+        divider.setBackground(JBColor.namedColor("EditorPane.splitBorder", JBColor.border()));
+        return divider;
+      }
+    };
   }
 
   public static @Nullable JComponent findDefaultComponentInSplitters(@Nullable Project project)  {
@@ -1157,10 +1182,32 @@ public class EditorsSplitters extends IdePanePanel implements UISettingsListener
   public static boolean focusDefaultComponentInSplittersIfPresent(@NotNull Project project) {
     JComponent defaultFocusedComponentInEditor = findDefaultComponentInSplitters(project);
     if (defaultFocusedComponentInEditor != null) {
-      // not requestFocus because if floating or windowed tool window is deactivated (or, ESC pressed to focus editor), then we should focus our window
+      // not requestFocusInWindow because if floating or windowed tool window is deactivated (or, ESC pressed to focus editor),
+      // then we should focus our window
       defaultFocusedComponentInEditor.requestFocus();
       return true;
     }
     return false;
+  }
+
+  public static boolean activateEditorComponentOnEscape(Component target) {
+    while (target != null && !(target instanceof Window)) {
+      if (target instanceof EditorsSplitters) {
+        return false; // editor is already focused
+      }
+      target = target.getParent();
+    }
+    if (target instanceof FloatingDecorator) {
+      target = target.getParent();
+    }
+    if (!(target instanceof IdeFrame)) {
+      return false;
+    }
+    Project project = ((IdeFrame)target).getProject();
+    if (project == null) {
+      return false;
+    }
+    focusDefaultComponentInSplittersIfPresent(project);
+    return true;
   }
 }

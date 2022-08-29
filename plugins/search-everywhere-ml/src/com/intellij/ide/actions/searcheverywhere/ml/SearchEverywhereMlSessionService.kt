@@ -1,10 +1,7 @@
 // Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.ide.actions.searcheverywhere.ml
 
-import com.intellij.ide.actions.searcheverywhere.SearchEverywhereContributor
-import com.intellij.ide.actions.searcheverywhere.SearchEverywhereFoundElementInfo
-import com.intellij.ide.actions.searcheverywhere.SearchEverywhereMlService
-import com.intellij.ide.actions.searcheverywhere.SearchRestartReason
+import com.intellij.ide.actions.searcheverywhere.*
 import com.intellij.ide.actions.searcheverywhere.ml.settings.SearchEverywhereMlSettings
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -23,18 +20,9 @@ internal class SearchEverywhereMlSessionService : SearchEverywhereMlService() {
 
   private val experiment: SearchEverywhereMlExperiment = SearchEverywhereMlExperiment()
 
-  override fun shouldOrderByMl(tabId: String): Boolean {
-    val tab = SearchEverywhereTabWithMl.findById(tabId) ?: return false // Tab does not support ML ordering
-    val settings = service<SearchEverywhereMlSettings>()
-
-    if (settings.isSortingByMlEnabledByDefault(tab)) {
-      return settings.isSortingByMlEnabled(tab)
-             && experiment.getExperimentForTab(tab) != SearchEverywhereMlExperiment.ExperimentType.NO_ML
-    }
-    else {
-      return settings.isSortingByMlEnabled(tab)
-             || experiment.getExperimentForTab(tab) == SearchEverywhereMlExperiment.ExperimentType.USE_EXPERIMENTAL_MODEL
-    }
+  override fun shouldOrderByMl(): Boolean {
+    val state = getCurrentSession()?.getCurrentSearchState()
+    return state?.orderByMl ?: false
   }
 
   internal fun shouldUseExperimentalModel(tabId: String): Boolean {
@@ -54,9 +42,9 @@ internal class SearchEverywhereMlSessionService : SearchEverywhereMlService() {
     return null
   }
 
-  override fun onSessionStarted(project: Project?) {
+  override fun onSessionStarted(project: Project?, mixedListInfo: SearchEverywhereMixedListInfo) {
     if (experiment.isAllowed) {
-      activeSession.updateAndGet { SearchEverywhereMLSearchSession(project, sessionIdCounter.incrementAndGet()) }
+      activeSession.updateAndGet { SearchEverywhereMLSearchSession(project, mixedListInfo, sessionIdCounter.incrementAndGet()) }
     }
   }
 
@@ -68,9 +56,24 @@ internal class SearchEverywhereMlSessionService : SearchEverywhereMlService() {
                                searchQuery: String,
                                previousElementsProvider: () -> List<SearchEverywhereFoundElementInfo>) {
     if (experiment.isAllowed) {
+      val orderByMl = shouldOrderByMlInTab(tabId)
       getCurrentSession()?.onSearchRestart(
-        project, experiment, reason, tabId, keysTyped, backspacesTyped, searchQuery, previousElementsProvider
+        project, experiment, reason, tabId, orderByMl, keysTyped, backspacesTyped, searchQuery, previousElementsProvider
       )
+    }
+  }
+
+  private fun shouldOrderByMlInTab(tabId: String): Boolean {
+    val tab = SearchEverywhereTabWithMl.findById(tabId) ?: return false // Tab does not support ML ordering
+    val settings = service<SearchEverywhereMlSettings>()
+
+    if (settings.isSortingByMlEnabledByDefault(tab)) {
+      return settings.isSortingByMlEnabled(tab)
+             && experiment.getExperimentForTab(tab) != SearchEverywhereMlExperiment.ExperimentType.NO_ML
+    }
+    else {
+      return settings.isSortingByMlEnabled(tab)
+             || experiment.getExperimentForTab(tab) == SearchEverywhereMlExperiment.ExperimentType.USE_EXPERIMENTAL_MODEL
     }
   }
 

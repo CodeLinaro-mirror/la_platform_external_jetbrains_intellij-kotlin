@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.kotlin.idea.jps
 
 import com.intellij.openapi.compiler.CompileContext
@@ -8,80 +8,37 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.project.stateStore
 import org.jetbrains.annotations.Nls
 import org.jetbrains.kotlin.config.SettingConstants
-import org.jetbrains.kotlin.idea.KotlinBundle
-import org.jetbrains.kotlin.idea.KotlinVersionVerbose
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinArtifactsDownloader
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinJpsPluginSettings
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinPathsProvider
-import org.jetbrains.kotlin.idea.compiler.configuration.KotlinPluginLayout
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
+import org.jetbrains.kotlin.idea.util.application.runReadAction
 
 class SetupKotlinJpsPluginBeforeCompileTask : CompileTask {
     override fun execute(context: CompileContext): Boolean {
-        val version = KotlinJpsPluginSettings.getInstance(context.project)?.settings?.version ?: return true
+        val project = context.project
+        val jpsVersion = KotlinJpsPluginSettings.supportedJpsVersion(
+            project = project,
+            onUnsupportedVersion = { context.addErrorWithReferenceToKotlincXml(it) }
+        ) ?: return true
 
-        val parsed = KotlinVersionVerbose.parse(version)
-        if (parsed == null) {
-            context.addErrorWithReferenceToKotlincXml(
-                KotlinBundle.message(
-                    "failed.to.parse.kotlin.version.0.from.1",
-                    version,
-                    SettingConstants.KOTLIN_COMPILER_SETTINGS_FILE
-                )
-            )
-            return false
-        }
-        if (parsed.plainVersion < jpsMinimumSupportedVersion) {
-            context.addErrorWithReferenceToKotlincXml(
-                KotlinBundle.message(
-                    "kotlin.jps.compiler.minimum.supported.version.not.satisfied",
-                    jpsMinimumSupportedVersion,
-                    version
-                )
-            )
-            return false
-        }
-
-        val jpsPluginClassPathJar = KotlinPathsProvider.lazyDownloadMavenArtifact(
-            context.project,
-            KotlinPluginLayout.KOTLIN_JPS_PLUGIN_CLASSPATH_ARTIFACT_ID,
-            version,
-            context.progressIndicator,
-            beforeDownload = { context.progressIndicator.text = KotlinBundle.message("progress.text.downloading.kotlin.jps.plugin") },
+        return KotlinArtifactsDownloader.lazyDownloadMissingJpsPluginDependencies(
+            project = project,
+            jpsVersion = jpsVersion,
+            indicator = context.progressIndicator,
             onError = { context.addError(it) }
         )
-        if (jpsPluginClassPathJar == null) {
-            return false
-        }
-
-        val unpackedKotlinc = KotlinPathsProvider.lazyDownloadAndUnpackKotlincDist(
-            context.project,
-            version,
-            context.progressIndicator,
-            beforeDownload = { context.progressIndicator.text = KotlinBundle.message("progress.text.downloading.kotlinc.dist") },
-            onError = { context.addError(it) },
-        )
-        if (unpackedKotlinc == null) {
-            return false
-        }
-
-        return true
     }
 
     private fun CompileContext.addError(@Nls(capitalization = Nls.Capitalization.Sentence) msg: String) =
         addMessage(CompilerMessageCategory.ERROR, msg, null, -1, -1)
 
     private fun CompileContext.addErrorWithReferenceToKotlincXml(@Nls(capitalization = Nls.Capitalization.Sentence) msg: String) {
-        val virtualFile = project.stateStore.directoryStorePath?.resolve(SettingConstants.KOTLIN_COMPILER_SETTINGS_FILE)
-            ?.let { VirtualFileManager.getInstance().findFileByNioPath(it) }
-        addMessage(CompilerMessageCategory.ERROR, msg, virtualFile?.url, -1, -1, virtualFile?.toPsiFile(project))
-    }
+        val virtualFile = project.stateStore
+            .directoryStorePath
+            ?.resolve(SettingConstants.KOTLIN_COMPILER_SETTINGS_FILE)
+            ?.let(VirtualFileManager.getInstance()::findFileByNioPath)
 
-    companion object {
-        @JvmStatic
-        val jpsMinimumSupportedVersion
-            get() = KotlinVersionVerbose.parse("1.5.10").let { it ?: error("JPS Minimum version is not valid") }.plainVersion
-
-        fun getKotlinJpsClasspathLocation(version: String) =
-            KotlinPathsProvider.getExpectedMavenArtifactJarPath(KotlinPluginLayout.KOTLIN_JPS_PLUGIN_CLASSPATH_ARTIFACT_ID, version)
+        val psiFile = runReadAction { virtualFile?.toPsiFile(project) }
+        addMessage(CompilerMessageCategory.ERROR, msg, virtualFile?.url, -1, -1, psiFile)
     }
 }

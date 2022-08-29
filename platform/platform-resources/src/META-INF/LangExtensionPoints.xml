@@ -399,6 +399,7 @@
 
     <extensionPoint name="modelScopeItemPresenter" interface="com.intellij.analysis.dialog.ModelScopeItemPresenter" />
 
+    <extensionPoint name="usageFeaturesProvider" interface="com.intellij.usages.similarity.features.UsageSimilarityFeaturesProvider" dynamic="true"/>
     <extensionPoint name="usageFilteringRuleProvider" interface="com.intellij.usages.rules.UsageFilteringRuleProvider" dynamic="true"/>
     <extensionPoint name="importFilteringRule" interface="com.intellij.usages.rules.ImportFilteringRule" dynamic="true"/>
     <extensionPoint name="usageGroupingRuleProvider" interface="com.intellij.usages.rules.UsageGroupingRuleProvider" dynamic="true"/>
@@ -535,8 +536,6 @@
     <extensionPoint name="previewHintProvider" interface="com.intellij.codeInsight.preview.PreviewHintProvider" dynamic="true"/>
 
     <extensionPoint name="testActionProvider" interface="com.intellij.execution.testframework.ToggleModelActionProvider" dynamic="true"/>
-
-    <extensionPoint name="psiViewerExtension" interface="com.intellij.internal.psiView.PsiViewerExtension" dynamic="true"/>
 
     <extensionPoint name="diffPreviewProvider" interface="com.intellij.openapi.diff.impl.settings.DiffPreviewProvider"/>
 

@@ -24,6 +24,10 @@ public class UnusedDeclarationKtTest20 extends AbstractUnusedDeclarationTest {
     doTest();
   }
 
+  public void testImplementedInterface() {
+    doTest();
+  }
+
   public void testReachableFromMain() {
     myTool.ADD_MAINS_TO_ENTRIES = true;
     doTest();
@@ -44,7 +48,9 @@ public class UnusedDeclarationKtTest20 extends AbstractUnusedDeclarationTest {
   }
   
   public void testReceiverParameter() {
-    doTest();
+    myTool.getSharedLocalInspectionTool().PARAMETER = true;
+    myTool.getSharedLocalInspectionTool().LOCAL_VARIABLE = false;
+    doTest("deadCode/" + getTestName(true), myToolWrapper);
   }
 
   public void testStaticMethods() {
@@ -68,6 +74,14 @@ public class UnusedDeclarationKtTest20 extends AbstractUnusedDeclarationTest {
   }
 
   public void testConstructorCalls() {
+    doTest();
+  }
+
+  public void testPropertyReference() {
+    doTest();
+  }
+
+  public void testReferenceInLambda() {
     doTest();
   }
 

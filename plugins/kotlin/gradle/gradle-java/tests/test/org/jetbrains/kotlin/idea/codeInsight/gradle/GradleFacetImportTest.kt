@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.codeInsight.gradle
 
@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.config.*
 import org.jetbrains.kotlin.idea.caches.project.productionSourceInfo
 import org.jetbrains.kotlin.idea.caches.project.testSourceInfo
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinJpsPluginSettings
 import org.jetbrains.kotlin.idea.configuration.ConfigureKotlinStatus
 import org.jetbrains.kotlin.idea.configuration.ModuleSourceRootMap
 import org.jetbrains.kotlin.idea.configuration.allConfigurators
@@ -40,10 +41,10 @@ import org.jetbrains.kotlin.platform.isCommon
 import org.jetbrains.kotlin.platform.js.JsPlatforms
 import org.jetbrains.kotlin.platform.js.isJs
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
-import org.jetbrains.kotlin.idea.test.KotlinTestUtils
 import org.jetbrains.plugins.gradle.tooling.annotation.TargetVersions
 import org.junit.Ignore
 import org.junit.Test
+import kotlin.test.assertNotEquals
 
 fun KotlinGradleImportingTestCase.facetSettings(moduleName: String): KotlinFacetSettings {
     val facet = KotlinFacet.get(getModule(moduleName)) ?: error("Kotlin facet not found in module $moduleName")
@@ -87,6 +88,8 @@ class GradleFacetImportTest8 : KotlinGradleImportingTestCase() {
                 compilerSettings!!.additionalArguments
             )
         }
+
+        assertEquals(KotlinJpsPluginSettings.fallbackVersionForOutdatedCompiler, KotlinJpsPluginSettings.jpsVersion(myProject))
 
         assertAllModulesConfigured()
 
@@ -163,6 +166,27 @@ class GradleFacetImportTest8 : KotlinGradleImportingTestCase() {
             ),
             getSourceRootInfos("project.test")
         )
+    }
+
+    @Test
+    @TargetVersions("6.0.1") // Gradle 4.9 isn't able to import 1.4 KGP
+    fun testJpsCompilerMultiModule() {
+        configureByFiles()
+        importProject()
+
+        with(facetSettings("project.module1.main")) {
+            assertEquals("1.3", languageLevel!!.versionString)
+            assertEquals("1.3", apiLevel!!.versionString)
+        }
+
+        with(facetSettings("project.module2.main")) {
+            assertEquals("1.4", languageLevel!!.versionString)
+            assertEquals("1.4", apiLevel!!.versionString)
+        }
+
+        assertEquals(KotlinJpsPluginSettings.fallbackVersionForOutdatedCompiler, KotlinJpsPluginSettings.jpsVersion(myProject))
+
+        assertAllModulesConfigured()
     }
 
     @Test
@@ -440,6 +464,8 @@ class GradleFacetImportTest8 : KotlinGradleImportingTestCase() {
             assertEquals(JvmPlatforms.jvm6, targetPlatform)
         }
 
+        assertEquals(KotlinJpsPluginSettings.fallbackVersionForOutdatedCompiler, KotlinJpsPluginSettings.jpsVersion(myProject))
+
         assertEquals(
             listOf(
                 "file:///src/main/java" to JavaSourceRootType.SOURCE,
@@ -469,6 +495,8 @@ class GradleFacetImportTest8 : KotlinGradleImportingTestCase() {
             assertEquals("1.3", apiLevel!!.versionString)
             assertTrue(targetPlatform.isJs())
         }
+
+        assertEquals(KotlinJpsPluginSettings.fallbackVersionForOutdatedCompiler, KotlinJpsPluginSettings.jpsVersion(myProject))
 
         assertEquals(
             listOf(
@@ -545,6 +573,7 @@ class GradleFacetImportTest8 : KotlinGradleImportingTestCase() {
     @Ignore // android.sdk needed
     fun testAndroidGradleJsDetection() {
         configureByFiles()
+        @Suppress("DEPRECATION_ERROR")
         createLocalPropertiesSubFileForAndroid()
         importProject()
 
@@ -567,6 +596,7 @@ class GradleFacetImportTest8 : KotlinGradleImportingTestCase() {
     @Ignore // android.sdk needed
     fun testKotlinAndroidPluginDetection() {
         configureByFiles()
+        @Suppress("DEPRECATION_ERROR")
         createLocalPropertiesSubFileForAndroid()
         importProject()
 
@@ -709,6 +739,8 @@ class GradleFacetImportTest8 : KotlinGradleImportingTestCase() {
             assertEquals("my/test/classpath", (compilerArguments as K2MetadataCompilerArguments).classpath)
             assertEquals("my/test/destination", (compilerArguments as K2MetadataCompilerArguments).destination)
         }
+
+        assertEquals(KotlinJpsPluginSettings.fallbackVersionForOutdatedCompiler, KotlinJpsPluginSettings.jpsVersion(myProject))
 
         val rootManager = ModuleRootManager.getInstance(getModule("project.main"))
         val stdlib = rootManager.orderEntries.filterIsInstance<LibraryOrderEntry>().single().library

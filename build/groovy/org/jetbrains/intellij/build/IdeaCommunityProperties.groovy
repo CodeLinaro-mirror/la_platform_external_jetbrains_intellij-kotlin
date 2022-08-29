@@ -1,20 +1,20 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.intellij.build
 
-import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import org.jetbrains.intellij.build.impl.BaseLayout
 import org.jetbrains.intellij.build.impl.PlatformLayout
 
+import java.nio.file.Path
 import java.util.function.BiConsumer
 
 @CompileStatic
 class IdeaCommunityProperties extends BaseIdeaProperties {
-  IdeaCommunityProperties(String home) {
+  IdeaCommunityProperties(Path home) {
     baseFileName = "idea"
     platformPrefix = "Idea"
     applicationInfoModule = "intellij.idea.community.resources"
-    additionalIDEPropertiesFilePaths = ["$home/build/conf/ideaCE.properties".toString()]
+    additionalIDEPropertiesFilePaths = List.of(home.resolve("build/conf/ideaCE.properties"))
     toolsJarRequired = true
     scrambleMainJar = false
     useSplash = true
@@ -22,7 +22,7 @@ class IdeaCommunityProperties extends BaseIdeaProperties {
 
     productLayout.productImplementationModules = ["intellij.platform.main"]
     productLayout.withAdditionalPlatformJar(BaseLayout.APP_JAR, "intellij.idea.community.resources")
-    productLayout.bundledPluginModules += BUNDLED_PLUGIN_MODULES
+    productLayout.bundledPluginModules.addAll(BUNDLED_PLUGIN_MODULES)
     productLayout.prepareCustomPluginRepositoryForPublishedPlugins = false
     productLayout.buildAllCompatiblePlugins = false
     productLayout.allNonTrivialPlugins = CommunityRepositoryModules.COMMUNITY_REPOSITORY_PLUGINS + [
@@ -31,7 +31,7 @@ class IdeaCommunityProperties extends BaseIdeaProperties {
       CommunityRepositoryModules.groovyPlugin([])
     ]
 
-    productLayout.appendPlatformCustomizer(new BiConsumer<PlatformLayout, BuildContext>() {
+    productLayout.addPlatformCustomizer(new BiConsumer<PlatformLayout, BuildContext>() {
       @Override
       void accept(PlatformLayout layout, BuildContext context) {
         layout.withModule("intellij.platform.duplicates.analysis")
@@ -45,23 +45,28 @@ class IdeaCommunityProperties extends BaseIdeaProperties {
       "intellij.platform.debugger.testFramework",
       "intellij.platform.vcs.testFramework",
       "intellij.platform.externalSystem.testFramework",
-      "intellij.maven.testFramework"
+      "intellij.maven.testFramework",
+      "intellij.tools.ide.starter",
+      "intellij.tools.ide.metricsCollector"
+    ]
+    mavenArtifacts.squashedModules += [
+      "intellij.platform.util.base",
+      "intellij.platform.util.zip",
     ]
 
     versionCheckerConfig = CE_CLASS_VERSIONS
   }
 
   @Override
-  @CompileDynamic
   void copyAdditionalFiles(BuildContext buildContext, String targetDirectory) {
     super.copyAdditionalFiles(buildContext, targetDirectory)
-    buildContext.ant.copy(todir: targetDirectory) {
-      fileset(file: "$buildContext.paths.communityHome/LICENSE.txt")
-      fileset(file: "$buildContext.paths.communityHome/NOTICE.txt")
-    }
-    buildContext.ant.copy(todir: "$targetDirectory/bin") {
-      fileset(dir: "$buildContext.paths.communityHome/build/conf/ideaCE/common/bin")
-    }
+    new FileSet(buildContext.paths.communityHomeDir)
+      .include("LICENSE.txt")
+      .include("NOTICE.txt")
+      .copyToDir(Path.of(targetDirectory))
+    new FileSet(buildContext.paths.communityHomeDir.resolve("build/conf/ideaCE/common/bin"))
+      .includeAll()
+      .copyToDir(Path.of(targetDirectory, "bin"))
     bundleExternalPlugins(buildContext, targetDirectory)
   }
 
@@ -105,13 +110,13 @@ class IdeaCommunityProperties extends BaseIdeaProperties {
         snapDescription =
           "The most intelligent Java IDE. Every aspect of IntelliJ IDEA is specifically designed to maximize developer productivity. " +
           "Together, powerful static code analysis and ergonomic design make development not only productive but also an enjoyable experience."
-        extraExecutables = [
+        extraExecutables = List.of(
           "plugins/Kotlin/kotlinc/bin/kotlin",
           "plugins/Kotlin/kotlinc/bin/kotlinc",
           "plugins/Kotlin/kotlinc/bin/kotlinc-js",
           "plugins/Kotlin/kotlinc/bin/kotlinc-jvm",
           "plugins/Kotlin/kotlinc/bin/kotlin-dce-js"
-        ]
+        )
       }
 
       @Override
@@ -134,7 +139,7 @@ class IdeaCommunityProperties extends BaseIdeaProperties {
 
       @Override
       String getRootDirectoryName(ApplicationInfoProperties applicationInfo, String buildNumber) {
-        applicationInfo.isEAP ? "IntelliJ IDEA ${applicationInfo.majorVersion}.${applicationInfo.minorVersionMainPart} CE EAP.app"
+        applicationInfo.isEAP() ? "IntelliJ IDEA ${applicationInfo.majorVersion}.${applicationInfo.minorVersionMainPart} CE EAP.app"
                               : "IntelliJ IDEA CE.app"
       }
     }

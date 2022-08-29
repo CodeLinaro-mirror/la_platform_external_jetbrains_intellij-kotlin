@@ -1,13 +1,12 @@
 // Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.execution.runToolbar
 
-import com.intellij.execution.runToolbar.RunToolbarSlotManager.State
+import com.intellij.execution.runToolbar.data.RWSlotManagerState
+import com.intellij.execution.runToolbar.data.RWStateListener
 import com.intellij.ide.DataManager
-import com.intellij.openapi.actionSystem.ActionGroup
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.DataProvider
-import com.intellij.openapi.actionSystem.Presentation
+import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.IdeFrame
@@ -50,37 +49,42 @@ class RunToolbarMainWidgetComponent(val presentation: Presentation, place: Strin
     }
   }
 
-  private val managerStateListener = object : StateListener {
-    override fun stateChanged(state: State) {
+  private val managerStateListener = object : RWStateListener {
+    override fun stateChanged(state: RWSlotManagerState) {
       updateState()
+      this@RunToolbarMainWidgetComponent.updateActionsImmediately(true)
     }
   }
 
-  private var state: RunToolbarMainSlotState = RunToolbarMainSlotState.CONFIGURATION
+  private var state: RunToolbarMainSlotState? = null
 
   private fun updateState() {
     state = project?.let {
       val slotManager = RunToolbarSlotManager.getInstance(it)
       val value = when (slotManager.getState()) {
-        State.SINGLE_MAIN -> {
+        RWSlotManagerState.SINGLE_MAIN -> {
           RunToolbarMainSlotState.PROCESS
         }
-        State.SINGLE_PLAIN,
-        State.MULTIPLE -> {
+        RWSlotManagerState.SINGLE_PLAIN,
+        RWSlotManagerState.MULTIPLE -> {
           if(isOpened) RunToolbarMainSlotState.CONFIGURATION else RunToolbarMainSlotState.INFO
         }
-        State.INACTIVE -> {
+        RWSlotManagerState.INACTIVE -> {
           RunToolbarMainSlotState.CONFIGURATION
         }
-        State.MULTIPLE_WITH_MAIN -> {
+        RWSlotManagerState.MULTIPLE_WITH_MAIN -> {
           if(isOpened) RunToolbarMainSlotState.PROCESS else RunToolbarMainSlotState.INFO
         }
       }
 
       value
-    } ?: RunToolbarMainSlotState.CONFIGURATION
+    }
 
     if(RunToolbarProcess.logNeeded) LOG.info("MAIN SLOT state updated: $state RunToolbar")
+  }
+
+  override fun traceState(lastIds: List<String>, filteredIds: List<String>, ides: List<String>) {
+    if(logNeeded()) LOG.info("MAIN SLOT state: ${state} new filtered: ${filteredIds}} visible: $ides RunToolbar")
   }
 
   internal var isOpened = false
@@ -101,7 +105,7 @@ class RunToolbarMainWidgetComponent(val presentation: Presentation, place: Strin
       if(action is RTBarAction) {
         action.checkMainSlotVisibility(it)
       } else true
-    } ?: true
+    } ?: false
   }
 
   override fun addNotify() {
@@ -109,6 +113,16 @@ class RunToolbarMainWidgetComponent(val presentation: Presentation, place: Strin
 
     (SwingUtilities.getWindowAncestor(this) as? IdeFrame)?.project?.let {
       project = it
+
+      RUN_CONFIG_WIDTH = RunToolbarSettings.getInstance(it).getRunConfigWidth()
+
+    }
+  }
+
+  override fun updateWidthHandler() {
+    super.updateWidthHandler()
+    project?.let {
+      RunToolbarSettings.getInstance(it).setRunConfigWidth(RUN_CONFIG_WIDTH)
     }
   }
 
@@ -129,12 +143,11 @@ class RunToolbarMainWidgetComponent(val presentation: Presentation, place: Strin
     val value = counter.getOrDefault(project, 0) + 1
     counter[project] = value
     val slotManager = RunToolbarSlotManager.getInstance(project)
-    if (value == 1) {
-      slotManager.active = true
-    }
-
     DataManager.registerDataProvider(component, DataProvider { key ->
       when {
+        RunToolbarProcessData.RW_SLOT.`is`(key) -> {
+          slotManager.mainSlotData.id
+        }
         RunToolbarData.RUN_TOOLBAR_DATA_KEY.`is`(key) -> {
           slotManager.mainSlotData
         }
@@ -148,14 +161,17 @@ class RunToolbarMainWidgetComponent(val presentation: Presentation, place: Strin
       }
     })
 
+    if (value == 1) {
+      slotManager.stateListeners.addListener(managerStateListener)
+      slotManager.active = true
+    }
+
     rebuildPopupControllerComponent()
     addContainerListener(componentListener)
-    slotManager.addListener(managerStateListener)
-    updateState()
   }
 
   private fun remove(project: Project) {
-    RunToolbarSlotManager.getInstance(project).removeListener(managerStateListener)
+    RunToolbarSlotManager.getInstance(project).stateListeners.removeListener(managerStateListener)
     counter[project]?.let {
       val value = maxOf(it - 1, 0)
       counter[project] = value
@@ -171,6 +187,8 @@ class RunToolbarMainWidgetComponent(val presentation: Presentation, place: Strin
         Disposer.dispose(it)
       }
     }
+    popupController = null
+    state = null
   }
 }
 

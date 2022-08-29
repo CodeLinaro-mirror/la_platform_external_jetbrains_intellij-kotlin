@@ -8,8 +8,8 @@ import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.diagnostics.DiagnosticFactoryWithPsiElement
 import org.jetbrains.kotlin.diagnostics.Errors
 import org.jetbrains.kotlin.idea.KotlinBundle
-import org.jetbrains.kotlin.idea.configuration.MigrationInfo
-import org.jetbrains.kotlin.idea.configuration.isLanguageVersionUpdate
+import org.jetbrains.kotlin.idea.migration.MigrationInfo
+import org.jetbrains.kotlin.idea.migration.isLanguageVersionUpdate
 import org.jetbrains.kotlin.idea.quickfix.migration.MigrationFix
 
 

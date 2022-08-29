@@ -11,8 +11,8 @@ import org.intellij.plugins.markdown.injection.MarkdownCodeFenceUtils
 import org.intellij.plugins.markdown.lang.MarkdownElementTypes
 import org.intellij.plugins.markdown.lang.MarkdownTokenTypeSets
 import org.intellij.plugins.markdown.lang.formatter.settings.MarkdownCustomCodeStyleSettings
-import org.intellij.plugins.markdown.lang.psi.MarkdownAstUtils.children
-import org.intellij.plugins.markdown.lang.psi.MarkdownAstUtils.parents
+import org.intellij.plugins.markdown.lang.psi.util.children
+import org.intellij.plugins.markdown.lang.psi.util.parents
 import org.intellij.plugins.markdown.util.MarkdownPsiUtil
 
 /**
@@ -73,6 +73,7 @@ internal open class MarkdownFormattingBlock(
       // and the fact that when end of code fence is in blockquote -- parser
       // would treat blockquote as a part of code fence end token
       MarkdownElementTypes.CODE_FENCE -> emptyList()
+      MarkdownElementTypes.FRONT_MATTER_HEADER -> emptyList()
       MarkdownElementTypes.LIST_ITEM -> {
         MarkdownBlocks.create(node.children(), settings, spacing) {
           if (it.elementType in NON_ALIGNABLE_LIST_ELEMENTS) alignment else newAlignment

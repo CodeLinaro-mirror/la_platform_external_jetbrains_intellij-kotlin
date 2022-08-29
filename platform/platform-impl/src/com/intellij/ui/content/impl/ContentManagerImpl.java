@@ -13,9 +13,9 @@ import com.intellij.openapi.util.ActionCallback;
 import com.intellij.openapi.util.ActiveRunnable;
 import com.intellij.openapi.util.BusyObject;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.registry.Registry;
 import com.intellij.openapi.wm.IdeFocusManager;
 import com.intellij.openapi.wm.ToolWindowManager;
-import com.intellij.openapi.wm.impl.content.ToolWindowContentUi;
 import com.intellij.ui.components.JBPanelWithEmptyText;
 import com.intellij.ui.content.*;
 import com.intellij.util.EventDispatcher;
@@ -224,12 +224,12 @@ public class ContentManagerImpl implements ContentManager, PropertyChangeListene
     doRemoveContent(content, dispose).doWhenDone(() -> {
       if (requestFocus) {
         Content current = getSelectedContent();
-        if (current != null) {
-          setSelectedContent(current, true, true, !forcedFocus).notify(result);
-        }
-        else {
+        if (current == null) {
           ToolWindowManager.getInstance(myProject).activateEditorComponent();
           result.setDone();
+        }
+        else {
+          setSelectedContent(current, true, true, !forcedFocus).notify(result);
         }
       }
       else {
@@ -592,6 +592,10 @@ public class ContentManagerImpl implements ContentManager, PropertyChangeListene
 
   @Override
   public void addContentManagerListener(@NotNull ContentManagerListener l) {
+    if (Registry.is("ide.content.manager.listeners.order.fix")) {
+      myDispatcher.getListeners().add(l);
+      return;
+    }
     myDispatcher.getListeners().add(0, l);
   }
 
@@ -647,7 +651,11 @@ public class ContentManagerImpl implements ContentManager, PropertyChangeListene
   @Override
   public void propertyChange(@NotNull PropertyChangeEvent event) {
     if (Content.PROP_COMPONENT.equals(event.getPropertyName())) {
-      myContentWithChangedComponent.add((Content)event.getSource());
+      Content content = (Content)event.getSource();
+      myContentWithChangedComponent.add(content);
+      if (content == getSelectedContent()) {
+        fireSelectionChanged(content, ContentManagerEvent.ContentOperation.add);
+      }
     }
   }
 
@@ -688,15 +696,7 @@ public class ContentManagerImpl implements ContentManager, PropertyChangeListene
     return myUI.isSingleSelection();
   }
 
-  public void rebuildContentUi() {
-    if (myUI instanceof ToolWindowContentUi) {
-      ToolWindowContentUi contentUi = (ToolWindowContentUi)myUI;
-      contentUi.rebuild();
-    }
-  }
-
-  @Nullable
-  public ContentUI getUI() {
+  public @Nullable ContentUI getUI() {
     return myUI;
   }
 }

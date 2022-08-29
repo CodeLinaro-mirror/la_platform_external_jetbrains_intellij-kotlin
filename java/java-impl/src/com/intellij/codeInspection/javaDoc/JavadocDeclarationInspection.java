@@ -22,12 +22,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-
 import java.util.HashSet;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static com.intellij.codeInspection.javaDoc.MissingJavadocInspection.isDeprecated;
 
 public class JavadocDeclarationInspection extends LocalInspectionTool {
   public static final String SHORT_NAME = "JavadocDeclaration";
@@ -36,6 +37,13 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
   public boolean IGNORE_THROWS_DUPLICATE = true;
   public boolean IGNORE_PERIOD_PROBLEM = true;
   public boolean IGNORE_SELF_REFS = false;
+  public boolean IGNORE_DEPRECATED_ELEMENTS = false;
+
+  private boolean myIgnoreEmptyDescriptions = false;
+
+  public void setIgnoreEmptyDescriptions(boolean ignoreEmptyDescriptions) {
+    myIgnoreEmptyDescriptions = ignoreEmptyDescriptions;
+  }
 
   private static final String[] TAGS_TO_CHECK = {"author", "version", "since"};
   private static final Set<String> UNIQUE_TAGS = ContainerUtil.newHashSet("return", "deprecated", "serial", "serialData");
@@ -93,6 +101,10 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
     if (pkg == null) return;
 
     PsiDocComment docComment = PsiTreeUtil.getChildOfType(file, PsiDocComment.class);
+    if (IGNORE_DEPRECATED_ELEMENTS && isDeprecated(pkg, docComment)) {
+      return;
+    }
+
     if (docComment != null) {
       PsiDocTag[] tags = docComment.getTags();
       checkBasics(docComment, tags, pkg, holder);
@@ -101,6 +113,9 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
 
   private void checkModule(PsiJavaModule module, ProblemsHolder holder) {
     PsiDocComment docComment = module.getDocComment();
+    if (IGNORE_DEPRECATED_ELEMENTS && isDeprecated(module, docComment)) {
+      return;
+    }
 
     if (docComment != null) {
       checkBasics(docComment, docComment.getTags(), module, holder);
@@ -111,9 +126,11 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
     if (aClass instanceof PsiAnonymousClass || aClass instanceof PsiSyntheticClass || aClass instanceof PsiTypeParameter) {
       return;
     }
+    if (IGNORE_DEPRECATED_ELEMENTS && aClass.isDeprecated()) {
+      return;
+    }
 
     PsiDocComment docComment = aClass.getDocComment();
-
     if (docComment != null) {
       PsiDocTag[] tags = docComment.getTags();
 
@@ -122,8 +139,11 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
   }
 
   private void checkField(PsiField field, ProblemsHolder holder) {
-    PsiDocComment docComment = field.getDocComment();
+    if (IGNORE_DEPRECATED_ELEMENTS && isDeprecated(field)) {
+      return;
+    }
 
+    PsiDocComment docComment = field.getDocComment();
     if (docComment != null) {
       checkBasics(docComment, docComment.getTags(), field, holder);
     }
@@ -133,14 +153,18 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
     if (method instanceof SyntheticElement) {
       return;
     }
+    if (IGNORE_DEPRECATED_ELEMENTS && isDeprecated(method)) {
+      return;
+    }
 
     PsiDocComment docComment = method.getDocComment();
-
     if (docComment != null) {
       if (!MissingJavadocInspection.isInherited(docComment, method)) {
         PsiDocTag[] tags = docComment.getTags();
 
-        checkEmptyMethodTagsDescription(tags, method, holder);
+        if (!myIgnoreEmptyDescriptions) {
+          checkEmptyMethodTagsDescription(tags, method, holder);
+        }
 
         checkBasics(docComment, tags, method, holder);
       }
@@ -276,7 +300,7 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
     if (dotIndex >= 0) {  // need to find first valid tag
       for (PsiDocTag tag : docComment.getTags()) {
         String tagName = tag.getName();
-        JavadocTagInfo tagInfo = JavadocManager.SERVICE.getInstance(tag.getProject()).getTagInfo(tagName);
+        JavadocTagInfo tagInfo = JavadocManager.getInstance(tag.getProject()).getTagInfo(tagName);
         if (tagInfo != null && tagInfo.isValidInContext(context) && !tagInfo.isInline()) {
           tagOffset = tag.getTextOffset();
           break;
@@ -290,7 +314,7 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
   }
 
   private void checkInlineTags(PsiElement @NotNull [] elements, @NotNull ProblemsHolder holder) {
-    JavadocManager docManager = JavadocManager.SERVICE.getInstance(holder.getProject());
+    JavadocManager docManager = JavadocManager.getInstance(holder.getProject());
     for (PsiElement element : elements) {
       if (element instanceof PsiInlineDocTag) {
         PsiInlineDocTag tag = (PsiInlineDocTag)element;
@@ -305,7 +329,7 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
   }
 
   private void checkTagValues(PsiDocTag @NotNull [] tags, @Nullable PsiElement context, @NotNull ProblemsHolder holder) {
-    JavadocManager docManager = JavadocManager.SERVICE.getInstance(holder.getProject());
+    JavadocManager docManager = JavadocManager.getInstance(holder.getProject());
     for (PsiDocTag tag : tags) {
       String tagName = tag.getName();
       JavadocTagInfo tagInfo = docManager.getTagInfo(tagName);
@@ -334,7 +358,7 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
 
       if (message != null) {
         PsiElement toHighlight = ObjectUtils.notNull(tag.getValueElement(), tag.getNameElement());
-        holder.registerProblem(toHighlight, message);
+        holder.registerProblem(toHighlight, message, new RemoveTagFix(tagName));
       }
 
       PsiElement[] dataElements = tag.getDataElements();
@@ -406,7 +430,11 @@ public class JavadocDeclarationInspection extends LocalInspectionTool {
   private static final TokenSet SEE_TAG_REFS = TokenSet.create(JavaDocElementType.DOC_REFERENCE_HOLDER, JavaDocElementType.DOC_METHOD_OR_FIELD_REF);
 
   private static boolean isValidSeeRef(PsiElement... elements) {
-    if (SEE_TAG_REFS.contains(elements[0].getNode().getElementType())) return true;
+    int referenceNumber = 0;
+    while (referenceNumber < elements.length && elements[referenceNumber].getText().isBlank()) {
+      referenceNumber++;
+    }
+    if (SEE_TAG_REFS.contains(elements[referenceNumber].getNode().getElementType())) return true;
 
     String text = Stream.of(elements).map(e -> e.getText().trim()).collect(Collectors.joining(" ")).trim();
     if (StringUtil.isQuotedString(text) && text.charAt(0) == '"') return true;

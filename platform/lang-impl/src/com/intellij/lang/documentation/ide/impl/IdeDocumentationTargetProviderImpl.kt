@@ -1,5 +1,4 @@
 // Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
-@file:Suppress("TestOnlyProblems") // KTIJ-19938
 
 package com.intellij.lang.documentation.ide.impl
 
@@ -25,7 +24,7 @@ open class IdeDocumentationTargetProviderImpl(private val project: Project) : Id
       ?.dereference()
       ?.castSafelyTo<Symbol>()
       ?.let { symbolDocumentationTargets(file.project, listOf(it)) }
-    if (symbolTargets != null && symbolTargets.isNotEmpty()) {
+    if (!symbolTargets.isNullOrEmpty()) {
       return symbolTargets.first()
     }
     val sourceElement = file.findElementAt(editor.caretModel.offset)

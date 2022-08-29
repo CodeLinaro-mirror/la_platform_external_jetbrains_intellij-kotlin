@@ -20,14 +20,13 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.containers.ContainerUtil
-import org.jetbrains.kotlin.config.KotlinCompilerVersion
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.idea.KotlinBundle
-import org.jetbrains.kotlin.idea.KotlinVersionVerbose
+import org.jetbrains.kotlin.idea.compiler.configuration.IdeKotlinVersion
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinPluginLayout
 import org.jetbrains.kotlin.idea.configuration.*
 import org.jetbrains.kotlin.idea.configuration.notifications.LAST_BUNDLED_KOTLIN_COMPILER_VERSION_PROPERTY_NAME
-import org.jetbrains.kotlin.idea.configuration.notifications.checkExternalKotlinCompilerVersion
+import org.jetbrains.kotlin.idea.configuration.notifications.showNewKotlinCompilerAvailableNotificationIfNeeded
 import org.jetbrains.kotlin.idea.gradleJava.configuration.KotlinGradleModuleConfigurator
 import org.jetbrains.kotlin.idea.gradleJava.configuration.KotlinJsGradleModuleConfigurator
 import org.jetbrains.kotlin.idea.gradleJava.configuration.KotlinWithGradleConfigurator
@@ -47,10 +46,10 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
         val propertyKey = LAST_BUNDLED_KOTLIN_COMPILER_VERSION_PROPERTY_NAME
         val propertiesComponent = PropertiesComponent.getInstance()
 
-        val kotlinVersionVerbose = KotlinVersionVerbose.parse(KotlinPluginLayout.instance.standaloneCompilerVersion)
+        val kotlinVersion = KotlinPluginLayout.instance.standaloneCompilerVersion
         val notificationText = KotlinBundle.message(
             "kotlin.external.compiler.updates.notification.content.0",
-            kotlinVersionVerbose?.plainVersion.toString(),
+            kotlinVersion.kotlinVersion,
         )
 
         val counter = AtomicInteger(0)
@@ -59,8 +58,9 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
             val connection = myProject.messageBus.connect(myDisposable)
             connection.subscribe(Notifications.TOPIC, object : Notifications {
                 override fun notify(notification: Notification) {
-                    counter.incrementAndGet()
-                    assertEquals(notificationText, notification.content)
+                    if (notificationText == notification.content) {
+                        counter.incrementAndGet()
+                    }
                 }
             })
 
@@ -88,35 +88,23 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
             }
 
             assertEquals(
-                KotlinVersionVerbose(
-                    plainVersion = KotlinVersion(major = 1, minor = 3, patch = 70),
-                    milestone = null,
-                    buildNumber = null
-                ),
-                myProject.findAnyExternalKotlinCompilerVersion(),
+                IdeKotlinVersion.get("1.3.70"),
+                findLatestExternalKotlinCompilerVersion(myProject)
             )
 
-            if (kotlinVersionVerbose == null) {
-                System.err.println("bundled version could not be parsed, notification part of test ignored")
-                assertFalse(propertiesComponent.isValueSet(propertyKey))
-                return
-            }
-
-            val isReleaseVersion = kotlinVersionVerbose.milestone == KotlinVersionVerbose.KotlinVersionMilestone.release
-
-            val expectedCountAfter = if (isReleaseVersion) 1 else 0
+            val expectedCountAfter = if (kotlinVersion.isRelease) 1 else 0
             connection.deliverImmediately() // the first notification from import action
             assertEquals(expectedCountAfter, counter.get())
 
-            checkExternalKotlinCompilerVersion(myProject)
+            showNewKotlinCompilerAvailableNotificationIfNeeded(myProject)
             connection.deliverImmediately()
 
-            checkExternalKotlinCompilerVersion(myProject)
-            checkExternalKotlinCompilerVersion(myProject)
+            showNewKotlinCompilerAvailableNotificationIfNeeded(myProject)
+            showNewKotlinCompilerAvailableNotificationIfNeeded(myProject)
             connection.deliverImmediately()
             assertEquals(expectedCountAfter, counter.get())
 
-            if (isReleaseVersion) {
+            if (kotlinVersion.isRelease) {
                 assertTrue(propertiesComponent.isValueSet(propertyKey))
             } else {
                 assertFalse(propertiesComponent.isValueSet(propertyKey))
@@ -136,7 +124,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.0.6", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.0.6"), collector)
 
                 checkFiles(files)
             }
@@ -152,7 +140,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.0.6", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.0.6"), collector)
 
                 checkFiles(files)
             }
@@ -168,7 +156,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.60-dev-286", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.2.60-dev-286"), collector)
 
                 checkFiles(files)
             }
@@ -184,7 +172,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.60-dev-286", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.2.60-dev-286"), collector)
 
                 checkFiles(files)
             }
@@ -201,7 +189,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.40", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.2.40"), collector)
 
                 checkFiles(files)
             }
@@ -218,7 +206,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.40", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.2.40"), collector)
 
                 checkFiles(files)
             }
@@ -227,7 +215,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
 
     @Test
     @TargetVersions("4.4+")
-    fun testConfigureJvmEAPWithBuildGradle() {
+    fun testConfigureJvmMilestoneWithBuildGradle() {
         val files = importProjectFromTestData()
 
         runInEdtAndWait {
@@ -235,7 +223,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.40-eap-62", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.6.20-M1"), collector)
 
                 checkFiles(files)
             }
@@ -244,7 +232,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
 
     @Test
     @TargetVersions("4.4+")
-    fun testConfigureJvmEAPWithBuildGradleKts() {
+    fun testConfigureJvmMilestoneWithBuildGradleKts() {
         val files = importProjectFromTestData()
 
         runInEdtAndWait {
@@ -252,7 +240,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.40-eap-62", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.6.20-M1"), collector)
 
                 checkFiles(files)
             }
@@ -269,7 +257,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findJsGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.40", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.2.40"), collector)
 
                 checkFiles(files)
             }
@@ -286,7 +274,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findJsGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.40", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.2.40"), collector)
 
                 checkFiles(files)
             }
@@ -295,7 +283,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
 
     @Test
     @TargetVersions("4.4+")
-    fun testConfigureJsEAPWithBuildGradle() {
+    fun testConfigureJsMilestoneWithBuildGradle() {
         val files = importProjectFromTestData()
 
         runInEdtAndWait {
@@ -303,7 +291,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findJsGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.40-eap-62", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.6.20-M1"), collector)
 
                 checkFiles(files)
             }
@@ -312,7 +300,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
 
     @Test
     @TargetVersions("4.4+")
-    fun testConfigureJsEAPWithBuildGradleKts() {
+    fun testConfigureJsMilestoneWithBuildGradleKts() {
         val files = importProjectFromTestData()
 
         runInEdtAndWait {
@@ -320,7 +308,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findJsGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.2.40-eap-62", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.6.20-M1"), collector)
 
                 checkFiles(files)
             }
@@ -344,7 +332,7 @@ class GradleConfiguratorTest : KotlinGradleImportingTestCase() {
                 val module = ModuleManager.getInstance(myProject).findModuleByName("project.app")!!
                 val configurator = findGradleModuleConfigurator()
                 val collector = createConfigureKotlinNotificationCollector(myProject)
-                configurator.configureWithVersion(myProject, listOf(module), "1.1.2", collector)
+                configurator.configureWithVersion(myProject, listOf(module), IdeKotlinVersion.get("1.1.2"), collector)
 
                 checkFiles(files)
             }

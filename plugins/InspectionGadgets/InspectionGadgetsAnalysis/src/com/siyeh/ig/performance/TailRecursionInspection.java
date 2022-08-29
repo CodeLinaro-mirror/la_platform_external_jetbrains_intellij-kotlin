@@ -15,6 +15,7 @@
  */
 package com.siyeh.ig.performance;
 
+import com.intellij.codeInspection.CleanupLocalInspectionTool;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.*;
@@ -36,7 +37,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public final class TailRecursionInspection extends BaseInspection {
+public final class TailRecursionInspection extends BaseInspection implements CleanupLocalInspectionTool {
   @Override
   @NotNull
   protected String buildErrorString(Object... infos) {
@@ -136,7 +137,7 @@ public final class TailRecursionInspection extends BaseInspection {
       });
       for (PsiStatement statement : emptyElseBranches) {
         final List<PsiComment> comments = new ArrayList<>(PsiTreeUtil.collectElementsOfType(statement, PsiComment.class));
-        final PsiParserFacade parserFacade = PsiParserFacade.SERVICE.getInstance(statement.getProject());
+        final PsiParserFacade parserFacade = PsiParserFacade.getInstance(statement.getProject());
         for (int i = comments.size() - 1; i >= 0; i--) {
           final PsiElement parent = statement.getParent();
           final PsiComment comment = comments.get(i);

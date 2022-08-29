@@ -43,6 +43,7 @@ import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.progress.*;
 import com.intellij.openapi.progress.impl.CoreProgressManager;
 import com.intellij.openapi.progress.util.ProgressIndicatorUtils;
+import com.intellij.openapi.progress.util.ProgressIndicatorWithDelayedPresentation;
 import com.intellij.openapi.project.*;
 import com.intellij.openapi.roots.FileIndex;
 import com.intellij.openapi.roots.ProjectRootManager;
@@ -70,6 +71,7 @@ import com.intellij.util.*;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.containers.MultiMap;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
@@ -87,6 +89,10 @@ import static com.intellij.codeInspection.ex.InspectListener.InspectionKind.GLOB
 import static com.intellij.codeInspection.ex.InspectionEventsKt.reportWhenActivityFinished;
 import static com.intellij.codeInspection.ex.InspectionEventsKt.reportWhenInspectionFinished;
 
+/**
+ * To create an instance, see {@link InspectionManager#createNewGlobalContext()}
+ */
+@ApiStatus.Internal
 public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
   private static final Logger LOG = Logger.getInstance(GlobalInspectionContextImpl.class);
   @SuppressWarnings("StaticNonFinalField")
@@ -126,7 +132,7 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
     if (!isOffline) {
       myView.setUpdating(true);
     }
-    myContent = ContentFactory.SERVICE.getInstance().createContent(view, title, false);
+    myContent = ContentFactory.getInstance().createContent(view, title, false);
     myContent.setHelpId(InspectionResultsView.HELP_ID);
     myContent.setDisposer(myView);
     Disposer.register(myContent, () -> {
@@ -284,8 +290,8 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
   protected void runTools(@NotNull AnalysisScope scope, boolean runGlobalToolsOnly, boolean isOfflineInspections) {
     myInspectionStartedTimestamp = System.currentTimeMillis();
     ProgressIndicator progressIndicator = ProgressIndicatorProvider.getGlobalProgressIndicator();
-    if (progressIndicator == null) {
-      throw new IncorrectOperationException("Must be run under progress");
+    if (!(progressIndicator instanceof ProgressIndicatorWithDelayedPresentation)) {
+      throw new IncorrectOperationException("Must be run under ProgressWindow");
     }
     if (!isOfflineInspections && ApplicationManager.getApplication().isDispatchThread()) {
       throw new IncorrectOperationException("Must not start inspections from within EDT");
@@ -323,8 +329,8 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
 
     BlockingQueue<VirtualFile> filesToInspect = new ArrayBlockingQueue<>(1000);
     // use original progress indicator here since we don't want it to cancel on write action start
-    ProgressIndicator iteratingIndicator = new SensitiveProgressWrapper(progressIndicator);
-    Future<?> future = startIterateScopeInBackground(scope, iteratingIndicator, headlessEnvironment, localScopeFiles, filesToInspect);
+    ProgressIndicator fileScanningIndicator = new SensitiveProgressWrapper(progressIndicator);
+    Future<?> future = startIterateScopeInBackground(scope, fileScanningIndicator, headlessEnvironment, localScopeFiles, filesToInspect);
 
     PsiManager psiManager = PsiManager.getInstance(getProject());
     Processor<VirtualFile> processor = virtualFile -> {
@@ -383,15 +389,7 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
         ProgressIndicator wrapper = new DaemonProgressIndicator();
         dependentIndicators.add(wrapper);
         try {
-          // avoid "attach listener"/"write action" race
-          ReadAction.run(() -> {
-            wrapper.start();
-            ProgressIndicatorUtils.forceWriteActionPriority(wrapper, disposable);
-            // there is a chance we are racing with write action, in which case just registered listener might not be called, retry.
-            if (ApplicationManagerEx.getApplicationEx().isWriteActionPending()) {
-              throw new ProcessCanceledException();
-            }
-          });
+          setupCancelOnWriteProgress(disposable, wrapper);
           // use wrapper here to cancel early when write action start but do not affect the original indicator
           ((JobLauncherImpl)JobLauncher.getInstance()).processQueue(filesToInspect, filesFailedToInspect, wrapper, TOMBSTONE, processor);
           break;
@@ -415,7 +413,7 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
       }
     }
     finally {
-      iteratingIndicator.cancel(); // tell file scanning thread to stop
+      fileScanningIndicator.cancel(); // tell file scanning thread to stop
       filesToInspect.clear(); // let file scanning thread a chance to put TOMBSTONE and complete
       try {
         future.get(30, TimeUnit.SECONDS);
@@ -436,6 +434,18 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
     }
 
     addProblemsToView(globalSimpleTools);
+  }
+
+  public static void setupCancelOnWriteProgress(Disposable disposable, ProgressIndicator wrapper) {
+    // avoid "attach listener"/"write action" race
+    ReadAction.run(() -> {
+      wrapper.start();
+      ProgressIndicatorUtils.forceWriteActionPriority(wrapper, disposable);
+      // there is a chance we are racing with write action, in which case just registered listener might not be called, retry.
+      if (ApplicationManagerEx.getApplicationEx().isWriteActionPending()) {
+        throw new ProcessCanceledException();
+      }
+    });
   }
 
   private static @NotNull TextRange getEffectiveRange(@NotNull SearchScope searchScope, @NotNull PsiFile file) {
@@ -473,12 +483,15 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
                            boolean inspectInjectedPsi) {
     Document document = PsiDocumentManager.getInstance(getProject()).getDocument(file);
     if (document == null) return;
-
-    InspectionProfileWrapper.runWithCustomInspectionWrapper(file, p -> new InspectionProfileWrapper(getCurrentProfile()), () -> {
+    ProgressIndicator progressIndicator = ProgressIndicatorProvider.getGlobalProgressIndicator();
+    if (progressIndicator == null) {
+      throw new IllegalStateException("Must be run under progress");
+    }
+    InspectionProfileWrapper.runWithCustomInspectionWrapper(file, __ -> new InspectionProfileWrapper(getCurrentProfile()), () -> {
       try {
         Map<LocalInspectionToolWrapper, List<ProblemDescriptor>> map =
           InspectionEngine.inspectEx(localTools, file, restrictRange, restrictRange, false, inspectInjectedPsi, true,
-                                     myProgressIndicator,
+                                     progressIndicator,
                                      (wrapper, descriptor) -> true);
         for (Map.Entry<LocalInspectionToolWrapper, List<ProblemDescriptor>> entry : map.entrySet()) {
           LocalInspectionToolWrapper toolWrapper = entry.getKey();
@@ -490,7 +503,7 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
         assertUnderDaemonProgress();
 
         JobLauncher.getInstance()
-          .invokeConcurrentlyUnderProgress(globalSimpleTools, ProgressIndicatorProvider.getGlobalProgressIndicator(), toolWrapper -> {
+          .invokeConcurrentlyUnderProgress(globalSimpleTools, progressIndicator, toolWrapper -> {
             GlobalSimpleInspectionTool tool = (GlobalSimpleInspectionTool)toolWrapper.getTool();
             ProblemsHolder holder = new ProblemsHolder(inspectionManager, file, false);
             ProblemDescriptionsProcessor problemDescriptionProcessor = getProblemDescriptionProcessor(toolWrapper, wrappersMap);
@@ -935,7 +948,7 @@ public class GlobalInspectionContextImpl extends GlobalInspectionContextEx {
                           @Nullable Runnable postRunnable,
                           boolean modal,
                           @NotNull Predicate<? super ProblemDescriptor> shouldApplyFix) {
-    String title = LangBundle.message("progress.title.inspect.code");
+    String title = LangBundle.message("progress.title.inspect.code", profile.getName());
     if (LOG.isDebugEnabled()) {
       LOG.debug("Starting code cleanup");
     }

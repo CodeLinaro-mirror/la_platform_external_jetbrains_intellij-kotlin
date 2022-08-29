@@ -80,7 +80,7 @@ internal class RunToolbarWidgetFactory : MainToolbarProjectWidgetFactory {
 
 internal class RunToolbarWidgetCustomizableActionGroupProvider : CustomizableActionGroupProvider() {
   override fun registerGroups(registrar: CustomizableActionGroupRegistrar?) {
-    if (ExperimentalUI.isNewToolbar()) {
+    if (ExperimentalUI.isNewUI()) {
       registrar?.addCustomizableActionGroup(RUN_TOOLBAR_WIDGET_GROUP, ExecutionBundle.message("run.toolbar.widget.customizable.group.name"))
     }
   }
@@ -108,8 +108,10 @@ internal class RunToolbarWidget(val project: Project) : JBPanel<RunToolbarWidget
   }
 }
 
-internal class RunWithDropDownAction : AnAction(AllIcons.Actions.Execute), CustomComponentAction, DumbAware, UpdateInBackground {
+internal class RunWithDropDownAction : AnAction(AllIcons.Actions.Execute), CustomComponentAction, DumbAware {
   private val spinningIcon = SpinningProgressIcon()
+
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
   override fun actionPerformed(e: AnActionEvent) {
     if (!e.presentation.isEnabled) return
@@ -151,7 +153,7 @@ internal class RunWithDropDownAction : AnAction(AllIcons.Actions.Execute), Custo
       e.presentation.description = RunToolbarWidgetRunAction.reword(getExecutorByIdOrDefault(lastExecutorId), canRestart, conf.shortenName())
     } else {
       e.presentation.putClientProperty(COLOR, RunButtonColors.BLUE)
-      e.presentation.icon = AllIcons.Actions.Execute
+      e.presentation.icon = iconFor(RUN)
       e.presentation.text = ExecutionBundle.message("run.toolbar.widget.run.text")
       e.presentation.description = ExecutionBundle.message("run.toolbar.widget.run.description")
     }
@@ -166,12 +168,12 @@ internal class RunWithDropDownAction : AnAction(AllIcons.Actions.Execute), Custo
 
   private fun iconFor(executorId: String): Icon {
     return when (executorId) {
-      DefaultRunExecutor.EXECUTOR_ID -> IconManager.getInstance().getIcon("expui/run/widget/run.svg", AllIcons::class.java)
-      ToolWindowId.DEBUG -> IconManager.getInstance().getIcon("expui/run/widget/debug.svg", AllIcons::class.java)
+      RUN -> IconManager.getInstance().getIcon("expui/run/widget/run.svg", AllIcons::class.java)
+      DEBUG -> IconManager.getInstance().getIcon("expui/run/widget/debug.svg", AllIcons::class.java)
       "Coverage" -> AllIcons.General.RunWithCoverage
       LOADING -> spinningIcon
       RESTART -> IconManager.getInstance().getIcon("expui/run/widget/restart.svg", AllIcons::class.java)
-      else -> AllIcons.Actions.Execute
+      else -> IconManager.getInstance().getIcon("expui/run/widget/run.svg", AllIcons::class.java)
     }
   }
 
@@ -264,7 +266,7 @@ internal class RunWithDropDownAction : AnAction(AllIcons.Actions.Execute), Custo
       JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
       true,
       ActionPlaces.getPopupPlace(ActionPlaces.MAIN_TOOLBAR)
-    )
+    ).apply { setShowSubmenuOnHover(true) }
   }
 
   private fun ExecutorGroup<*>.createExecutorActionGroup(conf: (Project) -> RunnerAndConfigurationSettings?) = DefaultActionGroup().apply {
@@ -276,24 +278,11 @@ internal class RunWithDropDownAction : AnAction(AllIcons.Actions.Execute), Custo
     }
   }
 
-  private class DelegateAction(val string: Supplier<@Nls String>, val delegate: AnAction) : AnAction() {
-    override fun isDumbAware() = delegate.isDumbAware
-
-    init {
-      shortcutSet = delegate.shortcutSet
-    }
+  private class DelegateAction(val string: Supplier<@Nls String>, delegate: AnAction) : AnActionWrapper(delegate) {
 
     override fun update(e: AnActionEvent) {
-      delegate.update(e)
+      super.update(e)
       e.presentation.text = string.get()
-    }
-
-    override fun beforeActionPerformedUpdate(e: AnActionEvent) {
-      delegate.beforeActionPerformedUpdate(e)
-    }
-
-    override fun actionPerformed(e: AnActionEvent) {
-      delegate.actionPerformed(e)
     }
   }
 
@@ -310,7 +299,9 @@ internal class RunWithDropDownAction : AnAction(AllIcons.Actions.Execute), Custo
   }
 }
 
-class StopWithDropDownAction : AnAction(), CustomComponentAction, DumbAware, UpdateInBackground {
+class StopWithDropDownAction : AnAction(), CustomComponentAction, DumbAware {
+
+  override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
   override fun actionPerformed(e: AnActionEvent) {
     ExecutionManagerImpl.getInstance(e.project ?: return)
@@ -435,7 +426,6 @@ private class RunToolbarWidgetRunAction(
   }
 }
 
-@Suppress("UnregisteredNamedColor")
 private enum class RunButtonColors {
   BLUE {
     override fun updateColors(button: RunDropDownButton) {

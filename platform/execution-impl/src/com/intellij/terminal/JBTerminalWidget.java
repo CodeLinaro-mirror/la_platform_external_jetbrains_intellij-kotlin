@@ -63,6 +63,7 @@ public class JBTerminalWidget extends JediTermWidget implements Disposable, Data
   private final CompositeFilterWrapper myCompositeFilterWrapper;
   private JBTerminalWidgetListener myListener;
   private final Project myProject;
+  private final @NotNull TerminalTitle myTerminalTitle = new TerminalTitle();
 
   public JBTerminalWidget(@NotNull Project project,
                           @NotNull JBTerminalSystemSettingsProviderBase settingsProvider,
@@ -176,6 +177,16 @@ public class JBTerminalWidget extends JediTermWidget implements Disposable, Data
   @Override
   public @NotNull JBTerminalPanel getTerminalPanel() {
     return (JBTerminalPanel)super.getTerminalPanel();
+  }
+
+  @Override
+  public void setTtyConnector(@NotNull TtyConnector ttyConnector) {
+    super.setTtyConnector(ttyConnector);
+    myTerminalTitle.change(terminalTitleState -> {
+      //noinspection HardCodedStringLiteral
+      terminalTitleState.setDefaultTitle(getSessionName());
+      return null;
+    });
   }
 
   @Override
@@ -318,12 +329,6 @@ public class JBTerminalWidget extends JediTermWidget implements Disposable, Data
     }
   }
 
-  public void notifyRenamed() {
-    if (myListener != null) {
-      myListener.onTerminalRenamed();
-    }
-  }
-
   @Nullable
   @Override
   public Object getData(@NotNull String dataId) {
@@ -377,5 +382,9 @@ public class JBTerminalWidget extends JediTermWidget implements Disposable, Data
       myTerminal.writeCharacters(line);
       first = false;
     }
+  }
+
+  public @NotNull TerminalTitle getTerminalTitle() {
+    return myTerminalTitle;
   }
 }

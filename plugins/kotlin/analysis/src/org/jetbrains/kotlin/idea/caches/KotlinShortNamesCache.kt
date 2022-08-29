@@ -25,14 +25,13 @@ import org.jetbrains.kotlin.asJava.finder.JavaElementFinder
 import org.jetbrains.kotlin.asJava.getAccessorLightMethods
 import org.jetbrains.kotlin.fileClasses.javaFileFacadeFqName
 import org.jetbrains.kotlin.idea.stubindex.*
+import org.jetbrains.kotlin.idea.util.hasJvmFieldAnnotation
 import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.load.java.getPropertyNamesCandidatesByAccessorName
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.isPrivate
 
 class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache() {
     companion object {
@@ -48,8 +47,8 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
 
     override fun processAllClassNames(processor: Processor<in String>): Boolean {
         if (disableSearch.get()) return true
-        return KotlinClassShortNameIndex.getInstance().processAllKeys(project, processor) &&
-                KotlinFileFacadeShortNameIndex.INSTANCE.processAllKeys(project, processor)
+        return KotlinClassShortNameIndex.processAllKeys(project, processor) &&
+                KotlinFileFacadeShortNameIndex.processAllKeys(project, processor)
     }
 
     override fun processAllClassNames(processor: Processor<in String>, scope: GlobalSearchScope, filter: IdFilter?): Boolean {
@@ -99,7 +98,7 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
         }
 
         val allKtClassOrObjectsProcessed = StubIndex.getInstance().processElements(
-            KotlinClassShortNameIndex.getInstance().key,
+            KotlinClassShortNameIndex.key,
             name,
             project,
             effectiveScope,
@@ -113,7 +112,7 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
         }
 
         return StubIndex.getInstance().processElements(
-            KotlinFileFacadeShortNameIndex.getInstance().key,
+            KotlinFileFacadeShortNameIndex.key,
             name,
             project,
             effectiveScope,
@@ -165,11 +164,11 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
 
     private fun processAllMethodNames(processor: Processor<in String>): Boolean {
         if (disableSearch.get()) return true
-        if (!KotlinFunctionShortNameIndex.getInstance().processAllKeys(project, processor)) {
+        if (!KotlinFunctionShortNameIndex.processAllKeys(project, processor)) {
             return false
         }
 
-        return KotlinPropertyShortNameIndex.getInstance().processAllKeys(project) { name ->
+        return KotlinPropertyShortNameIndex.processAllKeys(project) { name ->
             return@processAllKeys processor.process(JvmAbi.setterName(name)) && processor.process(JvmAbi.getterName(name))
         }
     }
@@ -182,17 +181,15 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
     ): Boolean {
         if (disableSearch.get()) return true
         val allFunctionsProcessed = StubIndex.getInstance().processElements(
-            KotlinFunctionShortNameIndex.getInstance().key,
+            KotlinFunctionShortNameIndex.key,
             name,
             project,
             scope,
             filter,
             KtNamedFunction::class.java
         ) { ktNamedFunction ->
-            val methods = LightClassUtil.getLightClassMethodsByName(ktNamedFunction, name)
-            return@processElements methods.all { method ->
-                processor.process(method)
-            }
+            val methods = LightClassUtil.getLightClassMethodsByName(ktNamedFunction, name).toList()
+            methods.all(processor::process)
         }
         if (!allFunctionsProcessed) {
             return false
@@ -200,20 +197,21 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
 
         for (propertyName in getPropertyNamesCandidatesByAccessorName(Name.identifier(name))) {
             val allProcessed = StubIndex.getInstance().processElements(
-                KotlinPropertyShortNameIndex.getInstance().key,
+                KotlinPropertyShortNameIndex.key,
                 propertyName.asString(),
                 project,
                 scope,
                 filter,
                 KtNamedDeclaration::class.java
             ) { ktNamedDeclaration ->
-                val methods: Sequence<PsiMethod> = ktNamedDeclaration.getAccessorLightMethods()
+                if (ktNamedDeclaration is KtValVarKeywordOwner && (ktNamedDeclaration.isPrivate() || ktNamedDeclaration.hasJvmFieldAnnotation())) {
+                    return@processElements true
+                }
+                val accessorLightMethods = ktNamedDeclaration.getAccessorLightMethods()
+                val methods: Sequence<PsiMethod> = accessorLightMethods
                     .asSequence()
                     .filter { it.name == name }
-
-                return@processElements methods.all { method ->
-                    processor.process(method)
-                }
+                methods.all(processor::process)
             }
             if (!allProcessed) {
                 return false
@@ -272,7 +270,7 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
 
     private fun processAllFieldNames(processor: Processor<in String>): Boolean {
         if (disableSearch.get()) return true
-        return KotlinPropertyShortNameIndex.getInstance().processAllKeys(project, processor)
+        return KotlinPropertyShortNameIndex.processAllKeys(project, processor)
     }
 
     override fun processFieldsWithName(
@@ -283,7 +281,7 @@ class KotlinShortNamesCache(private val project: Project) : PsiShortNamesCache()
     ): Boolean {
         if (disableSearch.get()) return true
         return StubIndex.getInstance().processElements(
-            KotlinPropertyShortNameIndex.getInstance().key,
+            KotlinPropertyShortNameIndex.key,
             name,
             project,
             scope,

@@ -11,6 +11,7 @@ import com.intellij.openapi.util.ClearableLazyValue
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.panels.Wrapper
 import com.intellij.ui.content.Content
+import com.intellij.util.IJSwingUtilities
 import com.intellij.util.ui.UIUtil
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutor
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutorManager
@@ -46,9 +47,12 @@ internal class GHPRToolWindowTabControllerImpl(private val project: Project,
     layout = BorderLayout()
     background = UIUtil.getListBackground()
   }
+  private val tabDisposable = Disposer.newCheckedDisposable().also {
+    Disposer.register(tab.disposer!!, it)
+  }
   private var contentDisposable by Delegates.observable<Disposable?>(null) { _, oldValue, newValue ->
     if (oldValue != null) Disposer.dispose(oldValue)
-    if (newValue != null) Disposer.register(tab.disposer!!, newValue)
+    if (newValue != null) Disposer.register(tabDisposable, newValue)
   }
   private var showingSelectors: Boolean? = null
 
@@ -63,14 +67,14 @@ internal class GHPRToolWindowTabControllerImpl(private val project: Project,
     }
 
   init {
-    authManager.addListener(tab.disposer!!, object : AccountsListener<GithubAccount> {
-      override fun onAccountCredentialsChanged(account: GithubAccount) {
-        ApplicationManager.getApplication().invokeLater(Runnable { Updater().update() }) {
-          Disposer.isDisposed(tab.disposer!!)
-        }
-      }
+    authManager.addListener(tabDisposable, object : AccountsListener<GithubAccount> {
+      override fun onAccountListChanged(old: Collection<GithubAccount>, new: Collection<GithubAccount>) = scheduleUpdate()
+      override fun onAccountCredentialsChanged(account: GithubAccount) = scheduleUpdate()
+
+      private fun scheduleUpdate() = ApplicationManager.getApplication()
+        .invokeLater(Runnable { Updater().update() }) { tabDisposable.isDisposed }
     })
-    repositoryManager.addRepositoryListChangedListener(tab.disposer!!) {
+    repositoryManager.addRepositoryListChangedListener(tabDisposable) {
       Updater().update()
     }
     Updater().update()
@@ -255,7 +259,7 @@ internal class GHPRToolWindowTabControllerImpl(private val project: Project,
       currentPullRequest = null
       currentView = GHPRToolWindowViewType.NEW
       wrapper.setContent(createComponentHolder.value.component)
-      wrapper.repaint()
+      IJSwingUtilities.updateComponentTreeUI(wrapper)
       if (requestFocus) GHUIUtil.focusPanel(wrapper.targetComponent)
     }
 
@@ -272,7 +276,7 @@ internal class GHPRToolWindowTabControllerImpl(private val project: Project,
       currentPullRequest = null
       currentView = GHPRToolWindowViewType.LIST
       wrapper.setContent(listComponent)
-      wrapper.repaint()
+      IJSwingUtilities.updateComponentTreeUI(wrapper)
       if (requestFocus) GHUIUtil.focusPanel(wrapper.targetComponent)
     }
 

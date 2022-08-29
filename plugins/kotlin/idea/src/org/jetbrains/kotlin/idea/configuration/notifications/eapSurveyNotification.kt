@@ -8,18 +8,16 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.idea.KotlinBundle
 import org.jetbrains.kotlin.idea.KotlinIcons
+import org.jetbrains.kotlin.idea.compiler.configuration.IdeKotlinVersion
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinPluginLayout
 import java.time.LocalDate
-import java.util.*
 
 internal fun showEapSurveyNotification(project: Project) {
     if (LocalDate.now() > LocalDate.of(/* year = */ 2022, /* month = */ 5, /* dayOfMonth = */ 8)) return
 
-    val compilerVersion = KotlinPluginLayout.instance.ideCompilerVersion.lowercase(Locale.getDefault())
-    if (!compilerVersion.contains("1.7.0-beta")) return
-
-    // Only beta 1. Yes, it is a bit ugly, but we don't have nice IdeKotlinVersion in old kt branches. And yes, I hope we won't have beta3.
-    if (compilerVersion.contains("1.7.0-beta2")) return
+    val compilerVersion = KotlinPluginLayout.instance.ideCompilerVersion
+    if (compilerVersion.kotlinVersion != KotlinVersion(major = 1, minor = 7, patch = 0)) return
+    if (compilerVersion.kind != IdeKotlinVersion.Kind.Beta(number = 1)) return
 
     RunOnceUtil.runOnceForApp("kotlin.eap.survey.was.shown.once") {
         @Suppress("DialogTitleCapitalization")

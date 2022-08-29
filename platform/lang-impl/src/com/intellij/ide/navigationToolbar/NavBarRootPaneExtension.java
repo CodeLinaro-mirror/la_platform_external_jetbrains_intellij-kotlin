@@ -2,6 +2,7 @@
 package com.intellij.ide.navigationToolbar;
 
 import com.intellij.ide.navigationToolbar.ui.NavBarUIManager;
+import com.intellij.ide.ui.NavBarLocation;
 import com.intellij.ide.ui.ToolbarSettings;
 import com.intellij.ide.ui.UISettings;
 import com.intellij.ide.ui.UISettingsListener;
@@ -18,6 +19,8 @@ import com.intellij.openapi.wm.StatusBarCentralWidget;
 import com.intellij.openapi.wm.impl.status.IdeStatusBarImpl;
 import com.intellij.ui.ExperimentalUI;
 import com.intellij.ui.ScrollPaneFactory;
+import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.components.JBThinOverlappingScrollBar;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.ui.JBSwingUtilities;
 import com.intellij.util.ui.JBUI;
@@ -39,6 +42,7 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
   private final Project myProject;
   private JComponent myWrapperPanel;
   private NavBarPanel myNavigationBar;
+  private JComponent myNavBarPanel;
   private JPanel myRunPanel;
   private Boolean myNavToolbarGroupExist;
   private JScrollPane myScrollPane;
@@ -48,6 +52,7 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
 
     myProject.getMessageBus().connect().subscribe(UISettingsListener.TOPIC, uiSettings -> {
       toggleRunPanel(isShowToolPanel(uiSettings));
+      toggleNavPanel(uiSettings);
     });
   }
 
@@ -85,15 +90,38 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
         }
       };
 
-      if (!ExperimentalUI.isNewUI()) {
-        myWrapperPanel.add(buildNavBarPanel(), BorderLayout.CENTER);
+      UISettings settings = UISettings.getInstance();
+      if (!ExperimentalUI.isNewUI() || settings.getShowNavigationBar() && settings.getNavBarLocation() == NavBarLocation.TOP) {
+        myWrapperPanel.add(getNavBarPanel(), BorderLayout.CENTER);
+      }
+      else {
+        myWrapperPanel.setVisible(false);
       }
 
+      getNavBarPanel(); //init myNavigationBar
       myWrapperPanel.putClientProperty(PANEL_KEY, myNavigationBar);
-
       revalidate();
     }
     return myWrapperPanel;
+  }
+
+  private void toggleNavPanel(UISettings settings) {
+    boolean show = ExperimentalUI.isNewUI() ?
+                   settings.getShowNavigationBar() && settings.getNavBarLocation() == NavBarLocation.TOP :
+                   settings.getShowNavigationBar() && !settings.getPresentationMode();
+    if (show) {
+      ApplicationManager.getApplication().invokeLater(() -> {
+        myWrapperPanel.add(getNavBarPanel(), BorderLayout.CENTER);
+        myNavBarPanel.updateUI();
+      });
+    }
+    else {
+      var c = ((BorderLayout)myWrapperPanel.getLayout()).getLayoutComponent(BorderLayout.CENTER);
+      if (c != null) myWrapperPanel.remove(c);
+    }
+
+    updateScrollBarFlippedState(settings.getNavBarLocation());
+    myWrapperPanel.setVisible(show);
   }
 
   private void toggleRunPanel(boolean show) {
@@ -134,12 +162,15 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
       }, command -> ApplicationManager.getApplication().invokeLater(command, myProject.getDisposed()));
   }
 
-  private JComponent buildNavBarPanel() {
-    myNavigationBar = new NavBarPanel(myProject, true);
+  private JComponent getNavBarPanel() {
+    if (myNavBarPanel != null) return myNavBarPanel;
+
+    myNavigationBar = new ReusableNavBarPanel(myProject, true);
     myNavigationBar.getModel().setFixedComponent(true);
     myScrollPane = ScrollPaneFactory.createScrollPane(myNavigationBar);
+    updateScrollBarFlippedState(null);
 
-    JPanel panel = new JPanel(new BorderLayout()) {
+    myNavBarPanel = new JPanel(new BorderLayout()) {
 
       @Override
       protected void paintComponent(Graphics g) {
@@ -161,10 +192,15 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
         if (myScrollPane == null || !myScrollPane.isVisible()) return;
         final Component navBar = myScrollPane;
 
-        final Dimension preferredSize = navBar.getPreferredSize();
+        final int preferredHeight = navBar.getPreferredSize().height;
 
-        navBar.setBounds(x, (r.height - preferredSize.height) / 2,
-                         r.width - insets.left - insets.right, preferredSize.height);
+        int navBarHeight = preferredHeight;
+        if (ExperimentalUI.isNewNavbar()) {
+          navBarHeight = r.height;
+        }
+
+        navBar.setBounds(x, (r.height - navBarHeight) / 2,
+                         r.width - insets.left - insets.right, navBarHeight);
       }
 
       @Override
@@ -172,26 +208,41 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
         super.updateUI();
         if (myScrollPane == null || myNavigationBar == null) return;
 
+        var settings = UISettings.getInstance();
+        var border = !ExperimentalUI.isNewUI() || settings.getShowNavigationBar()
+                     ? new NavBarBorder()
+                     : JBUI.Borders.empty();
+
+        if (ExperimentalUI.isNewNavbar()) {
+          myScrollPane.setHorizontalScrollBar(new JBThinOverlappingScrollBar(Adjustable.HORIZONTAL));
+          if (myScrollPane instanceof JBScrollPane) {
+            ((JBScrollPane) myScrollPane).setOverlappingScrollBar(true);
+          }
+          myScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        }
+        else {
+          myScrollPane.setHorizontalScrollBar(null);
+        }
+
         myScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
-        myScrollPane.setHorizontalScrollBar(null);
-        myScrollPane.setBorder(ExperimentalUI.isNewUI() ? JBUI.Borders.empty() : new NavBarBorder());
+        myScrollPane.setBorder(border);
         myScrollPane.setOpaque(false);
         myScrollPane.getViewport().setOpaque(false);
         myScrollPane.setViewportBorder(null);
 
         if (ExperimentalUI.isNewUI()) {
-          var settings = UISettings.getInstance();
           boolean visible = settings.getShowNavigationBar() && !settings.getPresentationMode();
           myScrollPane.setVisible(visible);
+          myNavigationBar.updateState(visible);
         }
         myNavigationBar.setBorder(null);
       }
     };
 
-    panel.add(myScrollPane, BorderLayout.CENTER);
-    panel.setOpaque(!ExperimentalUI.isNewUI());
-    panel.updateUI();
-    return panel;
+    myNavBarPanel.add(myScrollPane, BorderLayout.CENTER);
+    myNavBarPanel.setOpaque(!ExperimentalUI.isNewUI());
+    myNavBarPanel.updateUI();
+    return myNavBarPanel;
   }
 
   @Override
@@ -222,6 +273,14 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
     }
   }
 
+  private void updateScrollBarFlippedState(@Nullable NavBarLocation location) {
+    if (ExperimentalUI.isNewNavbar() && myScrollPane != null) {
+      if (location == null) location = UISettings.getInstance().getNavBarLocation();
+      JBScrollPane.Flip flipState = (location == NavBarLocation.BOTTOM) ? JBScrollPane.Flip.VERTICAL : JBScrollPane.Flip.NONE;
+      myScrollPane.putClientProperty(JBScrollPane.Flip.class, flipState);
+    }
+  }
+
   @Override
   public @NotNull String getKey() {
     return IdeStatusBarImpl.NAVBAR_WIDGET_KEY;
@@ -229,7 +288,7 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
 
   @Override
   public @NotNull JComponent getCentralStatusBarComponent() {
-    return buildNavBarPanel();
+    return getNavBarPanel();
   }
 
   @Override
@@ -244,7 +303,9 @@ public final class NavBarRootPaneExtension extends IdeRootPaneNorthExtension imp
   public void dispose() { }
 
   private static boolean isShowToolPanel(@NotNull UISettings uiSettings) {
-    if (uiSettings.getShowNavigationBar() && !uiSettings.getShowMainToolbar() && !uiSettings.getPresentationMode()) {
+    // Evanescent me: fix run panel show condition in ExpUI if necessary.
+    if (!ExperimentalUI.isNewUI() && uiSettings.getShowNavigationBar() &&
+        !uiSettings.getShowMainToolbar() && !uiSettings.getPresentationMode()) {
       ToolbarSettings toolbarSettings = ToolbarSettings.getInstance();
       return !toolbarSettings.isVisible() || !toolbarSettings.isEnabled();
     }

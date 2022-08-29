@@ -1,4 +1,4 @@
-// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.vcsUtil;
 
 import com.intellij.ide.util.PropertiesComponent;
@@ -20,6 +20,7 @@ import com.intellij.openapi.util.NlsSafe;
 import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.util.ThrowableComputable;
 import com.intellij.openapi.util.io.FileUtil;
+import com.intellij.openapi.util.io.OSAgnosticPathUtil;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vcs.*;
 import com.intellij.openapi.vcs.actions.VcsContextFactory;
@@ -73,14 +74,12 @@ public class VcsUtil {
   }
 
   public static void markFileAsDirty(final Project project, @NonNls String path) {
-    final FilePath filePath = VcsContextFactory.SERVICE.getInstance().createFilePathOn(new File(path));
+    final FilePath filePath = VcsContextFactory.getInstance().createFilePathOn(new File(path));
     VcsDirtyScopeManager.getInstance(project).fileDirty(filePath);
   }
 
   /**
-   * @param project Project component
-   * @param file    File to check
-   * @return true if the given file resides under the root associated with any
+   * @return true if the given file resides under the root associated with any vcs
    */
   public static boolean isFileUnderVcs(Project project, @NotNull @NonNls String file) {
     return getVcsFor(project, getFilePath(file)) != null;
@@ -141,7 +140,8 @@ public class VcsUtil {
   }
 
   @Nullable
-  private static <T> T computeValue(@NotNull Project project, @NotNull java.util.function.Function<? super ProjectLevelVcsManager, ? extends T> provider) {
+  private static <T> T computeValue(@NotNull Project project,
+                                    @NotNull java.util.function.Function<? super ProjectLevelVcsManager, ? extends T> provider) {
     return ReadAction.compute(() -> {
       //  IDEADEV-17916, when e.g. ContentRevision.getContent is called in
       //  a future task after the component has been disposed.
@@ -201,32 +201,32 @@ public class VcsUtil {
 
   @NotNull
   public static FilePath getFilePath(@NotNull VirtualFile file) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePathOn(file);
+    return VcsContextFactory.getInstance().createFilePathOn(file);
   }
 
   @NotNull
   public static FilePath getFilePath(@NotNull File file) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePathOn(file);
+    return VcsContextFactory.getInstance().createFilePathOn(file);
   }
 
   @NotNull
   public static FilePath getFilePath(@NotNull Path path, boolean isDirectory) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePath(path, isDirectory);
+    return VcsContextFactory.getInstance().createFilePath(path, isDirectory);
   }
 
   @NotNull
   public static FilePath getFilePath(@NotNull @NonNls String path, boolean isDirectory) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePath(path, isDirectory);
+    return VcsContextFactory.getInstance().createFilePath(path, isDirectory);
   }
 
   @NotNull
   public static FilePath getFilePathOnNonLocal(@NotNull @NonNls String path, boolean isDirectory) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePathOnNonLocal(path, isDirectory);
+    return VcsContextFactory.getInstance().createFilePathOnNonLocal(path, isDirectory);
   }
 
   @NotNull
   public static FilePath getFilePath(@NotNull File file, boolean isDirectory) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePathOn(file, isDirectory);
+    return VcsContextFactory.getInstance().createFilePathOn(file, isDirectory);
   }
 
   /**
@@ -234,17 +234,17 @@ public class VcsUtil {
    */
   @Deprecated(forRemoval = true)
   public static @NotNull FilePath getFilePathForDeletedFile(@NotNull @NonNls String path, boolean isDirectory) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePath(path, isDirectory);
+    return VcsContextFactory.getInstance().createFilePath(path, isDirectory);
   }
 
   @NotNull
   public static FilePath getFilePath(@NotNull VirtualFile parent, @NotNull @NonNls String name) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePathOn(parent, name);
+    return VcsContextFactory.getInstance().createFilePathOn(parent, name);
   }
 
   @NotNull
   public static FilePath getFilePath(@NotNull VirtualFile parent, @NotNull @NonNls String fileName, boolean isDirectory) {
-    return VcsContextFactory.SERVICE.getInstance().createFilePath(parent, fileName, isDirectory);
+    return VcsContextFactory.getInstance().createFilePath(parent, fileName, isDirectory);
   }
 
   @Nullable
@@ -269,11 +269,11 @@ public class VcsUtil {
   }
 
   /**
-   * @param change "Change" description.
    * @return Return true if the "Change" object is created for "Rename" operation:
-   *         in this case name of files for "before" and "after" revisions must not
-   *         coincide.
+   * in this case name of files for "before" and "after" revisions must not coincide.
+   * @deprecated See {@link Change#getType()}
    */
+  @Deprecated
   public static boolean isRenameChange(Change change) {
     boolean isRenamed = false;
     ContentRevision before = change.getBeforeRevision();
@@ -287,19 +287,21 @@ public class VcsUtil {
   }
 
   /**
-   * @param change "Change" description.
    * @return Return true if the "Change" object is created for "New" operation:
-   *         "before" revision is obviously NULL, while "after" revision is not.
+   * "before" revision is NULL, while "after" revision is NOT NULL.
+   * @deprecated See {@link Change#getType()}
    */
+  @Deprecated
   public static boolean isChangeForNew(Change change) {
     return change.getBeforeRevision() == null && change.getAfterRevision() != null;
   }
 
   /**
-   * @param change "Change" description.
    * @return Return true if the "Change" object is created for "Delete" operation:
-   *         "before" revision is NOT NULL, while "after" revision is NULL.
+   * "before" revision is NOT NULL, while "after" revision is NULL.
+   * @deprecated See {@link Change#getType()}
    */
+  @Deprecated
   public static boolean isChangeForDeleted(Change change) {
     return change.getBeforeRevision() != null && change.getAfterRevision() == null;
   }
@@ -327,9 +329,8 @@ public class VcsUtil {
   }
 
   /**
-   * @param e ActionEvent object
    * @return {@code VirtualFile} available in the current context.
-   *         Returns not {@code null} if and only if exactly one file is available.
+   * Returns not {@code null} if and only if exactly one file is available.
    */
   @Nullable
   public static VirtualFile getOneVirtualFile(@NotNull AnActionEvent e) {
@@ -338,9 +339,7 @@ public class VcsUtil {
   }
 
   /**
-   * @param e ActionEvent object
    * @return {@code VirtualFile}s available in the current context.
-   *         Returns empty array if there are no available files.
    */
   public static VirtualFile @NotNull [] getVirtualFiles(@NotNull AnActionEvent e) {
     VirtualFile[] files = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY);
@@ -393,7 +392,7 @@ public class VcsUtil {
   @NonNls
   public static String getCanonicalLocalPath(@NonNls String localPath) {
     localPath = chopTrailingChars(localPath.trim().replace('\\', '/'), ourCharsToBeChopped);
-    if (localPath.length() == 2 && localPath.charAt(1) == ':') {
+    if (localPath.length() == 2 && OSAgnosticPathUtil.startsWithWindowsDrive(localPath)) {
       localPath += '/';
     }
     return localPath;
@@ -456,15 +455,6 @@ public class VcsUtil {
            : revision.asString();
   }
 
-  public static VirtualFile[] paths2VFiles(@NonNls String[] paths) {
-    VirtualFile[] files = new VirtualFile[paths.length];
-    for (int i = 0; i < paths.length; i++) {
-      files[i] = getVirtualFile(paths[i]);
-    }
-
-    return files;
-  }
-
   private static final @NonNls String ANNO_ASPECT = "show.vcs.annotation.aspect.";
 
   public static boolean isAspectAvailableByDefault(@Nullable @NonNls String id) {
@@ -478,18 +468,6 @@ public class VcsUtil {
 
   public static void setAspectAvailability(@Nullable @NonNls String aspectID, boolean showByDefault) {
     PropertiesComponent.getInstance().setValue(ANNO_ASPECT + aspectID, String.valueOf(showByDefault));
-  }
-
-  public static boolean isPathRemote(@NonNls String path) {
-    final int idx = path.indexOf("://");
-    if (idx == -1) {
-      final int idx2 = path.indexOf(":\\\\");
-      if (idx2 == -1) {
-        return false;
-      }
-      return idx2 > 0;
-    }
-    return idx > 0;
   }
 
   @Nls

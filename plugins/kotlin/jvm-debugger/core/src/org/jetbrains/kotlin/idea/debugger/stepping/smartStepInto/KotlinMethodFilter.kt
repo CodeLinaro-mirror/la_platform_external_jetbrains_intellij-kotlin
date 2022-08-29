@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.kotlin.idea.debugger.stepping.smartStepInto
 
 import com.intellij.debugger.PositionManager
@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptorIfAny
 import org.jetbrains.kotlin.idea.codeInsight.DescriptorToSourceUtilsIde
 import org.jetbrains.kotlin.idea.debugger.DebuggerUtils.trimIfMangledInBytecode
-import org.jetbrains.kotlin.idea.debugger.getInlineFunctionNamesAndBorders
+import org.jetbrains.kotlin.idea.debugger.getInlineFunctionAndArgumentVariablesToBordersMap
 import org.jetbrains.kotlin.idea.debugger.safeMethod
 import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.psi.KtClass
@@ -47,7 +47,6 @@ open class KotlinMethodFilter(
             return false
         }
 
-        @Suppress("FoldInitializerAndIfToElvis")
         if (currentDescriptor !is CallableMemberDescriptor) return false
         if (currentDescriptor.kind != CallableMemberDescriptor.Kind.DECLARATION) return false
 
@@ -88,7 +87,7 @@ open class KotlinMethodFilter(
                // A correct way here is to memorize the original location (where smart step into was started)
                // and filter out ranges that contain that original location.
                // Otherwise, nested inline with the same method name will not work correctly.
-               method.getInlineFunctionNamesAndBorders()
+               method.getInlineFunctionAndArgumentVariablesToBordersMap()
                    .filter { location in it.value }
                    .any { it.key.isInlinedFromFunction(targetMethodName, isNameMangledInBytecode) }
     }

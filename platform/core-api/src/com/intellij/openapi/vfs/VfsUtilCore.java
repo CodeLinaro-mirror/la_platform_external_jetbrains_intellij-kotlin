@@ -6,13 +6,11 @@ import com.intellij.model.ModelBranchUtil;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.roots.ContentIterator;
-import com.intellij.openapi.util.Comparing;
-import com.intellij.openapi.util.NlsSafe;
-import com.intellij.openapi.util.Ref;
-import com.intellij.openapi.util.SystemInfoRt;
+import com.intellij.openapi.util.*;
 import com.intellij.openapi.util.io.BufferExposingByteArrayInputStream;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.io.FileUtilRt;
+import com.intellij.openapi.util.io.OSAgnosticPathUtil;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.util.text.StringUtilRt;
 import com.intellij.util.PathUtil;
@@ -598,8 +596,8 @@ public class VfsUtilCore {
       if (!SystemInfoRt.isWindows) uri = "/" + uri;
       file = VirtualFileManager.getInstance().findFileByUrl(StandardFileSystems.JAR_PROTOCOL_PREFIX + uri);
     }
-    else if (!SystemInfoRt.isWindows && StringUtil.startsWithChar(uri, '/') ||
-             SystemInfoRt.isWindows && uri.length() >= 2 && Character.isLetter(uri.charAt(0)) && uri.charAt(1) == ':') {
+    else if (SystemInfoRt.isUnix && uri.startsWith("/") ||
+             SystemInfoRt.isWindows && (OSAgnosticPathUtil.isAbsoluteDosPath(uri) || OSAgnosticPathUtil.isUncPath(uri))) {
       file = StandardFileSystems.local().findFileByPath(uri);
     }
 
@@ -611,16 +609,15 @@ public class VfsUtilCore {
     }
 
     if (file == null) {
-      if (base == null) {
-        return StandardFileSystems.local().findFileByPath(uri);
-      }
-      if (!base.isDirectory()) {
+      if (base != null && !base.isDirectory()) {
         base = base.getParent();
       }
       if (base == null) {
-        return StandardFileSystems.local().findFileByPath(uri);
+        file = StandardFileSystems.local().findFileByPath(uri);
       }
-      file = VirtualFileManager.getInstance().findFileByUrl(base.getUrl() + "/" + uri);
+      else {
+        file = VirtualFileManager.getInstance().findFileByUrl(base.getUrl() + '/' + uri);
+      }
     }
 
     return file;
@@ -821,14 +818,15 @@ public class VfsUtilCore {
     return file;
   }
 
+  private static final NotNullLazyValue<VirtualFileSetFactory> VIRTUAL_FILE_SET_FACTORY =
+    NotNullLazyValue.lazy(VirtualFileSetFactory::getInstance);
+
   @NotNull
   public static VirtualFileSet createCompactVirtualFileSet() {
-    //noinspection deprecation
-    return new CompactVirtualFileSet();
+    return VIRTUAL_FILE_SET_FACTORY.getValue().createCompactVirtualFileSet();
   }
   @NotNull
   public static VirtualFileSet createCompactVirtualFileSet(@NotNull Collection<? extends VirtualFile> files) {
-    //noinspection deprecation
-    return new CompactVirtualFileSet(files);
+    return VIRTUAL_FILE_SET_FACTORY.getValue().createCompactVirtualFileSet(files);
   }
 }

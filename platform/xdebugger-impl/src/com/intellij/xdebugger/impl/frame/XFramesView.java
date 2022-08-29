@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.xdebugger.impl.frame;
 
 import com.intellij.CommonBundle;
@@ -391,7 +391,7 @@ public final class XFramesView extends XDebugView {
         }
         else {
           myThreadsPanel.add(myThreadComboBox, BorderLayout.CENTER);
-          myThreadsPanel.setBorder(new CustomLineBorder(CaptionPanel.CNT_ACTIVE_BORDER_COLOR, 0, 0, 1, 0));
+          myThreadsPanel.setBorder(new CustomLineBorder(0, 0, 1, 0));
         }
         myThreadsPanel.revalidate();
       }
@@ -638,7 +638,7 @@ public final class XFramesView extends XDebugView {
 
   private static class MyAdPanel extends BorderLayoutPanel {
 
-    MyAdPanel(@NotNull @NlsContexts.Label String message, @NotNull Consumer<MyAdPanel> closeListener) {
+    MyAdPanel(@NotNull @NlsContexts.Label String message, @NotNull Consumer<? super MyAdPanel> closeListener) {
       var label = new JBLabel(message, UIUtil.ComponentStyle.SMALL);
       label.setForeground(UIUtil.getContextHelpForeground());
       label.setToolTipText(message);

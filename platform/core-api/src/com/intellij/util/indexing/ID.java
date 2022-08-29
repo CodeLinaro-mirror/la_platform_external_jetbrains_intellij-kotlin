@@ -152,11 +152,17 @@ public class ID<K, V> extends IndexId<K,V> {
   }
 
   @ApiStatus.Internal
+  public static Collection<ID<?, ?>> getRegisteredIds() {
+    return Collections.unmodifiableSet(new HashSet<>(ourIdToPluginId.keySet()));
+  }
+
+  @ApiStatus.Internal
   @NotNull
   public Throwable getRegistrationTrace() {
     return ourIdToRegistrationStackTrace.get(this);
   }
 
+  @ApiStatus.Internal
   public int getUniqueId() {
     return myUniqueId;
   }
@@ -167,8 +173,10 @@ public class ID<K, V> extends IndexId<K,V> {
     return ourIdToPluginId.get(this);
   }
 
+  @ApiStatus.Internal
   public static ID<?, ?> findById(int id) {
-    return ourIdObjects.get(ourNameToIdRegistry.valueOf(id));
+    String key = ourNameToIdRegistry.valueOf(id);
+    return key == null ? null : ourIdObjects.get(key);
   }
 
   @ApiStatus.Internal

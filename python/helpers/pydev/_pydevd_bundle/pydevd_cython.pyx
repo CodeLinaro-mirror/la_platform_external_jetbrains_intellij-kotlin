@@ -13,7 +13,7 @@ pydev_log.debug("Using Cython speedups")
 # from _pydevd_bundle.pydevd_frame import PyDBFrame
 # ENDIF
 
-version = 34
+version = 35
 
 if not hasattr(sys, '_current_frames'):
 
@@ -840,7 +840,7 @@ cdef class PyDBFrame:
                 context_end_line = info.pydev_smart_step_context.end_line
                 is_within_context = context_start_line <= line <= context_end_line
 
-                if not is_return and info.pydev_state != STATE_SUSPEND and breakpoints_for_file is not None and line in breakpoints_for_file:
+                if not is_return and info.pydev_state != STATE_SUSPEND and breakpoints_for_file is not None and line in breakpoints_for_file and not is_exception_event:
                     breakpoint = breakpoints_for_file[line]
                     new_frame = frame
                     stop = True

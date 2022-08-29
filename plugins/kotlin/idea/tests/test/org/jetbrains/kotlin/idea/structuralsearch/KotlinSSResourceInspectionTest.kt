@@ -2,6 +2,7 @@
 
 package org.jetbrains.kotlin.idea.structuralsearch
 
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.structuralsearch.MatchOptions
 import com.intellij.structuralsearch.Matcher
@@ -43,7 +44,6 @@ abstract class KotlinSSResourceInspectionTest : BasePlatformTestCase() {
             testHighlighting(pattern, context)
         }
     }
-
 
     protected fun doTest(pattern: String, highlighting: String, context: PatternContext = KotlinStructuralSearchProfile.DEFAULT_CONTEXT) {
         myFixture.configureByText("aaa.kt", highlighting)

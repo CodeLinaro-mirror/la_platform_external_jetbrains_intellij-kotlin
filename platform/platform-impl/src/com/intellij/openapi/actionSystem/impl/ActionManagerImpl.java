@@ -43,6 +43,7 @@ import com.intellij.openapi.util.ActionCallback;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.NlsActions;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.util.text.StringUtilRt;
 import com.intellij.openapi.util.text.Strings;
 import com.intellij.openapi.wm.IdeFocusManager;
@@ -52,16 +53,15 @@ import com.intellij.ui.icons.IconLoadMeasurer;
 import com.intellij.util.ArrayUtilRt;
 import com.intellij.util.DefaultBundleService;
 import com.intellij.util.ReflectionUtil;
-import com.intellij.util.xml.dom.XmlElement;
 import com.intellij.util.containers.CollectionFactory;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.containers.MultiMap;
 import com.intellij.util.messages.MessageBusConnection;
 import com.intellij.util.ui.UIUtil;
+import com.intellij.util.xml.dom.XmlElement;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import kotlin.Unit;
-import kotlin.sequences.Sequence;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -138,7 +138,7 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
       }
     }
 
-    registerActions(PluginManagerCore.getPluginSet().getEnabledModules());
+    registerActions(PluginManagerCore.getPluginSet().getRawListOfEnabledModules());
 
     EP.forEachExtensionSafe(customizer -> customizer.customize(this));
     DYNAMIC_EP_NAME.forEachExtensionSafe(customizer -> customizer.registerActions(this));
@@ -162,10 +162,10 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
   }
 
   @ApiStatus.Internal
-  public void registerActions(@NotNull Sequence<IdeaPluginDescriptorImpl> modules) {
+  public void registerActions(@NotNull Iterable<IdeaPluginDescriptorImpl> modules) {
     KeymapManagerEx keymapManager = Objects.requireNonNull(KeymapManagerEx.getInstanceEx());
-    for (Iterator<IdeaPluginDescriptorImpl> iter = modules.iterator(); iter.hasNext(); ) {
-      IdeaPluginDescriptorImpl module = iter.next();
+
+    for (IdeaPluginDescriptorImpl module : modules) {
       registerPluginActions(module, keymapManager);
       PrecomputedExtensionModelKt.executeRegisterTaskForOldContent(module, it -> {
         registerPluginActions(it, keymapManager);
@@ -221,7 +221,12 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
   private static void updateIconFromStub(@NotNull ActionStubBase stub, @NotNull AnAction anAction) {
     String iconPath = stub.getIconPath();
     if (iconPath != null) {
-      setIconFromClass(anAction.getClass(), stub.getPlugin(), iconPath, anAction.getTemplatePresentation());
+      Icon icon = loadIcon(stub.getPlugin(), iconPath, anAction.getClass().getName());
+      anAction.getTemplatePresentation().setIcon(icon);
+    }
+    CustomActionsSchema customActionsSchema = ApplicationManager.getApplication().getServiceIfCreated(CustomActionsSchema.class);
+    if (customActionsSchema != null && StringUtil.isNotEmpty(customActionsSchema.getIconPath(stub.getId()))) {
+      customActionsSchema.initActionIcon(anAction, stub.getId(), ActionManager.getInstance());
     }
   }
 
@@ -249,18 +254,17 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
     return "true".equalsIgnoreCase(element.attributes.get("secondary"));
   }
 
-  private static void setIconFromClass(@Nullable Class<?> actionClass,
-                                       @NotNull PluginDescriptor module,
-                                       @NotNull String iconPath,
-                                       @NotNull Presentation presentation) {
+  private static @NotNull Icon loadIcon(@NotNull PluginDescriptor module,
+                                        @NotNull String iconPath,
+                                        @Nullable String requestor) {
     long start = StartUpMeasurer.getCurrentTimeIfEnabled();
     Icon icon = IconLoader.findIcon(iconPath, module.getClassLoader());
     if (icon == null) {
-      reportActionError(module, "Icon cannot be found in '" + iconPath + "', action '" + actionClass + "'");
+      reportActionError(module, "Icon cannot be found in '" + iconPath + "', action '" + requestor + "'");
       icon = AllIcons.Nodes.Unknown;
     }
     IconLoadMeasurer.actionIcon.end(start);
-    presentation.setIcon(icon);
+    return icon;
   }
 
   @SuppressWarnings("HardCodedStringLiteral")
@@ -270,7 +274,7 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
                                                                          String descriptionValue,
                                                                          @NotNull ClassLoader classLoader) {
     if (bundle != null && DefaultBundleService.isDefaultBundle()) {
-      bundle = DynamicBundle.INSTANCE.getResourceBundle(bundle.getBaseBundleName(), classLoader);
+      bundle = DynamicBundle.getResourceBundle(classLoader, bundle.getBaseBundleName());
     }
     return AbstractBundle.messageOrDefault(bundle, elementType + "." + id + "." + DESCRIPTION, Strings.notNullize(descriptionValue));
   }
@@ -283,7 +287,7 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
                                                                  @NotNull ClassLoader classLoader) {
     String defaultValue = Strings.notNullize(textValue);
     if (bundle != null && DefaultBundleService.isDefaultBundle()) {
-      bundle = DynamicBundle.INSTANCE.getResourceBundle(bundle.getBaseBundleName(), classLoader);
+      bundle = DynamicBundle.getResourceBundle(classLoader, bundle.getBaseBundleName());
     }
     return bundle == null ? defaultValue : AbstractBundle.messageOrDefault(bundle, elementType + "." + id + "." + TEXT_ATTR_NAME, defaultValue);
   }
@@ -470,7 +474,7 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
       }
       else {
         try {
-          bundle = DynamicBundle.INSTANCE.getResourceBundle(bundleName, module.getClassLoader());
+          bundle = DynamicBundle.getResourceBundle(module.getClassLoader(), bundleName);
           lastBundle = bundle;
           lastBundleName = bundleName;
         }
@@ -817,7 +821,7 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
         ((ActionGroupStub)group).setIconPath(iconPath);
       }
       else if (iconPath != null) {
-        setIconFromClass(null, module, iconPath, presentation);
+        presentation.setIcon(loadIcon(module, iconPath, className));
       }
 
       // popup
@@ -1349,6 +1353,12 @@ public class ActionManagerImpl extends ActionManagerEx implements Disposable {
         }
         return;
       }
+
+      // diagnostics for IDEA-283781
+      if (actionId.equals("CommentByLineComment")) {
+        LOG.info("Unregistering line comment action", new Throwable());
+      }
+
       AnAction actionToRemove = idToAction.remove(actionId);
       actionToId.remove(actionToRemove);
       idToIndex.removeInt(actionId);

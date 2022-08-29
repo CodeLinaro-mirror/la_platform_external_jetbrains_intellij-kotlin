@@ -1,17 +1,17 @@
-// Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.workspaceModel.ide.impl.legacyBridge.project
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.RootsChangeIndexingInfo
+import com.intellij.openapi.project.RootsChangeRescanningInfo
 import com.intellij.openapi.roots.LibraryOrderEntry
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.workspaceModel.storage.EntityChange
 import com.intellij.workspaceModel.storage.VersionedStorageChange
 import com.intellij.workspaceModel.storage.WorkspaceEntity
-import com.intellij.workspaceModel.storage.bridgeEntities.*
+import com.intellij.workspaceModel.storage.bridgeEntities.api.*
 
 internal class ProjectRootsChangeListener(private val project: Project) {
   fun beforeChanged(event: VersionedStorageChange) {
@@ -20,7 +20,7 @@ internal class ProjectRootsChangeListener(private val project: Project) {
     val projectRootManager = ProjectRootManager.getInstance(project)
     if (projectRootManager !is ProjectRootManagerBridge) return
     val performUpdate = shouldFireRootsChanged(event, project)
-    if (performUpdate && !projectRootManager.isFiringEvent()) projectRootManager.rootsChanged.beforeRootsChanged()
+    if (performUpdate) projectRootManager.rootsChanged.beforeRootsChanged()
   }
 
   fun changed(event: VersionedStorageChange) {
@@ -29,8 +29,8 @@ internal class ProjectRootsChangeListener(private val project: Project) {
     val projectRootManager = ProjectRootManager.getInstance(project)
     if (projectRootManager !is ProjectRootManagerBridge) return
     val performUpdate = shouldFireRootsChanged(event, project)
-    if (performUpdate && !projectRootManager.isFiringEvent()) {
-      val rootsChangeInfo = WorkspaceEventIndexingInfo(event.getAllChanges().toList())
+    if (performUpdate) {
+      val rootsChangeInfo = WorkspaceEventRescanningInfo(event.getAllChanges().toList(), true)
       projectRootManager.rootsChanged.rootsChanged(rootsChangeInfo)
     }
   }
@@ -73,5 +73,6 @@ internal class ProjectRootsChangeListener(private val project: Project) {
     }
   }
 
-  class WorkspaceEventIndexingInfo(val events: List<EntityChange<*>>) : RootsChangeIndexingInfo()
+  class WorkspaceEventRescanningInfo(val events: List<EntityChange<*>>,
+                                     val isFromWorkspaceModelEvent: Boolean) : RootsChangeRescanningInfo
 }

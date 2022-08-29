@@ -3,24 +3,20 @@ package com.intellij.ui.jcef
 
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.ui.scale.TestScaleHelper
-import junit.framework.TestCase
 import org.intellij.lang.annotations.Language
 import org.junit.After
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 
-
 /**
  * Tests the [JBCefBrowserJsCall] class and [executeJavaScriptAsync] method.
  */
 class JBCefBrowserJsCallTest {
-
   companion object {
-    @ClassRule
-    @JvmStatic
-    public fun getAppRule() = ApplicationRule()
+    @ClassRule @JvmStatic fun getAppRule() = ApplicationRule()
   }
 
   @Before
@@ -55,6 +51,33 @@ class JBCefBrowserJsCallTest {
     doTest("""2+2""", "4")
   }
 
+  // IDEA-290310, IDEA-292709
+  @Test
+  fun `obtain a stringified JSON with emoji`() {
+    doTest(javaScript = """
+          let json = JSON.stringify({ "a": "foo", "cookie": "🍪"})
+          return json;
+        """.trimIndent(), expectedResult = """{"a":"foo","cookie":"🍪"}""")
+  }
+
+  // IDEA-290310, IDEA-292709
+  @Test
+  fun `obtain a string with emoji`() {
+    doTest(javaScript = """
+          let emoji = `🍪`
+          return emoji;
+        """.trimIndent(), expectedResult = """🍪""")
+  }
+
+  // IDEA-288813
+  @Test
+  fun `obtain a string decoded from base64`() {
+    doTest(javaScript = """
+          let decoded_string = atob("U29tZSB0ZXh0INC4INC60LDQutC+0Lkt0YLQviDRgtC10LrRgdGC");
+          return decoded_string;
+        """.trimIndent(), expectedResult = """Some text и какой-то текст""")
+  }
+
   @Test
   fun `execute multiline expression`() {
     val js = """
@@ -81,8 +104,8 @@ class JBCefBrowserJsCallTest {
       jsCall().onProcessed { latch.countDown() }.onSuccess { r2 = it }
     }
 
-    TestCase.assertEquals("4", r1)
-    TestCase.assertEquals("4", r2)
+    assertEquals("4", r1)
+    assertEquals("4", r2)
   }
 
   private fun doTest(@Language("JavaScript") javaScript: String,
@@ -108,13 +131,12 @@ class JBCefBrowserJsCallTest {
         }
     }
 
-    TestCase.assertEquals(isExpectedToSucceed, isSucceeded)
+    assertEquals(isExpectedToSucceed, isSucceeded)
 
     if (isExpectedToSucceed) {
-      TestCase.assertEquals(expectedResult, actualResult)
+      assertEquals(expectedResult, actualResult)
     }
   }
-
 
   private fun prepareBrowser(): JBCefBrowser {
     val browser = JBCefApp.getInstance().createClient().also {
@@ -128,8 +150,8 @@ class JBCefBrowserJsCallTest {
 
     JBCefTestHelper.showAndWaitForLoad(browser, "DISPATCH")
 
-    TestCase.assertNotNull(browser.component)
-    TestCase.assertTrue(browser.isCefBrowserCreated)
+    assertNotNull(browser.component)
+    assertTrue(browser.isCefBrowserCreated)
 
     return browser
   }

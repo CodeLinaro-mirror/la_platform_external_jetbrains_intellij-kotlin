@@ -1,13 +1,10 @@
 // Copyright 2000-2021 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package org.jetbrains.idea.maven.importing;
 
-import com.intellij.compiler.impl.javaCompiler.javac.JavacConfiguration;
-import com.intellij.internal.statistic.StructuredIdeActivity;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager;
 import com.intellij.openapi.externalSystem.model.project.ProjectId;
-import com.intellij.openapi.externalSystem.service.project.*;
+import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleType;
 import com.intellij.openapi.module.ModuleWithNameAlreadyExists;
@@ -31,33 +28,28 @@ import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.containers.Stack;
 import com.intellij.workspaceModel.ide.WorkspaceModel;
 import com.intellij.workspaceModel.ide.legacyBridge.ModuleBridge;
-import com.intellij.workspaceModel.storage.WorkspaceEntityStorage;
-import com.intellij.workspaceModel.storage.WorkspaceEntityStorageBuilder;
+import com.intellij.workspaceModel.storage.EntityStorage;
+import com.intellij.workspaceModel.storage.MutableEntityStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.*;
+import org.jetbrains.idea.maven.statistics.MavenImportCollector;
 import org.jetbrains.idea.maven.utils.MavenLog;
 import org.jetbrains.idea.maven.utils.MavenUtil;
-import org.jetbrains.jps.model.java.compiler.JpsJavaCompilerOptions;
 
 import java.io.IOException;
 import java.util.*;
 
 import static org.jetbrains.idea.maven.project.MavenProjectChanges.ALL;
 
-class MavenProjectImporterImpl extends MavenProjectImporterBase {
+class MavenProjectImporterImpl extends MavenProjectImporterLegacyBase {
   private static final Logger LOG = Logger.getInstance(MavenProjectImporterImpl.class);
-  private final Project myProject;
   private final Map<VirtualFile, Module> myFileToModuleMapping;
   private volatile Set<MavenProject> myAllProjects;
   private final boolean myImportModuleGroupsRequired;
 
-  private final IdeModifiableModelsProvider myIdeModifiableModelsProvider;
-  private final WorkspaceEntityStorageBuilder myDiff;
-  private ModifiableModelsProviderProxy myModelsProvider;
-  private ModuleModelProxy myModuleModel;
-  private final Module myDummyModule;
+  private Module myDummyModule;
 
   private final List<Module> myCreatedModules = new ArrayList<>();
 
@@ -72,45 +64,15 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
                            @NotNull IdeModifiableModelsProvider modelsProvider,
                            @NotNull MavenImportingSettings importingSettings,
                            @Nullable Module dummyModule) {
-    super(projectsTree, importingSettings, projectsToImportWithChanges);
-    myProject = p;
+    super(p, projectsTree, importingSettings, projectsToImportWithChanges, modelsProvider);
     myFileToModuleMapping = getFileToModuleMapping(p, dummyModule, modelsProvider);
     myImportModuleGroupsRequired = importModuleGroupsRequired;
     myDummyModule = dummyModule;
-
-    if (modelsProvider instanceof IdeModifiableModelsProviderImpl) {
-      IdeModifiableModelsProviderImpl impl = (IdeModifiableModelsProviderImpl)modelsProvider;
-      myDiff = impl.getActualStorageBuilder();
-    } else {
-      myDiff = null;
-    }
-    
-    myIdeModifiableModelsProvider = modelsProvider;
   }
 
   @Override
   @Nullable
   public List<MavenProjectsProcessorTask> importProject() {
-    StructuredIdeActivity activity = MavenImportStats.startApplyingModelsActivity(myProject);
-    long startTime = System.currentTimeMillis();
-    try {
-      if (MavenUtil.newModelEnabled(myProject) && myDiff != null) {
-        myModelsProvider = new ModifiableModelsProviderProxyImpl(myProject, myDiff);
-      }
-      else {
-        myModelsProvider = new ModifiableModelsProviderProxyWrapper(myIdeModifiableModelsProvider);
-      }
-      myModuleModel = myModelsProvider.getModuleModelProxy();
-      return importProjectOldWay();
-    }
-    finally {
-      activity.finished();
-      LOG.info("[maven import] applying models took " + (System.currentTimeMillis() - startTime) + "ms");
-    }
-  }
-
-  @Nullable
-  private List<MavenProjectsProcessorTask> importProjectOldWay() {
     List<MavenProjectsProcessorTask> postTasks = new ArrayList<>();
     boolean hasChanges;
 
@@ -149,9 +111,15 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
       MavenUtil.invokeAndWaitWriteAction(myProject, () -> {
         ProjectRootManagerEx.getInstanceEx(myProject).mergeRootsChangesDuring(() -> {
           setMavenizedModules(obsoleteModules, false);
-          if (isDeleteObsoleteModules) {
-            deleteModules(obsoleteModules);
+          List<Module> toDelete = new ArrayList<>();
+          if (myDummyModule != null) {
+            toDelete.add(myDummyModule);
+            myDummyModule = null;
           }
+          if (isDeleteObsoleteModules) {
+            toDelete.addAll(obsoleteModules);
+          }
+          deleteModules(toDelete);
           removeUnusedProjectLibraries();
 
           myModelsProvider.commit();
@@ -166,45 +134,13 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
         });
       });
 
-      if (!importers.isEmpty()) {
-        IdeModifiableModelsProvider provider;
-        if (myIdeModifiableModelsProvider instanceof IdeUIModifiableModelsProvider) {
-          provider = myIdeModifiableModelsProvider; // commit does nothing for this provider, so it should be reused
-        } else {
-          provider = ProjectDataManager.getInstance().createModifiableModelsProvider(myProject);
-        }
-
-        try {
-          List<MavenModuleImporter> toRun = new ArrayList<>(importers.size());
-          for (MavenModuleImporter importer : importers) {
-            if (!importer.isModuleDisposed()) {
-              importer.setModifiableModelsProvider(provider);
-              toRun.add(importer);
-            }
-          }
-          configFacets(postTasks, toRun);
-        }
-        finally {
-          MavenUtil.invokeAndWaitWriteAction(myProject, () -> {
-            ProjectRootManagerEx.getInstanceEx(myProject).mergeRootsChangesDuring(() -> {
-              provider.commit();
-            });
-          });
-        }
-      }
-
-      configureMavenProjectsInBackground(myAllProjects, myMavenProjectToModule, myProject);
+      configFacets(importers, postTasks);
     }
     else {
-      MavenUtil.invokeAndWaitWriteAction(myProject, () -> setMavenizedModules(obsoleteModules, false));
-      disposeModifiableModels();
+      finalizeImport(obsoleteModules);
     }
 
     return postTasks;
-  }
-
-  private void disposeModifiableModels() {
-    MavenUtil.invokeAndWaitWriteAction(myProject, () -> myModelsProvider.dispose());
   }
 
   private Map<MavenProject, MavenProjectChanges> collectProjectsToImport(Map<MavenProject, MavenProjectChanges> projectsToImport) {
@@ -357,7 +293,7 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
     List<Module> obsolete = new ArrayList<>();
     final MavenProjectsManager manager = MavenProjectsManager.getInstance(myProject);
     for (Module each : remainingModules) {
-      if (manager.isMavenizedModule(each)) {
+      if (manager.isMavenizedModule(each) && myDummyModule != each) {
         obsolete.add(each);
       }
     }
@@ -394,15 +330,6 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
                               myMavenProjectToModuleName,
                               myMavenProjectToModulePath,
                               myImportingSettings.getDedicatedModuleDir());
-  }
-
-  private void removeOutdatedCompilerConfigSettings() {
-    ApplicationManager.getApplication().assertWriteAccessAllowed();
-
-    final JpsJavaCompilerOptions javacOptions = JavacConfiguration.getOptions(myProject, JavacConfiguration.class);
-    String options = javacOptions.ADDITIONAL_OPTIONS_STRING;
-    options = options.replaceFirst("(-target (\\S+))", ""); // Old IDEAs saved
-    javacOptions.ADDITIONAL_OPTIONS_STRING = options;
   }
 
   private List<MavenModuleImporter> importModules() {
@@ -446,42 +373,6 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
     return importers;
   }
 
-  private void configFacets(List<MavenProjectsProcessorTask> tasks, List<MavenModuleImporter> importers) {
-    for (MavenModuleImporter importer : importers) {
-      importer.preConfigFacets();
-    }
-
-    for (MavenModuleImporter importer : importers) {
-      importer.configFacets(tasks);
-    }
-
-    for (MavenModuleImporter importer : importers) {
-      importer.postConfigFacets();
-    }
-  }
-
-  private void setMavenizedModules(final Collection<Module> modules, final boolean mavenized) {
-    ApplicationManager.getApplication().assertWriteAccessAllowed();
-    WorkspaceEntityStorage initialStorage = WorkspaceModel.getInstance(myProject).getEntityStorage().getCurrent();
-    WorkspaceEntityStorageBuilder storageBuilder = WorkspaceEntityStorageBuilder.from(initialStorage);
-    for (Module module : modules) {
-      if (module.isDisposed()) continue;
-      ExternalSystemModulePropertyManager modulePropertyManager = ExternalSystemModulePropertyManager.getInstance(module);
-      if (modulePropertyManager instanceof ExternalSystemModulePropertyManagerBridge &&
-          module instanceof ModuleBridge &&
-          ((ModuleBridge)module).getDiff() == null) {
-        ((ExternalSystemModulePropertyManagerBridge)modulePropertyManager).setMavenized(mavenized, storageBuilder);
-      }
-      else {
-        modulePropertyManager.setMavenized(mavenized);
-      }
-    }
-    WorkspaceModel.getInstance(myProject).updateProjectModel(builder -> {
-      builder.addDiff(storageBuilder);
-      return null;
-    });
-  }
-
   private boolean ensureModuleCreated(MavenProject project) {
     Module existingModule = myMavenProjectToModule.get(project);
     if (existingModule != null && existingModule != myDummyModule) return false;
@@ -498,6 +389,7 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
       }
       myMavenProjectToModule.put(project, myDummyModule);
       myCreatedModules.add(myDummyModule);
+      myDummyModule = null;
       return true;
     }
 
@@ -516,8 +408,8 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
   private boolean isForTheDummyModule(MavenProject project, Module existingModule) {
     if (myDummyModule == null) return false;
     if (existingModule == myDummyModule) return true;
-    return MavenProjectsManager.getInstance(myProject).getRootProjects().size() == 1 &&
-           MavenProjectsManager.getInstance(myProject).findRootProject(project) == project;
+    return myProjectsTree.getRootProjects().size() == 1 &&
+           myProjectsTree.findRootProject(project) == project;
   }
 
   private void deleteExistingModuleByName(final String name) {
@@ -615,9 +507,14 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
 
     boolean removed = false;
     for (Library each : unusedLibraries) {
-      if (!isDisposed(each) && MavenRootModelAdapter.isMavenLibrary(each) && !MavenRootModelAdapter.isChangedByUser(each)) {
-        myModelsProvider.removeLibrary(each);
-        removed = true;
+      if (!isDisposed(each) && MavenRootModelAdapter.isMavenLibrary(each)) {
+        if (!MavenRootModelAdapter.isChangedByUser(each)) {
+          myModelsProvider.removeLibrary(each);
+          removed = true;
+        }
+        else {
+          MavenImportCollector.HAS_USER_MODIFIED_IMPORTED_LIBRARY.log(myProject);
+        }
       }
     }
     return removed;
@@ -642,7 +539,7 @@ class MavenProjectImporterImpl extends MavenProjectImporterBase {
   }
 
   @Override
-  public @NotNull List<Module> getCreatedModules() {
+  public @NotNull List<Module> createdModules() {
     return myCreatedModules;
   }
 

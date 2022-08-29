@@ -7,6 +7,7 @@ import com.intellij.openapi.util.text.CharFilter;
 import com.intellij.openapi.util.text.LineColumn;
 import com.intellij.openapi.util.text.NaturalComparator;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.testFramework.UsefulTestCase;
 import com.intellij.util.LineSeparator;
 import com.intellij.util.TripleFunction;
 import com.intellij.util.containers.ContainerUtil;
@@ -850,6 +851,7 @@ public class StringUtilTest {
     assertEquals("my string", StringUtil.trim("my string\t", CharFilter.NOT_WHITESPACE_FILTER));
     assertEquals("my string", StringUtil.trim("\nmy string", CharFilter.NOT_WHITESPACE_FILTER));
     assertEquals("my-string", StringUtil.trim("my-string", CharFilter.NOT_WHITESPACE_FILTER));
+    assertEquals("my-string", StringUtil.trim("my-string ", CharFilter.NOT_WHITESPACE_FILTER));
     assertEquals("\n   my string ", StringUtil.trim("\n   my string ", CharFilter.WHITESPACE_FILTER));
     assertEquals("", StringUtil.trim("", CharFilter.WHITESPACE_FILTER));
     assertEquals("", StringUtil.trim("\n   my string ", ch -> false));
@@ -869,5 +871,12 @@ public class StringUtilTest {
     assertEquals("a", removeEllipsisSuffix("a"));
     assertEquals("a", removeEllipsisSuffix("a" + ELLIPSIS));
     assertEquals("a...", removeEllipsisSuffix("a..." + ELLIPSIS));
+  }
+  @Test
+  public void testEndsWith() {
+    assertTrue(StringUtil.endsWith("text", 0, 4, "text"));
+    assertFalse(StringUtil.endsWith("text", 4, 4, "-->"));
+    UsefulTestCase.assertThrows(IllegalArgumentException.class, ()->assertFalse(StringUtil.endsWith("text", -1, 4, "t")));
+    assertFalse(StringUtil.endsWith("text", "-->"));
   }
 }

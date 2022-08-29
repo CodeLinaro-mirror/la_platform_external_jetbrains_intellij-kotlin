@@ -1,10 +1,10 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.jetbrains.intellij.build
 
 import groovy.transform.CompileStatic
 import org.jetbrains.intellij.build.impl.BaseLayout
+import org.jetbrains.intellij.build.impl.LibraryPackMode
 import org.jetbrains.intellij.build.impl.PlatformLayout
-import org.jetbrains.intellij.build.impl.ProjectLibraryData
 import org.jetbrains.intellij.build.kotlin.KotlinPluginBuilder
 
 import java.nio.file.Files
@@ -46,7 +46,6 @@ abstract class BaseIdeaProperties extends JetBrainsProductProperties {
     "intellij.repository.search",
     "intellij.maven.model",
     "intellij.maven",
-    "intellij.externalSystem.dependencyUpdater",
     "intellij.packageSearch",
     "intellij.gradle",
     "intellij.gradle.dependencyUpdater",
@@ -63,6 +62,7 @@ abstract class BaseIdeaProperties extends JetBrainsProductProperties {
     "intellij.xpath",
     "intellij.xslt.debugger",
     "intellij.android.plugin",
+    "intellij.android.design-plugin",
     "intellij.javaFX.community",
     "intellij.java.i18n",
     "intellij.ant",
@@ -80,8 +80,6 @@ abstract class BaseIdeaProperties extends JetBrainsProductProperties {
     "intellij.statsCollector",
     "intellij.ml.models.local",
     "intellij.sh",
-    "intellij.vcs.changeReminder",
-    "intellij.vcs.refactoring.detector",
     "intellij.markdown",
     "intellij.webp",
     "intellij.grazie",
@@ -112,11 +110,11 @@ abstract class BaseIdeaProperties extends JetBrainsProductProperties {
     "plugins/junit/lib/junit5-rt.jar"                       : "1.8",
     "plugins/gradle/lib/gradle-tooling-extension-api.jar"   : "1.6",
     "plugins/gradle/lib/gradle-tooling-extension-impl.jar"  : "1.6",
-    "plugins/maven/lib/maven-server-api.jar"                : "1.6",
-    "plugins/maven/lib/maven2-server.jar"                   : "1.6",
-    "plugins/maven/lib/maven3-server-common.jar"            : "1.6",
-    "plugins/maven/lib/maven30-server.jar"                  : "1.6",
-    "plugins/maven/lib/maven3-server.jar"                   : "1.6",
+    "plugins/maven/lib/maven-server-api.jar"                : "1.8",
+    "plugins/maven/lib/maven2-server.jar"                   : "1.8",
+    "plugins/maven/lib/maven3-server-common.jar"            : "1.8",
+    "plugins/maven/lib/maven30-server.jar"                  : "1.8",
+    "plugins/maven/lib/maven3-server.jar"                   : "1.8",
     "plugins/maven/lib/artifact-resolver-m2.jar"            : "1.6",
     "plugins/maven/lib/artifact-resolver-m3.jar"            : "1.6",
     "plugins/maven/lib/artifact-resolver-m31.jar"           : "1.6",
@@ -138,7 +136,7 @@ abstract class BaseIdeaProperties extends JetBrainsProductProperties {
 
     productLayout.withAdditionalPlatformJar(BaseLayout.APP_JAR, "intellij.java.ide.resources")
 
-    productLayout.platformLayoutCustomizer = new BiConsumer<PlatformLayout, BuildContext>() {
+    productLayout.addPlatformCustomizer(new BiConsumer<PlatformLayout, BuildContext>() {
       @Override
       void accept(PlatformLayout layout, BuildContext context) {
         for (String name : JAVA_IDE_API_MODULES) {
@@ -146,7 +144,7 @@ abstract class BaseIdeaProperties extends JetBrainsProductProperties {
             layout.withModule(name)
           }
         }
-        for (String moduleName : List.<String>of("intellij.java.testFramework", "intellij.platform.testFramework.core")) {
+        for (String moduleName : List.<String> of("intellij.java.testFramework", "intellij.platform.testFramework.core")) {
           if (!productLayout.productApiModules.contains(moduleName)) {
             layout.withModule(moduleName, "testFramework.jar")
           }
@@ -159,9 +157,9 @@ abstract class BaseIdeaProperties extends JetBrainsProductProperties {
         //todo currently intellij.platform.testFramework included into idea.jar depends on this jar so it cannot be moved to java plugin
         layout.withModule("intellij.java.rt", "idea_rt.jar")
         // for compatibility with users' projects which take these libraries from IDEA installation
-        layout.withProjectLibrary("jetbrains-annotations", ProjectLibraryData.PackMode.STANDALONE_SEPARATE_WITHOUT_VERSION_NAME)
+        layout.withProjectLibrary("jetbrains-annotations", LibraryPackMode.STANDALONE_SEPARATE_WITHOUT_VERSION_NAME)
         // for compatibility with users projects which refer to IDEA_HOME/lib/junit.jar
-        layout.withProjectLibrary("JUnit3", ProjectLibraryData.PackMode.STANDALONE_SEPARATE_WITHOUT_VERSION_NAME)
+        layout.withProjectLibrary("JUnit3", LibraryPackMode.STANDALONE_SEPARATE_WITHOUT_VERSION_NAME)
         layout.withProjectLibrary("commons-net")
 
         layout.withoutProjectLibrary("Ant")
@@ -173,16 +171,16 @@ abstract class BaseIdeaProperties extends JetBrainsProductProperties {
         //this library is placed into subdirectory of 'lib' directory in Android plugin layout so we need to exclude it from the platform layout explicitly
         layout.withoutProjectLibrary("layoutlib")
       }
-    }
+    })
 
     productLayout.compatiblePluginsToIgnore = [
       "intellij.java.plugin",
       "kotlin.resources-fir",
     ]
-    additionalModulesToCompile = ["intellij.tools.jps.build.standalone"]
-    modulesToCompileTests = ["intellij.platform.jps.build"]
+    additionalModulesToCompile = List.of("intellij.tools.jps.build.standalone")
+    modulesToCompileTests = List.of("intellij.platform.jps.build")
 
-    isAntRequired = true
+    antRequired = true
   }
 
   @Override

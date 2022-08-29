@@ -1,6 +1,7 @@
 // Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package org.jetbrains.idea.maven.importing;
 
+import com.intellij.maven.testFramework.MavenMultiVersionImportingTestCase;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.module.Module;
@@ -15,7 +16,6 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.idea.maven.MavenCustomRepositoryHelper;
-import com.intellij.maven.testFramework.MavenMultiVersionImportingTestCase;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.junit.Test;
 
@@ -23,7 +23,6 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DependenciesImportingTest extends MavenMultiVersionImportingTestCase {
   @Test
@@ -153,6 +152,42 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
     assertModules("project");
     assertModuleLibDeps("project", "Maven: B:B:2", "Maven: A:A:1");
+  }
+
+  @Test
+  public void testPreservingDependenciesOrderWithTestDependencies() {
+    importProject("<groupId>test</groupId>" +
+                  "<artifactId>project</artifactId>" +
+                  "<version>1</version>" +
+
+                  "<dependencies>" +
+                  "  <dependency>" +
+                  "    <groupId>a</groupId>" +
+                  "    <artifactId>compile</artifactId>" +
+                  "    <version>1</version>" +
+                  "  </dependency>" +
+                  "  <dependency>" +
+                  "    <groupId>a</groupId>" +
+                  "    <artifactId>test</artifactId>" +
+                  "    <version>1</version>" +
+                  "    <scope>test</scope>" +
+                  "  </dependency>" +
+                  "  <dependency>" +
+                  "    <groupId>a</groupId>" +
+                  "    <artifactId>runtime</artifactId>" +
+                  "    <version>1</version>" +
+                  "    <scope>runtime</scope>" +
+                  "  </dependency>" +
+                  "  <dependency>" +
+                  "    <groupId>a</groupId>" +
+                  "    <artifactId>compile-2</artifactId>" +
+                  "    <version>1</version>" +
+                  "  </dependency>" +
+                  "</dependencies>");
+
+    assertModules("project");
+    assertModuleLibDeps("project",
+                        "Maven: a:compile:1", "Maven: a:test:1", "Maven: a:runtime:1", "Maven: a:compile-2:1");
   }
 
   @Test
@@ -329,9 +364,9 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
                           "</parent>");
 
     importProject();
-    assertModules("project", "m1", "m2");
+    assertModules("project", "m1", mn("project", "m2"));
 
-    assertModuleModuleDeps("m1", "m2");
+    assertModuleModuleDeps("m1", mn("project", "m2"));
   }
 
   @Test
@@ -402,9 +437,9 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
                           "</parent>");
 
     importProject();
-    assertModules("project", "m1", "m2");
+    assertModules("project", "m1", mn("project", "m2"));
 
-    assertModuleModuleDeps("m1", "m2");
+    assertModuleModuleDeps("m1", mn("project", "m2"));
   }
 
   @Test
@@ -446,9 +481,9 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
                           "</parent>");
 
     importProject();
-    assertModules("project", "m1", "m2");
+    assertModules("project", "m1", mn("project", "m2"));
 
-    assertModuleModuleDeps("m1", "m2");
+    assertModuleModuleDeps("m1", mn("project", "m2"));
   }
 
   @Test
@@ -939,7 +974,7 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
     importProject();
 
-    assertModuleLibDep("m", "Maven: group:lib:2");
+    assertModuleLibDep(mn("project", "m"), "Maven: group:lib:2");
   }
 
   @Test
@@ -977,8 +1012,8 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
     importProject();
 
-    assertModules("project", "m");
-    assertModuleLibDeps("m", "Maven: group:id:1.2.3");
+    assertModules("project", mn("project", "m"));
+    assertModuleLibDeps(mn("project", "m"), "Maven: group:id:1.2.3");
   }
 
   @Test
@@ -1019,7 +1054,7 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
                          "</dependencies>");
 
     importProject();
-    assertModuleLibDeps("m", "Maven: group:id:1");
+    assertModuleLibDeps(mn("project", "m"), "Maven: group:id:1");
   }
 
   @Test
@@ -1065,8 +1100,8 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
     importProject();
 
-    assertModules("project", "m");
-    assertModuleLibDeps("m", "Maven: group:id:1");
+    assertModules("project", mn("project", "m"));
+    assertModuleLibDeps(mn("project", "m"), "Maven: group:id:1");
   }
 
   @Test
@@ -1132,12 +1167,12 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
     importProjectWithErrors();
 
-    assertModules("project", "m");
-    assertModuleLibDeps("m");
+    assertModules("project", mn("project", "m"));
+    assertModuleLibDeps(mn("project", "m"));
 
 
-    MavenProject root = myProjectsTree.getRootProjects().get(0);
-    List<MavenProject> modules = myProjectsTree.getModules(root);
+    MavenProject root = getProjectsTree().getRootProjects().get(0);
+    List<MavenProject> modules = getProjectsTree().getModules(root);
 
     assertOrderedElementsAreEqual(root.getProblems());
     assertTrue(modules.get(0).getProblems().get(0).getDescription().contains("Unresolved dependency: 'xxx:yyy:pom:1'"));
@@ -1201,7 +1236,7 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
                   "  </dependency>" +
                   "</dependencies>");
 
-    assertTrue(myProjectsTree.findProject(myProjectPom).hasUnresolvedArtifacts());
+    assertTrue(getProjectsTree().findProject(myProjectPom).hasUnresolvedArtifacts());
   }
 
   @Test
@@ -1313,6 +1348,8 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
   @Test
   public void testDoNotResetUserLibraryDependencies() {
+    if (!supportsKeepingManualChanges()) return;
+
     importProject("<groupId>test</groupId>" +
                   "<artifactId>project</artifactId>" +
                   "<version>1</version>" +
@@ -1342,6 +1379,8 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
   @Test
   public void testDoNotResetUserModuleDependencies() {
+    if (!supportsKeepingManualChanges()) return;
+
     VirtualFile m1 = createModulePom("m1",
                                      "<groupId>test</groupId>" +
                                      "<artifactId>m1</artifactId>" +
@@ -1788,8 +1827,13 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
                   "<artifactId>project</artifactId>" +
                   "<version>1</version>");
 
-    assertProjectLibraries("Maven: group:lib1:1",
-                           "Maven: group:lib2:1");
+    if (supportsKeepingManualChanges()) {
+      assertProjectLibraries("Maven: group:lib1:1",
+                             "Maven: group:lib2:1");
+    }
+    else {
+      assertProjectLibraries();
+    }
   }
 
   @Test
@@ -1802,14 +1846,22 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
     assertProjectLibraries("lib");
     addLibraryRoot("lib", OrderRootType.CLASSES, "file://" + getRepositoryPath() + "/foo/bar.jar!/");
-    assertModuleLibDeps("project", "lib");
+    if (supportsKeepingManualChanges()) {
+      assertModuleLibDeps("project", "lib");
+    }
 
     importProject("<groupId>test</groupId>" +
                   "<artifactId>project</artifactId>" +
                   "<version>1</version>");
 
     assertProjectLibraries("lib");
-    assertModuleLibDeps("project", "lib");
+
+    if (supportsKeepingManualChanges()) {
+      assertModuleLibDeps("project", "lib");
+    }
+    else {
+      assertModuleLibDeps("project");
+    }
   }
 
   @Test
@@ -2132,7 +2184,7 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
 
     importProject();
 
-    assertModuleLibDeps("m", "Maven: asm:asm-attrs:2.2.1", "Maven: asm:asm:2.2.1");
+    assertModuleLibDeps(mn("project", "m"), "Maven: asm:asm-attrs:2.2.1", "Maven: asm:asm:2.2.1");
   }
 
   @Test
@@ -2366,7 +2418,7 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
                        "jar://" + getRepositoryPath() + "/junit/junit/4.0/junit-4.0-sources.jar!/",
                        "jar://" + getRepositoryPath() + "/junit/junit/4.0/junit-4.0-javadoc.jar!/");
 
-    assertModuleLibDep("m1", "Maven: junit:junit:4.0",
+    assertModuleLibDep(mn("project", "m1"), "Maven: junit:junit:4.0",
                        "jar://" + getRepositoryPath() + "/junit/junit/4.0/junit-4.0.jar!/",
                        "jar://" + getRepositoryPath() + "/junit/junit/4.0/junit-4.0-sources.jar!/",
                        "jar://" + getRepositoryPath() + "/junit/junit/4.0/junit-4.0-javadoc.jar!/");
@@ -2397,18 +2449,18 @@ public class DependenciesImportingTest extends MavenMultiVersionImportingTestCas
           .addInvalidLibrary("Maven: AnotherLibrary", LibraryTablesRegistrar.PROJECT_LEVEL);
         modifiableModel.commit();
       });
+      if (supportsKeepingManualChanges()) {
+        assertModuleLibDeps("project", "Maven: junit:junit:4.0", "SomeLibrary", "Maven: AnotherLibrary");
+      }
 
       importProject();
 
-      List<String> librariesDepNames = Arrays.stream(ModuleRootManager.getInstance(getModule("project"))
-                                                       .getOrderEntries())
-        .filter(LibraryOrderEntry.class::isInstance)
-        .map(LibraryOrderEntry.class::cast)
-        .map(loe -> loe.getLibraryName())
-        .collect(Collectors.toList());
-
-      assertContain(librariesDepNames, "SomeLibrary", "Maven: junit:junit:4.0");
-      assertDoesntContain(librariesDepNames, "Maven: AnotherLibrary");
+      if (supportsKeepingManualChanges()) {
+        assertModuleLibDeps("project", "SomeLibrary", "Maven: junit:junit:4.0");
+      }
+      else {
+        assertModuleLibDeps("project", "Maven: junit:junit:4.0");
+      }
     }
     finally {
       value.resetToDefault();

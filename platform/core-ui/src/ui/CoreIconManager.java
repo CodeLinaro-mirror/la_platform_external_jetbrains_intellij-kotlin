@@ -78,7 +78,7 @@ public final class CoreIconManager implements IconManager, CoreAwareIconManager 
     }
     else {
       // not safe for now to decide should patchPath return path with leading slash or not
-      resolver = RasterizedImageDataLoader.createPatched(path, classLoaderWeakRef, patchedPath, cacheKey, imageFlags);
+      resolver = RasterizedImageDataLoaderKt.createPatched(path, classLoaderWeakRef, patchedPath, cacheKey, imageFlags);
     }
     if (startTime != -1) {
       IconLoadMeasurer.findIcon.end(startTime);
@@ -90,7 +90,7 @@ public final class CoreIconManager implements IconManager, CoreAwareIconManager 
     private String result;
     private boolean isTooltipCalculated;
 
-    IconWithToolTipImpl(@NotNull String originalPath, @NotNull ImageDataLoader resolver) {
+    private IconWithToolTipImpl(@NotNull String originalPath, @NotNull ImageDataLoader resolver) {
       super(originalPath, resolver, null, null);
     }
 
@@ -235,7 +235,7 @@ public final class CoreIconManager implements IconManager, CoreAwareIconManager 
       if (classLoader == null) {
         classLoader = CoreIconManager.class.getClassLoader();
       }
-      ResourceBundle bundle = DynamicBundle.INSTANCE.getResourceBundle(ep.resourceBundle, classLoader);
+      ResourceBundle bundle = DynamicBundle.getResourceBundle(classLoader, ep.resourceBundle);
       String description = AbstractBundle.messageOrNull(bundle, key);
       if (description != null) {
         result.set(description);

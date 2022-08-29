@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.caches.resolve
 
@@ -23,7 +23,10 @@ import org.jetbrains.kotlin.context.withModule
 import org.jetbrains.kotlin.context.withProject
 import org.jetbrains.kotlin.descriptors.InvalidModuleException
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
-import org.jetbrains.kotlin.diagnostics.*
+import org.jetbrains.kotlin.diagnostics.Diagnostic
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactoryWithPsiElement
+import org.jetbrains.kotlin.diagnostics.DiagnosticSink
+import org.jetbrains.kotlin.diagnostics.DiagnosticUtils
 import org.jetbrains.kotlin.diagnostics.PositioningStrategies.DECLARATION_WITH_BODY
 import org.jetbrains.kotlin.frontend.di.createContainerForLazyBodyResolve
 import org.jetbrains.kotlin.idea.caches.project.getModuleInfo
@@ -330,16 +333,22 @@ private inline fun Throwable.throwAsInvalidModuleException(crossinline action: (
     }
 }
 
-private class MergedDiagnostics(val diagnostics: Collection<Diagnostic>, override val modificationTracker: ModificationTracker) :
-    Diagnostics {
-    @Suppress("UNCHECKED_CAST")
+private class MergedDiagnostics(
+    val diagnostics: Collection<Diagnostic>,
+    val noSuppressionDiagnostics: Collection<Diagnostic>,
+    override val modificationTracker: ModificationTracker
+) : Diagnostics {
     private val elementsCache = DiagnosticsElementsCache(this) { true }
 
     override fun all() = diagnostics
 
     override fun forElement(psiElement: PsiElement): MutableCollection<Diagnostic> = elementsCache.getDiagnostics(psiElement)
 
-    override fun noSuppression() = this
+    override fun noSuppression() = if (noSuppressionDiagnostics.isEmpty()) {
+        this
+    } else {
+        MergedDiagnostics(noSuppressionDiagnostics, emptyList(), modificationTracker)
+    }
 }
 
 /**
@@ -382,6 +391,12 @@ private class StackedCompositeBindingContextTrace(
         filtered
     }
 
+    val parentDiagnosticsNoSuppressionApartElement: Collection<Diagnostic> = run {
+        val all = parentContext.diagnostics.noSuppression()
+        val filtered = all.filter { it.psiElement == element && selfDiagnosticToHold(it) } + all.filter { it.psiElement.parentsWithSelf.none { e -> e == element } }
+        filtered
+    }
+
     inner class StackedCompositeBindingContext : BindingContext {
         var cachedDiagnostics: Diagnostics? = null
 
@@ -401,7 +416,14 @@ private class StackedCompositeBindingContextTrace(
                 this@StackedCompositeBindingContextTrace.mutableDiagnostics?.all()?.let {
                     mergedDiagnostics.addAll(it)
                 }
-                cachedDiagnostics = MergedDiagnostics(mergedDiagnostics, parentContext.diagnostics.modificationTracker)
+
+                val mergedNoSuppressionDiagnostics = mutableSetOf<Diagnostic>()
+                mergedNoSuppressionDiagnostics += parentDiagnosticsNoSuppressionApartElement
+                this@StackedCompositeBindingContextTrace.mutableDiagnostics?.noSuppression()?.let {
+                    mergedNoSuppressionDiagnostics.addAll(it)
+                }
+
+                cachedDiagnostics = MergedDiagnostics(mergedDiagnostics, mergedNoSuppressionDiagnostics, parentContext.diagnostics.modificationTracker)
             }
             return cachedDiagnostics!!
         }
@@ -452,7 +474,6 @@ private object KotlinResolveDataProvider {
     fun findAnalyzableParent(element: KtElement): KtElement? {
         if (element is KtFile) return element
 
-        @Suppress("MoveVariableDeclarationIntoWhen")
         val topmostElement = element.findTopmostParentInFile {
             it is KtNamedFunction ||
             it is KtAnonymousInitializer ||

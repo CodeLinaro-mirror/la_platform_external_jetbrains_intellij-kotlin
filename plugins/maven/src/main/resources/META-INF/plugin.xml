@@ -21,7 +21,6 @@
   <resource-bundle>messages.MavenProjectBundle</resource-bundle>
 
   <extensionPoints>
-    <extensionPoint name="import.status.listener" interface="org.jetbrains.idea.maven.project.importing.MavenImportStatusListener" dynamic="true"/>
     <extensionPoint name="importer" interface="org.jetbrains.idea.maven.importing.MavenImporter" dynamic="true"/>
     <extensionPoint name="compiler" interface="org.jetbrains.idea.maven.importing.MavenCompilerExtension" dynamic="true"/>
     <extensionPoint name="manifestImporter" interface="org.jetbrains.idea.maven.importing.ManifestImporter" dynamic="true"/>
@@ -50,7 +49,6 @@
   <depends>org.jetbrains.idea.maven.model</depends>
   <depends optional="true" config-file="groovy-support.xml">org.intellij.groovy</depends>
   <depends optional="true" config-file="errorProne-compiler-support.xml">Error-prone plugin</depends>
-  <depends optional="true" config-file="maven-dependency-update-integration.xml">com.intellij.externalSystem.dependencyUpdater</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <pathMacroContributor implementation="org.jetbrains.idea.maven.utils.MavenPathMacroContributor"/>
@@ -264,10 +262,11 @@
 
     <statistics.projectUsagesCollector implementation="org.jetbrains.idea.maven.statistics.MavenSettingsCollector"/>
     <statistics.counterUsagesCollector implementationClass="org.jetbrains.idea.maven.statistics.MavenActionsUsagesCollector"/>
+    <statistics.counterUsagesCollector implementationClass="org.jetbrains.idea.maven.statistics.MavenImportCollector"/>
     <statistics.counterUsagesCollector groupId="build.maven.packagesearch" version="2"/>
 
-    <registryKey key="maven.new.import" defaultValue="false"
-                 description="new maven import"/>
+    <registryKey key="maven.linear.import" defaultValue="false"
+                 description="linear maven import process"/>
 
     <registryKey key="maven.import.to.workspace.model" defaultValue="false"
                  description="Enable experimental implementation of Maven import which writes to workspace model directly. Only basic features are supported for now, this mode may work incorrecly for many projects. See IDEA-284414 for details."/>
@@ -327,6 +326,8 @@
 
     <newProjectWizard.java.buildSystem implementation="org.jetbrains.idea.maven.wizards.MavenJavaNewProjectWizard"/>
     <commandLineInspectionProjectConfigurator implementation="org.jetbrains.idea.maven.MavenCommandLineInspectionProjectConfigurator"/>
+
+    <externalSystem.dependencyModifier implementation="org.jetbrains.idea.maven.dsl.MavenDependencyModificator"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij.properties">
@@ -472,8 +473,10 @@
     <importer implementation="org.jetbrains.idea.maven.importing.MavenCompilerAnnotationProcessorPathsImporter"/>
     <importer implementation="org.jetbrains.idea.maven.importing.ExternalAnnotationsImporter"/>
     <importer implementation="org.jetbrains.idea.maven.importing.RemoteRepositoriesImporter"/>
-    <importer implementation="org.jetbrains.idea.maven.importing.RemoteRepositoriesImporter"/>
-    <import.status.listener implementation="org.jetbrains.idea.maven.project.importing.MavenToolWindowUpdateListener"/>
+
+    <importer implementation="org.jetbrains.idea.maven.importing.MavenEncodingImporter"/>
+    <importer implementation="org.jetbrains.idea.maven.importing.MavenIdeaPluginImporter"/>
+    <importer implementation="org.jetbrains.idea.maven.importing.MavenWslTargetImporter"/>
 
     <compiler implementation="org.jetbrains.idea.maven.importing.MavenCompilerJavacExtension"/>
     <compiler implementation="org.jetbrains.idea.maven.importing.MavenCompilerEclipseExtension"/>
@@ -594,7 +597,7 @@
 
     <action id="Maven.ToggleSkipTests"
             class="org.jetbrains.idea.maven.project.actions.ToggleSkipTestsAction"
-            icon="AllIcons.Nodes.ExceptionClass">
+            icon="AllIcons.RunConfigurations.ShowIgnored">
     </action>
 
     <action id="Maven.ExpandAll" class="org.jetbrains.idea.maven.navigator.actions.MavenTreeAction$ExpandAll"
@@ -605,7 +608,7 @@
             use-shortcut-of="CollapseAll"/>
 
     <action id="Maven.ExecuteGoal" class="org.jetbrains.idea.maven.navigator.actions.MavenExecuteGoalAction"
-            icon="MavenIcons.ExecuteMavenGoal">
+            icon="AllIcons.Actions.Run_anything">
     </action>
 
     <action id="Maven.GroupProjects"

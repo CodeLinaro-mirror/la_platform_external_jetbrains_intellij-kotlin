@@ -10,6 +10,7 @@ import com.intellij.codeInspection.dataFlow.DataFlowInspection;
 import com.intellij.codeInspection.deadCode.UnusedDeclarationInspectionBase;
 import com.intellij.codeInspection.incorrectFormatting.IncorrectFormattingInspection;
 import com.intellij.codeInspection.unusedSymbol.UnusedSymbolLocalInspectionBase;
+import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.JDOMUtil;
 import com.intellij.profile.ProfileChangeAdapter;
@@ -197,6 +198,21 @@ public class InspectionProfileTest extends LightIdeaTestCase {
     profileManager.fireProfileChanged(localProfile);
   }
 
+  public void testCustomTextAttributes() throws IOException, JDOMException {
+    @Language("XML") String content = "<profile version=\"1.0\">\n" +
+                     "  <option name=\"myName\" value=\"default\" />\n" +
+                     "  <inspection_tool class=\"Convert2Lambda\" enabled=\"false\" level=\"WARNING\" enabled_by_default=\"false\"/>\n" +
+                     "</profile>";
+    InspectionProfileImpl profile = createProfile();
+    readFromXml(profile, content);
+    InspectionToolWrapper tool = profile.getInspectionTool("Convert2Lambda", getProject());
+    assertNotNull(tool);
+    TextAttributesKey editorAttributes = profile.getEditorAttributes("Convert2Lambda", null);
+    assertNotNull(editorAttributes);
+    assertEquals("NOT_USED_ELEMENT_ATTRIBUTES", editorAttributes.getExternalName());
+    assertThat(profile.writeScheme()).isEqualTo(JDOMUtil.load(content));
+  }
+
   public void testConvertOldProfile() throws Exception {
     @Language("XML") String content = "<inspections version=\"1.0\">\n" +
                                       "  <option name=\"myName\" value=\"ToConvert\" />\n" +
@@ -378,7 +394,6 @@ public class InspectionProfileTest extends LightIdeaTestCase {
     readFromXml(profile, content);
     ToolsImpl tools = profile.getTools("MissingJavadoc", getProject());
     assertFalse(tools.getDefaultState().isEnabled());
-    assertTrue(tools.getNonDefaultTools().get(0).isEnabled());
   }
 
   public void testDefaultScopeEnabled() throws Exception {
@@ -392,7 +407,6 @@ public class InspectionProfileTest extends LightIdeaTestCase {
     readFromXml(profile, content);
     ToolsImpl tools = profile.getTools("MissingJavadoc", getProject());
     assertTrue(tools.getDefaultState().isEnabled());
-    assertFalse(tools.getNonDefaultTools().get(0).isEnabled());
   }
 
   public void testScopesInNamingConventions() throws Exception {
@@ -737,15 +751,25 @@ public class InspectionProfileTest extends LightIdeaTestCase {
                          "</profile>");
   }
 
-  public void testMergedMalformedSetUpTearDownInspections() throws Exception {
+  public void testJUnitMalformedMemberInspections() throws Exception {
     checkMergedNoChanges("<profile version=\"1.0\">\n" +
                          "  <option name=\"myName\" value=\"" + PROFILE + "\" />\n" +
+                         "  <inspection_tool class=\"BeforeClassOrAfterClassIsPublicStaticVoidNoArg\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"true\" />\n" +
+                         "  <inspection_tool class=\"BeforeOrAfterIsPublicVoidNoArg\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"true\" />\n" +
+                         "  <inspection_tool class=\"JUnit5MalformedExtensions\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"true\" />\n" +
+                         "  <inspection_tool class=\"JUnit5MalformedNestedClass\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"true\" />\n" +
+                         "  <inspection_tool class=\"JUnit5MalformedRepeated\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"true\" />\n" +
+                         "  <inspection_tool class=\"JUnitDatapoint\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"false\" />\n" +
+                         "  <inspection_tool class=\"JUnitRule\" enabled=\"true\" level=\"ERROR\" enabled_by_default=\"false\" />\n" +
+                         "  <inspection_tool class=\"Junit5MalformedParameterized\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"true\" />\n" +
+                         "  <inspection_tool class=\"MalformedSetUpTearDown\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"false\" />\n" +
                          "  <inspection_tool class=\"SetupIsPublicVoidNoArg\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"false\" />\n" +
                          "  <inspection_tool class=\"TeardownIsPublicVoidNoArg\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"false\" />\n" +
+                         "  <inspection_tool class=\"TestMethodIsPublicVoidNoArg\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"true\" />\n" +
                          "</profile>");
     checkMergedNoChanges("<profile version=\"1.0\">\n" +
                          "  <option name=\"myName\" value=\"" + PROFILE + "\" />\n" +
-                         "  <inspection_tool class=\"MalformedSetUpTearDown\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"false\" />\n" +
+                         "  <inspection_tool class=\"JUnitMalformedMember\" enabled=\"true\" level=\"WARNING\" enabled_by_default=\"false\" />\n" +
                          "</profile>");
   }
 

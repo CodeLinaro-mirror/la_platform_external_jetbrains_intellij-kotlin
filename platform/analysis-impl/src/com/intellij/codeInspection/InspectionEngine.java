@@ -43,7 +43,7 @@ public final class InspectionEngine {
   private static final Logger LOG = Logger.getInstance(InspectionEngine.class);
   private static final Set<Class<? extends LocalInspectionTool>> RECURSIVE_VISITOR_TOOL_CLASSES = ContainerUtil.newConcurrentSet();
 
-  public static boolean createVisitorAndAcceptElements(@NotNull LocalInspectionTool tool,
+  private static boolean createVisitorAndAcceptElements(@NotNull LocalInspectionTool tool,
                                                      @NotNull ProblemsHolder holder,
                                                      boolean isOnTheFly,
                                                      @NotNull LocalInspectionToolSession session,
@@ -74,7 +74,7 @@ public final class InspectionEngine {
     return visitor;
   }
 
-  public static void acceptElements(@NotNull List<? extends PsiElement> elements, @NotNull PsiElementVisitor elementVisitor) {
+  private static void acceptElements(@NotNull List<? extends PsiElement> elements, @NotNull PsiElementVisitor elementVisitor) {
     //noinspection ForLoopReplaceableByForEach
     for (int i = 0, elementsSize = elements.size(); i < elementsSize; i++) {
       PsiElement element = elements.get(i);
@@ -121,7 +121,7 @@ public final class InspectionEngine {
     Map<LocalInspectionToolWrapper, List<ProblemDescriptor>> map = inspectElements(toolWrappers, file, restrictRange, ignoreSuppressedElements, isOnTheFly, indicator, elements, foundDescriptorCallback);
     if (inspectInjectedPsi) {
       InjectedLanguageManager injectedLanguageManager = InjectedLanguageManager.getInstance(file.getProject());
-      List<Pair<PsiFile, PsiElement>> injectedFiles = new ArrayList<>();
+      Set<Pair<PsiFile, PsiElement>> injectedFiles = new HashSet<>();
       for (PsiElement element : elements) {
         if (element instanceof PsiLanguageInjectionHost) {
           List<Pair<PsiElement, TextRange>> files = injectedLanguageManager.getInjectedPsiFiles(element);
@@ -133,7 +133,7 @@ public final class InspectionEngine {
           }
         }
       }
-      if (!JobLauncher.getInstance().invokeConcurrentlyUnderProgress(injectedFiles, indicator, pair -> {
+      if (!JobLauncher.getInstance().invokeConcurrentlyUnderProgress(new ArrayList<>(injectedFiles), indicator, pair -> {
         PsiFile injectedFile = pair.getFirst();
         PsiElement host = pair.getSecond();
         List<PsiElement> injectedElements = new ArrayList<>();
@@ -463,7 +463,7 @@ public final class InspectionEngine {
     return dialectIds;
   }
 
-  public static @NotNull Set<String> calcElementDialectIds(@NotNull List<? extends PsiElement> elements) {
+  private static @NotNull Set<String> calcElementDialectIds(@NotNull List<? extends PsiElement> elements) {
     Set<String> dialectIds = new HashSet<>();
     Set<Language> processedLanguages = new HashSet<>();
     addDialects(elements, processedLanguages, dialectIds);

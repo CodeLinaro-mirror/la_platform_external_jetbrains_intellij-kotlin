@@ -13,7 +13,6 @@
 
     <applicationService serviceImplementation="org.jetbrains.kotlin.load.kotlin.KotlinBinaryClassCache"/>
 
-    <projectService serviceImplementation="org.jetbrains.kotlin.idea.caches.trackers.KotlinPackageModificationListener"/>
     <projectService serviceImplementation="org.jetbrains.kotlin.idea.caches.trackers.KotlinCodeBlockModificationListener"/>
     <projectService serviceImplementation="org.jetbrains.kotlin.idea.caches.trackers.PureKotlinCodeBlockModificationListener"/>
     <projectService serviceImplementation="org.jetbrains.kotlin.idea.caches.project.LibraryModificationTracker"/>
@@ -34,6 +33,8 @@
             serviceImplementation="org.jetbrains.kotlin.idea.caches.project.KotlinStdlibCacheImpl"/>
 
     <psi.treeChangePreprocessor implementation="org.jetbrains.kotlin.idea.caches.KotlinPackageStatementPsiTreeChangePreprocessor"/>
+
+    <cachesInvalidator implementation="org.jetbrains.kotlin.idea.artifacts.LazyFileOutputProducerCacheInvalidator"/>
 
     <java.shortNamesCache implementation="org.jetbrains.kotlin.idea.caches.KotlinShortNamesCache"/>
   </extensions>

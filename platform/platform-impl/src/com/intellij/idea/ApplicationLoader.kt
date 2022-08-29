@@ -8,6 +8,7 @@ package com.intellij.idea
 import com.intellij.BundleBase
 import com.intellij.diagnostic.*
 import com.intellij.diagnostic.StartUpMeasurer.Activities
+import com.intellij.diagnostic.opentelemetry.TraceManager
 import com.intellij.icons.AllIcons
 import com.intellij.ide.*
 import com.intellij.ide.plugins.IdeaPluginDescriptorImpl
@@ -101,17 +102,35 @@ fun initApplication(rawArgs: List<String>, prepareUiFuture: CompletionStage<Any>
         ForkJoinPool.commonPool()
       )
 
-      ForkJoinPool.commonPool().execute {
-        if (!Main.isHeadless()) {
+      if (!Main.isHeadless()) {
+        ForkJoinPool.commonPool().execute {
           EventQueue.invokeLater {
             WeakFocusStackManager.getInstance()
           }
         }
       }
 
-      initAppActivity.runChild("app instantiation") {
-        val app = ApplicationImpl(isInternal, Main.isHeadless(), Main.isCommandLine(), EDT.getEventDispatchThread())
-        ApplicationImpl.preventAwtAutoShutdown(app)
+      val app = initAppActivity.runChild("app instantiation") {
+        ApplicationImpl(isInternal, Main.isHeadless(), Main.isCommandLine(), EDT.getEventDispatchThread())
+      }
+
+      ForkJoinPool.commonPool().execute {
+        initAppActivity.runChild("opentelemetry configuration") {
+          TraceManager.init()
+        }
+      }
+
+      if (!Main.isHeadless()) {
+        app.invokeLater({
+                          val patchingActivity = StartUpMeasurer.startActivity("html style patching")
+                          // patch html styles
+                          val uiDefaults = UIManager.getDefaults()
+                          // create a separate copy for each case
+                          uiDefaults.put("javax.swing.JLabel.userStyleSheet", GlobalStyleSheetHolder.getGlobalStyleSheet())
+                          uiDefaults.put("HTMLEditorKit.jbStyleSheet", GlobalStyleSheetHolder.getGlobalStyleSheet())
+
+                          patchingActivity.end()
+                        }, ModalityState.any())
       }
 
       val pluginSetFutureWaitActivity = initAppActivity.startChild("plugin descriptor init waiting")
@@ -143,16 +162,6 @@ fun initApplication(rawArgs: List<String>, prepareUiFuture: CompletionStage<Any>
         }
 
         runActivity("laf initialization") {
-          val patchingActivity = StartUpMeasurer.startActivity("html style patching")
-          // patch html styles
-          val uiDefaults = UIManager.getDefaults()
-          // create a separate copy for each case
-          val globalStyleSheetHolder = GlobalStyleSheetHolder.getInstance()
-          uiDefaults.put("javax.swing.JLabel.userStyleSheet", globalStyleSheetHolder.getGlobalStyleSheet())
-          uiDefaults.put("HTMLEditorKit.jbStyleSheet", globalStyleSheetHolder.getGlobalStyleSheet())
-
-          patchingActivity.end()
-
           LafManager.getInstance()
         }
       }, ModalityState.any())
@@ -403,8 +412,8 @@ private fun handleExternalCommand(args: List<String>, currentDirectory: String?)
         }
       }
       else {
-        windowManager.getFrame(result.project)?.let {
-          AppIcon.getInstance().requestFocus()
+        windowManager.getIdeFrame(result.project)?.let {
+          AppIcon.getInstance().requestFocus(it)
         }
       }
     }

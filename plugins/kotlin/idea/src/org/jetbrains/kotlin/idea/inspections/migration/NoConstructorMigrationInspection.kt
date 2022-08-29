@@ -5,8 +5,8 @@ import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.config.LanguageVersion
 import org.jetbrains.kotlin.diagnostics.DiagnosticFactory0
 import org.jetbrains.kotlin.diagnostics.Errors
-import org.jetbrains.kotlin.idea.configuration.MigrationInfo
-import org.jetbrains.kotlin.idea.configuration.isLanguageVersionUpdate
+import org.jetbrains.kotlin.idea.migration.MigrationInfo
+import org.jetbrains.kotlin.idea.migration.isLanguageVersionUpdate
 import org.jetbrains.kotlin.idea.quickfix.migration.MigrationFix
 
 class NoConstructorMigrationInspection :

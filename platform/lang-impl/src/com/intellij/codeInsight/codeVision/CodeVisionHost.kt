@@ -60,10 +60,6 @@ import java.util.concurrent.CompletableFuture
 open class CodeVisionHost(val project: Project) {
   companion object {
     private val logger = getLogger<CodeVisionHost>()
-
-    @JvmStatic
-    fun getInstance(project: Project): CodeVisionHost = project.getService(CodeVisionHost::class.java)
-
     const val defaultVisibleLenses = 5
     const val settingsLensProviderId = "!Settings"
     const val moreLensProviderId = "!More"
@@ -74,6 +70,7 @@ open class CodeVisionHost(val project: Project) {
      * particular implementations of code vision to make sure that other tests' performance is not hurt.
      */
     val isCodeVisionTestKey: Key<Boolean> = Key.create("code.vision.test")
+    private val editorTrackingStart: Key<Long> = Key.create("editor.tracking.start")
 
     /**
      * Returns true iff we are in test in [com.intellij.java.codeInsight.codeVision.CodeVisionTestCase].
@@ -102,81 +99,82 @@ open class CodeVisionHost(val project: Project) {
   var providers: List<CodeVisionProvider<*>> = CodeVisionProviderFactory.createAllProviders(project)
 
 
-  init {
+  open fun initialize() {
     lifeSettingModel.isRegistryEnabled.whenTrue(codeVisionLifetime) { enableCodeVisionLifetime ->
-      ApplicationManager.getApplication().invokeLater {
-        runReadAction {
-          if (project.isDisposed) return@runReadAction
-          val liveEditorList = ProjectEditorLiveList(enableCodeVisionLifetime, project)
-          liveEditorList.editorList.view(enableCodeVisionLifetime) { editorLifetime, editor ->
-            if (isEditorApplicable(editor)) {
-              subscribeForFrontendEditor(editorLifetime, editor)
-            }
+      runReadAction {
+        if (project.isDisposed) return@runReadAction
+        val liveEditorList = ProjectEditorLiveList(enableCodeVisionLifetime, project)
+        liveEditorList.editorList.view(enableCodeVisionLifetime) { editorLifetime, editor ->
+          if (isEditorApplicable(editor)) {
+            subscribeForFrontendEditor(editorLifetime, editor)
           }
-
-          val viewService = project.service<CodeVisionView>()
-          viewService.setPerAnchorLimits(
-            CodeVisionAnchorKind.values().associateWith { (lifeSettingModel.getAnchorLimit(it) ?: defaultVisibleLenses) })
-
-
-          invalidateProviderSignal.advise(enableCodeVisionLifetime) { invalidateSignal ->
-            if (invalidateSignal.editor == null && invalidateSignal.providerIds.isEmpty())
-              viewService.setPerAnchorLimits(
-                CodeVisionAnchorKind.values().associateWith { (lifeSettingModel.getAnchorLimit(it) ?: defaultVisibleLenses) })
-          }
-
-
-          lifeSettingModel.visibleMetricsAboveDeclarationCount.advise(codeVisionLifetime) {
-            invalidateProviderSignal.fire(LensInvalidateSignal(null, emptyList()))
-          }
-
-          lifeSettingModel.visibleMetricsNextToDeclarationCount.advise(codeVisionLifetime) {
-            invalidateProviderSignal.fire(LensInvalidateSignal(null, emptyList()))
-          }
-
-
-          rearrangeProviders()
-
-          project.messageBus.connect(enableCodeVisionLifetime.createNestedDisposable())
-            .subscribe(DynamicPluginListener.TOPIC,
-                       object : DynamicPluginListener {
-                         private fun recollectAndRearrangeProviders() {
-                           providers = CodeVisionProviderFactory.createAllProviders(
-                             project)
-                           rearrangeProviders()
-                         }
-
-                         override fun pluginLoaded(pluginDescriptor: IdeaPluginDescriptor) {
-                           recollectAndRearrangeProviders()
-                         }
-
-                         override fun pluginUnloaded(pluginDescriptor: IdeaPluginDescriptor,
-                                                     isUpdate: Boolean) {
-                           recollectAndRearrangeProviders()
-                         }
-                       })
-          project.messageBus.connect(enableCodeVisionLifetime.createNestedDisposable())
-            .subscribe(CodeVisionSettings.CODE_LENS_SETTINGS_CHANGED, object : CodeVisionSettings.CodeVisionSettingsListener {
-              override fun groupPositionChanged(id: String, position: CodeVisionAnchorKind) {
-
-              }
-
-              override fun providerAvailabilityChanged(id: String, isEnabled: Boolean) {
-                PsiManager.getInstance(project).dropPsiCaches()
-                DaemonCodeAnalyzer.getInstance(project).restart()
-              }
-            })
         }
+
+        val viewService = project.service<CodeVisionView>()
+        viewService.setPerAnchorLimits(
+          CodeVisionAnchorKind.values().associateWith { (lifeSettingModel.getAnchorLimit(it) ?: defaultVisibleLenses) })
+
+
+        invalidateProviderSignal.advise(enableCodeVisionLifetime) { invalidateSignal ->
+          if (invalidateSignal.editor == null && invalidateSignal.providerIds.isEmpty())
+            viewService.setPerAnchorLimits(
+              CodeVisionAnchorKind.values().associateWith { (lifeSettingModel.getAnchorLimit(it) ?: defaultVisibleLenses) })
+        }
+
+
+        lifeSettingModel.visibleMetricsAboveDeclarationCount.advise(codeVisionLifetime) {
+          invalidateProviderSignal.fire(LensInvalidateSignal(null, emptyList()))
+        }
+
+        lifeSettingModel.visibleMetricsNextToDeclarationCount.advise(codeVisionLifetime) {
+          invalidateProviderSignal.fire(LensInvalidateSignal(null, emptyList()))
+        }
+
+
+        rearrangeProviders()
+
+        project.messageBus.connect(enableCodeVisionLifetime.createNestedDisposable())
+          .subscribe(DynamicPluginListener.TOPIC,
+                     object : DynamicPluginListener {
+                       private fun recollectAndRearrangeProviders() {
+                         providers = CodeVisionProviderFactory.createAllProviders(
+                           project)
+                         rearrangeProviders()
+                       }
+
+                       override fun pluginLoaded(pluginDescriptor: IdeaPluginDescriptor) {
+                         recollectAndRearrangeProviders()
+                       }
+
+                       override fun pluginUnloaded(pluginDescriptor: IdeaPluginDescriptor,
+                                                   isUpdate: Boolean) {
+                         recollectAndRearrangeProviders()
+                       }
+                     })
+        project.messageBus.connect(enableCodeVisionLifetime.createNestedDisposable())
+          .subscribe(CodeVisionSettings.CODE_LENS_SETTINGS_CHANGED, object : CodeVisionSettings.CodeVisionSettingsListener {
+            override fun groupPositionChanged(id: String, position: CodeVisionAnchorKind) {
+
+            }
+
+            override fun providerAvailabilityChanged(id: String, isEnabled: Boolean) {
+              PsiManager.getInstance(project).dropPsiCaches()
+              DaemonCodeAnalyzer.getInstance(project).restart()
+            }
+          })
       }
     }
+
   }
+
 
   // run in read action
   fun collectPlaceholders(editor: Editor,
                           psiFile: PsiFile?): List<Pair<TextRange, CodeVisionEntry>> {
     if (!lifeSettingModel.isEnabledWithRegistry.value) return emptyList()
     val project = editor.project ?: return emptyList()
-    if (psiFile != null && !ProjectRootManager.getInstance(project).fileIndex.isInSourceContent(psiFile.virtualFile)) return emptyList()
+    if (psiFile != null && psiFile.virtualFile != null &&
+        !ProjectRootManager.getInstance(project).fileIndex.isInSourceContent(psiFile.virtualFile)) return emptyList()
     val bypassBasedCollectors = ArrayList<Pair<BypassBasedPlaceholderCollector, CodeVisionProvider<*>>>()
     val placeholders = ArrayList<Pair<TextRange, CodeVisionEntry>>()
     val settings = CodeVisionSettings.instance()
@@ -186,7 +184,8 @@ open class CodeVisionHost(val project: Project) {
       val placeholderCollector: CodeVisionPlaceholderCollector = provider.getPlaceholderCollector(editor, psiFile) ?: continue
       if (placeholderCollector is BypassBasedPlaceholderCollector) {
         bypassBasedCollectors.add(placeholderCollector to provider)
-      } else if (placeholderCollector is GenericPlaceholderCollector) {
+      }
+      else if (placeholderCollector is GenericPlaceholderCollector) {
         for (placeholderRange in placeholderCollector.collectPlaceholders(editor)) {
           placeholders.add(placeholderRange to PlaceholderCodeVisionEntry(provider.id))
         }
@@ -272,7 +271,7 @@ open class CodeVisionHost(val project: Project) {
     return getAnchorForProvider(provider)
   }
 
-  private fun getAnchorForProvider(provider: CodeVisionProvider<*>): CodeVisionAnchorKind{
+  private fun getAnchorForProvider(provider: CodeVisionProvider<*>): CodeVisionAnchorKind {
     return lifeSettingModel.codeVisionGroupToPosition[provider.groupId].nullIfDefault() ?: lifeSettingModel.defaultPosition.value
   }
 
@@ -301,12 +300,17 @@ open class CodeVisionHost(val project: Project) {
     var recalculateWhenVisible = false
 
     var previousLenses: List<Pair<TextRange, CodeVisionEntry>> = ArrayList()
-    val mergingQueueFront = MergingUpdateQueue(CodeVisionHost::class.simpleName!!, 100, true, null, editorLifetime.createNestedDisposable(), null, Alarm.ThreadToUse.POOLED_THREAD)
+    val openTime = System.nanoTime()
+    editor.putUserData(editorTrackingStart, openTime)
+    val mergingQueueFront = MergingUpdateQueue(CodeVisionHost::class.simpleName!!, 100, true, null, editorLifetime.createNestedDisposable(),
+                                               null, Alarm.ThreadToUse.POOLED_THREAD)
     mergingQueueFront.isPassThrough = false
     var calcRunning = false
 
     fun recalculateLenses(groupToRecalculate: Collection<String> = emptyList()) {
-      if (!isInlaySettingsEditor(editor) && !editorManager.selectedEditors.any { isAllowedFileEditor(it) && (it as TextEditor).editor == editor }) {
+      if (!isInlaySettingsEditor(editor) && !editorManager.selectedEditors.any {
+          isAllowedFileEditor(it) && (it as TextEditor).editor == editor
+        }) {
         recalculateWhenVisible = true
         return
       }
@@ -387,13 +391,17 @@ open class CodeVisionHost(val project: Project) {
 
       var everyProviderReadyToUpdate = true
       val inlaySettingsEditor = isInlaySettingsEditor(editor)
+      val editorOpenTime = editor.getUserData(editorTrackingStart)
+      val watcher = project.service<CodeVisionProvidersWatcher>()
       providers.forEach {
         @Suppress("UNCHECKED_CAST")
         it as CodeVisionProvider<Any?>
         if (!inlaySettingsEditor && !lifeSettingModel.disabledCodeVisionProviderIds.contains(it.groupId)) {
-          if (!it.shouldRecomputeForEditor(editor, precalculatedUiThings[it.id])) {
-            everyProviderReadyToUpdate = false
-            return@forEach
+          runSafe("shouldRecomputeForEditor for ${it.id}") {
+            if (!it.shouldRecomputeForEditor(editor, precalculatedUiThings[it.id])) {
+              everyProviderReadyToUpdate = false
+              return@forEach
+            }
           }
         }
         if (groupsToRecalculate.isNotEmpty() && !groupsToRecalculate.contains(it.id)) return@forEach
@@ -406,19 +414,23 @@ open class CodeVisionHost(val project: Project) {
           return@forEach
         }
         providerWhoWantToUpdate.add(it.id)
-        try {
+        runSafe("computeCodeVision for ${it.id}") {
           val state = it.computeCodeVision(editor, precalculatedUiThings[it.id])
           if (state.isReady.not()) {
-            everyProviderReadyToUpdate = false
+            if (editorOpenTime != null) {
+              watcher.reportProvider(it.groupId, System.nanoTime() - editorOpenTime)
+              if (watcher.shouldConsiderProvider(it.groupId)) {
+                everyProviderReadyToUpdate = false
+              }
+            }
+            else {
+              everyProviderReadyToUpdate = false
+            }
           }
           else {
+            watcher.dropProvider(it.groupId)
             results.addAll(state.result)
           }
-        }
-        catch (e: Exception) {
-          if (e is ControlFlowException) throw e
-
-          logger.error("Exception during computeForEditor for ${it.id}", e)
         }
       }
 
@@ -475,11 +487,22 @@ open class CodeVisionHost(val project: Project) {
     return indicator
   }
 
+  private inline fun runSafe(name: String, block: () -> Unit) {
+    try {
+      block()
+    }
+    catch (e: Exception) {
+      if (e is ControlFlowException) throw e
+
+      logger.error("Exception during $name", e)
+    }
+  }
+
   protected open fun openCodeVisionSettings(groupId: String? = null) {
     InlayHintsConfigurable.showSettingsDialogForLanguage(project, Language.ANY) {
-      if(groupId == null) return@showSettingsDialogForLanguage it.group == InlayGroup.CODE_VISION_GROUP_NEW
+      if (groupId == null) return@showSettingsDialogForLanguage it.group == InlayGroup.CODE_VISION_GROUP_NEW
 
-      return@showSettingsDialogForLanguage  it.group == InlayGroup.CODE_VISION_GROUP_NEW && it.id == groupId
+      return@showSettingsDialogForLanguage it.group == InlayGroup.CODE_VISION_GROUP_NEW && it.id == groupId
     }
   }
 
@@ -490,5 +513,4 @@ open class CodeVisionHost(val project: Project) {
       editor.lensContextOrThrow.setResults(lenses)
     }
   }
-
 }

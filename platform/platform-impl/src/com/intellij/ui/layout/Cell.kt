@@ -1,17 +1,24 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.ui.layout
 
 import com.intellij.BundleBase
 import com.intellij.icons.AllIcons
+import com.intellij.ide.DataManager
 import com.intellij.ide.ui.UINumericRange
 import com.intellij.openapi.actionSystem.*
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
-import com.intellij.openapi.observable.properties.*
+import com.intellij.openapi.observable.properties.GraphProperty
+import com.intellij.openapi.observable.properties.ObservableClearableProperty
+import com.intellij.openapi.observable.properties.transform
+import com.intellij.openapi.observable.util.bind
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.*
+import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import com.intellij.openapi.ui.ValidationInfo
+import com.intellij.openapi.ui.emptyText
 import com.intellij.openapi.ui.panel.ComponentPanelBuilder
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.NlsContexts.*
@@ -23,8 +30,8 @@ import com.intellij.ui.components.fields.ExpandableTextField
 import com.intellij.util.Function
 import com.intellij.util.MathUtil
 import com.intellij.util.execution.ParametersListUtil
-import com.intellij.openapi.observable.util.bind
-import com.intellij.util.ui.*
+import com.intellij.util.ui.JBFont
+import com.intellij.util.ui.UIUtil
 import org.jetbrains.annotations.ApiStatus
 import org.jetbrains.annotations.Nls
 import org.jetbrains.annotations.NonNls
@@ -222,7 +229,6 @@ abstract class Cell : BaseBuilder {
    */
   val growX = CCFlags.growX
 
-  @Suppress("unused")
   val growY = CCFlags.growY
   val grow = CCFlags.grow
 
@@ -234,7 +240,6 @@ abstract class Cell : BaseBuilder {
   /**
    * Makes the row that the component is residing in grow with `weight`.
    */
-  @Suppress("unused")
   val pushY = CCFlags.pushY
   val push = CCFlags.push
 
@@ -608,12 +613,7 @@ abstract class Cell : BaseBuilder {
       override fun onClick(e: MouseEvent, clickCount: Int): Boolean {
         if (!label.isEnabled) return true
         JBPopupFactory.getInstance()
-          .createActionGroupPopup(null, DefaultActionGroup(*actions), DataContext { dataId ->
-            when (dataId) {
-              PlatformCoreDataKeys.CONTEXT_COMPONENT.name -> label
-              else -> null
-            }
-          }, true, null, 10)
+          .createActionGroupPopup(null, DefaultActionGroup(*actions), DataManager.getInstance().getDataContext(label), true, null, 10)
           .showUnderneathOf(label)
         return true
       }

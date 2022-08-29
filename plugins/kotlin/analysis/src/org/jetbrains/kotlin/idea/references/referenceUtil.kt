@@ -1,4 +1,4 @@
-// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 
 package org.jetbrains.kotlin.idea.references
 
@@ -63,14 +63,22 @@ fun DeclarationDescriptor.findPsiDeclarations(project: Project, resolveScope: Gl
 
     fun Collection<KtNamedDeclaration>.fqNameFilter() = filter { it.fqName == fqName }
     return when (this) {
-        is DeserializedClassDescriptor -> KotlinFullClassNameIndex.getInstance()[fqName.asString(), project, resolveScope]
-        is DeserializedTypeAliasDescriptor -> KotlinTypeAliasShortNameIndex.getInstance()[fqName.shortName()
-            .asString(), project, resolveScope].fqNameFilter()
-        is DeserializedSimpleFunctionDescriptor, is FunctionImportedFromObject -> KotlinFunctionShortNameIndex.getInstance()[fqName.shortName()
-            .asString(), project, resolveScope].fqNameFilter()
-        is DeserializedPropertyDescriptor, is PropertyImportedFromObject -> KotlinPropertyShortNameIndex.getInstance()[fqName.shortName()
-            .asString(), project, resolveScope].fqNameFilter()
+        is DeserializedClassDescriptor ->
+            KotlinFullClassNameIndex.get(fqName.asString(), project, resolveScope)
+
+        is DeserializedTypeAliasDescriptor ->
+            KotlinTypeAliasShortNameIndex.get(fqName.shortName().asString(), project, resolveScope).fqNameFilter()
+
+        is DeserializedSimpleFunctionDescriptor,
+        is FunctionImportedFromObject ->
+            KotlinFunctionShortNameIndex.get(fqName.shortName().asString(), project, resolveScope).fqNameFilter()
+
+        is DeserializedPropertyDescriptor,
+        is PropertyImportedFromObject ->
+            KotlinPropertyShortNameIndex.get(fqName.shortName().asString(), project, resolveScope).fqNameFilter()
+
         is DeclarationDescriptorWithSource -> listOfNotNull(source.getPsi())
+
         else -> emptyList()
     }
 }

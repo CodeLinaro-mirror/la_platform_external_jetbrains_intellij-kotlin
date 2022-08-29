@@ -22,9 +22,9 @@ import org.jetbrains.annotations.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 @ApiStatus.Internal
@@ -37,8 +37,8 @@ public final class LaterInvocator {
   private static final List<Object> ourModalEntities = ContainerUtil.createLockFreeCopyOnWriteList();
 
   // Per-project modal entities
-  private static final Map<Project, List<Dialog>> projectToModalEntities = ContainerUtil.createWeakMap(); // accessed in EDT only
-  private static final Map<Project, Stack<ModalityState>> projectToModalEntitiesStack = ContainerUtil.createWeakMap(); // accessed in EDT only
+  private static final Map<Project, List<Dialog>> projectToModalEntities = new WeakHashMap<>(); // accessed in EDT only
+  private static final Map<Project, Stack<ModalityState>> projectToModalEntitiesStack = new WeakHashMap<>(); // accessed in EDT only
   private static final Stack<ModalityStateEx> ourModalityStack = new Stack<>((ModalityStateEx)ModalityState.NON_MODAL);// guarded by ourModalityStack
   private static final EventDispatcher<ModalityStateListener> ourModalityStateMulticaster =
     EventDispatcher.create(ModalityStateListener.class);
@@ -79,8 +79,7 @@ public final class LaterInvocator {
     if (expired.value(null)) {
       return;
     }
-    FlushQueue.RunnableInfo runnableInfo = new FlushQueue.RunnableInfo(runnable, modalityState, expired);
-    ourEdtQueue.push(runnableInfo);
+    ourEdtQueue.push(modalityState, expired, runnable);
   }
 
   static void invokeAndWait(@NotNull ModalityState modalityState, @NotNull final Runnable runnable) {
@@ -294,6 +293,34 @@ public final class LaterInvocator {
     return isInModalContextForProject(null);
   }
 
+  public static boolean isInModalContext(@NotNull JFrame frame, @Nullable Project project) {
+    Object[] entities = getCurrentModalEntities();
+    int forOtherProjects = 0;
+
+    for (Object entity : entities) {
+      if (entity instanceof ModalContextProjectLocator && !((ModalContextProjectLocator)entity).isPartOf(frame, project)) {
+        forOtherProjects++;
+      }
+      else if (entity instanceof Component && !isAncestor(frame, (Component)entity)) {
+        forOtherProjects++;
+      }
+    }
+    if (forOtherProjects == entities.length) {
+      return false;
+    }
+    return true;
+  }
+
+  private static boolean isAncestor(@NotNull Component ancestor, @Nullable Component descendant) {
+    while (descendant != null) {
+      if (descendant == ancestor) {
+        return true;
+      }
+      descendant = descendant.getParent();
+    }
+    return false;
+  }
+
   private static void assertIsDispatchThread() {
     ApplicationManager.getApplication().assertIsDispatchThread();
   }
@@ -308,7 +335,7 @@ public final class LaterInvocator {
 
   @TestOnly
   @NotNull
-  public static Collection<FlushQueue.RunnableInfo> getLaterInvocatorEdtQueue() {
+  public static Object getLaterInvocatorEdtQueue() {
     return ourEdtQueue.getQueue();
   }
 

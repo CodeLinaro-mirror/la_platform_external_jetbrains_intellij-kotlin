@@ -7,6 +7,7 @@ import com.intellij.ui.components.JBScrollPane.Alignment;
 import com.intellij.ui.scale.JBUIScale;
 import com.intellij.util.MathUtil;
 import com.intellij.util.ui.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.Timer;
 import javax.swing.*;
@@ -34,7 +35,7 @@ class DefaultScrollBarUI extends ScrollBarUI {
   JScrollBar myScrollBar;
 
   final ScrollBarPainter.Track myTrack = new ScrollBarPainter.Track(() -> myScrollBar);
-  final ScrollBarPainter.Thumb myThumb = new ScrollBarPainter.Thumb(() -> myScrollBar, false);
+  final ScrollBarPainter.Thumb myThumb = createThumbPainter();
 
   private boolean isValueCached;
   private int myCachedValue;
@@ -48,6 +49,10 @@ class DefaultScrollBarUI extends ScrollBarUI {
     myThickness = thickness;
     myThicknessMax = thicknessMax;
     myThicknessMin = thicknessMin;
+  }
+
+  protected ScrollBarPainter.Thumb createThumbPainter() {
+    return new ScrollBarPainter.Thumb(() -> myScrollBar, false);
   }
 
   int getThickness() {
@@ -125,13 +130,18 @@ class DefaultScrollBarUI extends ScrollBarUI {
         if (alignment == Alignment.BOTTOM) y += offset;
       }
     }
-    if (small) {
-      x += 1;
-      y += 1;
-      width -= 2;
-      height -= 2;
-    }
+
+    Insets insets = getInsets(small);
+    x += insets.left;
+    y += insets.top;
+    width -= (insets.left + insets.right);
+    height -= (insets.top + insets.bottom);
+
     p.paint(g, x, y, width, height, p.animator.myValue);
+  }
+
+  protected @NotNull Insets getInsets(boolean small) {
+    return small ? JBUI.insets(1) : JBUI.emptyInsets();
   }
 
   private int getTrackOffset(int offset) {

@@ -7,7 +7,8 @@ import com.intellij.openapi.util.registry.Registry;
 import com.intellij.util.ui.AsyncProcessIcon;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.kotlin.idea.KotlinBundle;
-import org.jetbrains.kotlin.idea.KotlinPluginUtil;
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinIdePlugin;
+import org.jetbrains.kotlin.idea.compiler.configuration.KotlinPluginLayout;
 import org.jetbrains.kotlin.idea.configuration.ExperimentalFeaturesPanel;
 
 import javax.swing.*;
@@ -26,22 +27,29 @@ public class KotlinLanguageConfigurationForm {
     private JTextPane currentVersion;
     public ExperimentalFeaturesPanel experimentalFeaturesPanel;
     private JPanel experimentalFeaturesPanelContainer;
+    private JTextPane currentAnalyzerVersion;
+    private JPanel analyzerVersionPanel;
 
     public KotlinLanguageConfigurationForm() {
         showVerifierDisabledStatus();
         experimentalFeaturesPanelContainer.setVisible(ExperimentalFeaturesPanel.Companion.shouldBeShown());
-        @NlsSafe
-        String pluginVersion = KotlinPluginUtil.getPluginVersion();
 
-        if (KotlinPluginUtil.isPatched()) {
-            @SuppressWarnings("deprecation")
-            String pluginVersionFromIdea = KotlinPluginUtil.getPluginVersionFromIdea();
+        KotlinIdePlugin kotlinPlugin = KotlinIdePlugin.INSTANCE;
+
+        @NlsSafe
+        String pluginVersion = kotlinPlugin.getVersion();
+
+        if (kotlinPlugin.getHasPatchedVersion()) {
+            String pluginVersionFromIdea = kotlinPlugin.getOriginalVersion();
             currentVersion.setText(KotlinBundle.message("configuration.text.patched.original", pluginVersion, pluginVersionFromIdea));
         } else {
             currentVersion.setText(pluginVersion);
         }
 
+        currentAnalyzerVersion.setText(KotlinPluginLayout.getInstance().getIdeCompilerVersion().getRawVersion());
+
         currentVersion.setBackground(pluginVersionPanel.getBackground());
+        currentAnalyzerVersion.setBackground(analyzerVersionPanel.getBackground());
     }
 
     public void initChannels(List<@NlsSafe String> channels) {

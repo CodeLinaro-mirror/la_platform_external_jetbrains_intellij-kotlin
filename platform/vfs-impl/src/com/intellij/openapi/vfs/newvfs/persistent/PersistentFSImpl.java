@@ -74,7 +74,7 @@ public final class PersistentFSImpl extends PersistentFS implements Disposable {
               : ConcurrentCollectionFactory.createConcurrentMap(10, 0.4f, JobSchedulerImpl.getCPUCoresCount(),
                                                                 HashingStrategy.caseInsensitive());
 
-    ShutDownTracker.getInstance().registerShutdownTask(this::performShutdown);
+    ShutDownTracker.getInstance().registerShutdownTask(this::disconnect);
     LowMemoryWatcher.register(this::clearIdCache, this);
 
     AsyncEventSupport.startListening();
@@ -96,7 +96,7 @@ public final class PersistentFSImpl extends PersistentFS implements Disposable {
       }
     });
 
-    doConnect();
+    connect();
   }
 
   @ApiStatus.Internal
@@ -110,13 +110,16 @@ public final class PersistentFSImpl extends PersistentFS implements Disposable {
 
   @ApiStatus.Internal
   public void disconnect() {
-    PersistentFsConnectionListener.EP_NAME.extensions().forEach(PersistentFsConnectionListener::beforeConnectionClosed);
-    // TODO make sure we don't have files in memory
-    FileNameCache.drop();
-    LOG.assertTrue(myConnected.get());
-    myRoots.clear();
-    myIdToDirCache.clear();
-    performShutdown();
+    if (myConnected.compareAndSet(true, false)) {
+      PersistentFsConnectionListener.EP_NAME.extensions().forEach(PersistentFsConnectionListener::beforeConnectionClosed);
+      // TODO make sure we don't have files in memory
+      FileNameCache.drop();
+      myRoots.clear();
+      myIdToDirCache.clear();
+      LOG.info("VFS dispose started");
+      FSRecords.dispose();
+      LOG.info("VFS dispose completed");
+    }
   }
 
   private void doConnect() {
@@ -125,6 +128,11 @@ public final class PersistentFSImpl extends PersistentFS implements Disposable {
       FSRecords.connect();
       activity.end();
     }
+  }
+
+  @ApiStatus.Internal
+  public boolean isConnected() {
+    return myConnected.get();
   }
 
   private @NotNull BulkFileListener getPublisher() {
@@ -139,15 +147,7 @@ public final class PersistentFSImpl extends PersistentFS implements Disposable {
 
   @Override
   public void dispose() {
-    performShutdown();
-  }
-
-  private void performShutdown() {
-    if (myConnected.compareAndSet(true, false)) {
-      LOG.info("VFS dispose started");
-      FSRecords.dispose();
-      LOG.info("VFS dispose completed");
-    }
+    disconnect();
   }
 
   @Override
@@ -825,9 +825,8 @@ public final class PersistentFSImpl extends PersistentFS implements Disposable {
     return FSRecords.getContentId(getFileId(file));
   }
 
-  @Override
-  public boolean doesHoldFile(@NotNull VirtualFile file) {
-    return ((VirtualFileSystemEntry)file).getVfsData() == myVfsData;
+  public boolean isOwnData(@NotNull VfsData data) {
+    return data == myVfsData;
   }
 
   @Override

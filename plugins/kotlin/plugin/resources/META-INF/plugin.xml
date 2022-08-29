@@ -1,9 +1,11 @@
-<idea-plugin package="org.jetbrains.kotlin" xmlns:xi="http://www.w3.org/2001/XInclude" version="2" url="http://kotlinlang.org" allow-bundled-update="true">
+<idea-plugin package="org.jetbrains.kotlin" xmlns:xi="http://www.w3.org/2001/XInclude" version="2" url="https://kotlinlang.org" allow-bundled-update="true">
   <id>org.jetbrains.kotlin</id>
 
   <name>Kotlin</name>
+  <category>Languages</category>
   <description><![CDATA[
 The Kotlin plugin provides language support in IntelliJ IDEA and Android Studio.
+The plugin supports Kotlin 1.7 and lower.
 <br>
 <a href="https://kotlinlang.org/docs/tutorials/getting-started.html">Getting Started in IntelliJ IDEA</a><br>
 <a href="https://kotlinlang.org/docs/tutorials/kotlin-android.html">Getting Started in Android Studio</a><br>
@@ -29,6 +31,21 @@ The Kotlin plugin provides language support in IntelliJ IDEA and Android Studio.
       <li>Gradle: Experimental incremental compilation, minimal supported Gradle version is `6.7.1` and Android Gradle plugin is `3.6.4`, allow to override default Kotlin/Native compiler download URL, deprecated `kotlin.compiler.execution.strategy`, removed `useExperimentalAnnotation`, `experimentalAnnotationInUse`, `kotlin.coroutines` (and related `kotlin.experimental.coroutines` Gradle DSL option) properties</li>
     </ul>
     Learn more in the <a href="https://github.com/JetBrains/kotlin/releases/tag/v1.7.0">changelog</a>.
+    <br><br>
+    <h3>1.6.20</h3>
+    <ul>
+      <li>Language: prototype of context receivers, definitely non-nullable types</li>
+      <li>Kotlin/JVM: experimental parallel compilation of a single module, callable references to functional interface constructors, improved compatibility for default methods</li>
+      <li>Kotlin/Native: instantiation of annotation classes, improved interop with Swift async/await, better stack traces with libbacktrace, performance improvements</li>
+      <li>Multiplatform: hierarchical project structure by default</li>
+      <li>CocoaPods Gradle plugin: new tasks for generating a suitable podspec for XCFramework publishing, accepting the podspec version when configuring CocoaPods for Kotlin/Native</li>
+      <li>Kotlin/JS: IR compiler improvements (incremental compilation, lazy initialization of top-level properties, separate JS files for project modules), export improvements</li>
+      <li>Security: using relative paths in klibs, persisting yarn.lock for Kotlin/JS Gradle projects, installation of npm dependencies with --ignore-scripts by default</li>
+      <li>Gradle: compiler execution strategies, cleaning up deprecated properties and options</li>
+    </ul>
+    Learn more in the <a href="https://github.com/JetBrains/kotlin/releases/tag/v1.6.20">changelog</a>.
+    <br>
+    For more details, see [What’s New in Kotlin 1.6.20](https://kotlinlang.org/docs/whatsnew1620.html).
     <br><br>
     <h3>1.6.20</h3>
     <ul>
@@ -168,6 +185,7 @@ The Kotlin plugin provides language support in IntelliJ IDEA and Android Studio.
   <xi:include href="/META-INF/extensions/compiler.xml" /> <!-- extensions/compiler.xml comes from the Kotlin compiler -->
 
   <xi:include href="kotlin-core.xml" xpointer="xpointer(/idea-plugin/*)"/>
+  <xi:include href="kotlin-core-fe10.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="navigation-common.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="file-types.xml" xpointer="xpointer(/idea-plugin/*)"/>
   <xi:include href="resolution.xml" xpointer="xpointer(/idea-plugin/*)"/>
