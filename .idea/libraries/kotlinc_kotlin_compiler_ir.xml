@@ -1,12 +1,12 @@
 <component name="libraryTable">
   <library name="kotlinc.kotlin-compiler-ir" type="repository">
-    <properties include-transitive-deps="false" maven-id="org.jetbrains.kotlin:kotlin-compiler-ir-for-ide:1.7.10-release-for-android-studio" />
+    <properties include-transitive-deps="false" maven-id="org.jetbrains.kotlin:kotlin-compiler-ir-for-ide:1.7.20-Beta-75" />
     <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-compiler-ir-for-ide/1.7.10-release-for-android-studio/kotlin-compiler-ir-for-ide-1.7.10-release-for-android-studio.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-compiler-ir-for-ide/1.7.20-Beta-75/kotlin-compiler-ir-for-ide-1.7.20-Beta-75.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-compiler-ir-for-ide/1.7.10-release-for-android-studio/kotlin-compiler-ir-for-ide-1.7.10-release-for-android-studio-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-compiler-ir-for-ide/1.7.20-Beta-75/kotlin-compiler-ir-for-ide-1.7.20-Beta-75-sources.jar!/" />
     </SOURCES>
   </library>
 </component>
