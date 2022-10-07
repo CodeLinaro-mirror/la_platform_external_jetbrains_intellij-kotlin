@@ -72,7 +72,8 @@ fun generateKotlincLibraries(
 private fun JpsUrl.convertKotlincMvnToBootstrap(isCommunity: Boolean): JpsUrl {
     val jpsPath = this.jpsPath
     require(jpsPath is JpsPath.MavenRepository)
-    return JpsUrl.Jar(JpsPath.ProjectDir("../build/repo/${jpsPath.path}", isCommunity))
+    // Android Studio: we change this relative path to work with our repo layout.
+    return JpsUrl.Jar(JpsPath.ProjectDir("../kotlin/build/repo/${jpsPath.path}", isCommunity))
 }
 
 private fun LibraryListBuilder.kotlincForIdeWithStandardNaming(
