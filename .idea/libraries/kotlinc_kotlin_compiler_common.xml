@@ -1,12 +1,11 @@
 <component name="libraryTable">
-  <library name="kotlinc.kotlin-compiler-common" type="repository">
-    <properties include-transitive-deps="false" maven-id="org.jetbrains.kotlin:kotlin-compiler-common-for-ide:1.7.20-release" />
+  <library name="kotlinc.kotlin-compiler-common">
     <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-compiler-common-for-ide/1.7.20-release/kotlin-compiler-common-for-ide-1.7.20-release.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-compiler-common-for-ide/1.7.20-release/kotlin-compiler-common-for-ide-1.7.20-release.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-compiler-common-for-ide/1.7.20-release/kotlin-compiler-common-for-ide-1.7.20-release-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-compiler-common-for-ide/1.7.20-release/kotlin-compiler-common-for-ide-1.7.20-release-sources.jar!/" />
     </SOURCES>
   </library>
 </component>
