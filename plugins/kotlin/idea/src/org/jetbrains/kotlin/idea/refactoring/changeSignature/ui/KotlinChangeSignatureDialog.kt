@@ -3,10 +3,10 @@
 package org.jetbrains.kotlin.idea.refactoring.changeSignature.ui
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.colors.EditorFontType
+import com.intellij.openapi.observable.util.addItemListener
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
@@ -57,7 +57,6 @@ import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.types.isError
 import java.awt.Font
-import java.awt.ItemSelectable
 import java.awt.Toolkit
 import java.awt.event.ItemEvent
 import java.awt.event.ItemListener
@@ -76,18 +75,6 @@ class KotlinChangeSignatureDialog(
         KotlinMethodDescriptor,
         ParameterTableModelItemBase<KotlinParameterInfo>,
         KotlinCallableParameterTableModel>(project, methodDescriptor, false, context) {
-
-    private fun Disposable.whenDisposed(listener: () -> Unit): Disposable = apply {
-        Disposer.register(this, Disposable { listener() })
-    }
-
-    private fun ItemSelectable.addItemListener(parentDisposable: Disposable? = null, listener: ItemListener) {
-        addItemListener(listener)
-        parentDisposable?.whenDisposed {
-            removeItemListener(listener)
-        }
-    }
-
     override fun getFileType(): KotlinFileType = KotlinFileType.INSTANCE
 
     override fun createParametersInfoModel(descriptor: KotlinMethodDescriptor) =

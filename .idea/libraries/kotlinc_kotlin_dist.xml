@@ -1,12 +1,11 @@
 <component name="libraryTable">
-  <library name="kotlinc.kotlin-dist" type="repository">
-    <properties include-transitive-deps="false" maven-id="org.jetbrains.kotlin:kotlin-dist-for-ide:1.7.10-release-334" />
+  <library name="kotlinc.kotlin-dist">
     <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-dist-for-ide/1.7.10-release-334/kotlin-dist-for-ide-1.7.10-release-334.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-dist-for-ide/1.7.20-release/kotlin-dist-for-ide-1.7.20-release.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-dist-for-ide/1.7.10-release-334/kotlin-dist-for-ide-1.7.10-release-334-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-dist-for-ide/1.7.20-release/kotlin-dist-for-ide-1.7.20-release-sources.jar!/" />
     </SOURCES>
   </library>
 </component>
