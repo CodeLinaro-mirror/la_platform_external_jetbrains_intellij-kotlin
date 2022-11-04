@@ -1,11 +1,11 @@
 <component name="libraryTable">
   <library name="kotlinc.kotlin-jps-plugin-classpath">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-jps-plugin-classpath/1.7.20-release/kotlin-jps-plugin-classpath-1.7.20-release.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-jps-plugin-classpath/1.7.21-release/kotlin-jps-plugin-classpath-1.7.21-release.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-jps-plugin-classpath/1.7.20-release/kotlin-jps-plugin-classpath-1.7.20-release-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-jps-plugin-classpath/1.7.21-release/kotlin-jps-plugin-classpath-1.7.21-release-sources.jar!/" />
     </SOURCES>
   </library>
 </component>
