@@ -239,6 +239,8 @@
     <extensionPoints>
       <extensionPoint qualifiedName="org.jetbrains.kotlin.kotlinTestFramework"
                       interface="org.jetbrains.kotlin.idea.testIntegration.framework.KotlinTestFramework" dynamic="true"/>
+      <extensionPoint qualifiedName="com.intellij.debugger.kotlinStackFrameValueContributor"
+                      interface="org.jetbrains.kotlin.idea.debugger.stackFrame.KotlinStackFrameValueContributor" dynamic="true"/>
     </extensionPoints>
     <resource-bundle>messages.KotlinBundle</resource-bundle>
   <projectListeners>
