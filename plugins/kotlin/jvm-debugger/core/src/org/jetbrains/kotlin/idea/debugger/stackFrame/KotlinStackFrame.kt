@@ -79,6 +79,12 @@ open class KotlinStackFrame(stackFrameDescriptorImpl: StackFrameDescriptorImpl) 
 
         thisVariables.forEach(::addItem)
         otherVariables.forEach(::addItem)
+
+        for (contributor in KotlinStackFrameValueContributor.EP.extensions) {
+            for (value in contributor.contributeValues(this, evaluationContext, variables)) {
+                children.add(value)
+            }
+        }
     }
 
     private fun removeSyntheticThisObject(
