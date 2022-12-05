@@ -8,17 +8,24 @@ import org.jetbrains.org.objectweb.asm.MethodVisitor
 import org.jetbrains.org.objectweb.asm.Opcodes
 
 fun Method.isSimpleGetter() =
-    isSimpleMemberVariableGetter() ||
-    isSimpleStaticVariableGetter() ||
-    isJVMStaticVariableGetter()
+    // TODO(KTIJ-23684): Add support for DEX
+    if (virtualMachine().isDexDebug()) false
+    else isSimpleMemberVariableGetter() ||
+         isSimpleStaticVariableGetter() ||
+         isJVMStaticVariableGetter()
 
 fun Method.isLateinitVariableGetter() =
-    isOldBackendLateinitVariableGetter() ||
-    isIRBackendLateinitVariableGetter() ||
-    isIRBackendLateinitVariableGetterReturningAny()
+    // TODO(KTIJ-23684): Add support for DEX
+    if (virtualMachine().isDexDebug()) false
+    else isOldBackendLateinitVariableGetter() ||
+         isIRBackendLateinitVariableGetter() ||
+         isIRBackendLateinitVariableGetterReturningAny()
 
 fun Method.isOldBackendLateinitVariableGetter() =
-    verifyMethod(14,
+    // TODO(KTIJ-23684): Add support for DEX
+    if (virtualMachine().isDexDebug()) false
+    else verifyMethod(
+        14,
         intArrayOf(
             Opcodes.ALOAD,
             Opcodes.GETFIELD,
@@ -30,13 +37,17 @@ fun Method.isOldBackendLateinitVariableGetter() =
     )
 
 fun Method.isIRBackendLateinitVariableGetterReturningAny() =
-    verifyMethod(
+    // TODO(KTIJ-23684): Add support for DEX
+    if (virtualMachine().isDexDebug()) false
+    else verifyMethod(
         expectedNumOfBytecodes = 19,
         MethodBytecodeVerifierFromArray(lateinitVarReturningAnyBytecodes)
     )
 
 fun Method.isIRBackendLateinitVariableGetter() =
-    verifyMethod(
+    // TODO(KTIJ-23684): Add support for DEX
+    if (virtualMachine().isDexDebug()) false
+    else verifyMethod(
         expectedNumOfBytecodes = 17,
         MethodBytecodeVerifierFromArray(lateinitVarPropertyBytecodes)
     )
