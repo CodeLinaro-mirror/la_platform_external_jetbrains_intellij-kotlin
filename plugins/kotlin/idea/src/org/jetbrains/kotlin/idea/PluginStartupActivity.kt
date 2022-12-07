@@ -31,7 +31,9 @@ internal class PluginStartupActivity : StartupActivity.Background {
 
         initializeDiagnostics()
         excludedFromUpdateCheckPlugins.add("org.jetbrains.kotlin")
-        checkCompatibility()
+        // Android Studio (b/261747757): this compatibility check is inconvenient during the IJ merge process,
+        // and its value is limited anyway because we generally disallow out-of-band Kotlin plugin updates.
+        // checkCompatibility()
         setupReportingFromRelease()
 
         //todo[Sedunov]: wait for fix in platform to avoid misunderstood from Java newbies (also ConfigureKotlinInTempDirTest)
