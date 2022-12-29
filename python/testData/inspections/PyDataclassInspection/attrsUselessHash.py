@@ -1,5 +1,4 @@
 import attr
-import attrs
 
 
 @attr.dataclass(hash=True)
@@ -51,10 +50,3 @@ class A3:
         pass
 
 print(hash(A3()))
-
-
-@attrs.frozen
-class A3:
-
-    def <warning descr="'__hash__' is ignored if the class already defines 'cmp/order' and 'frozen' parameters">__hash__</warning>(self):
-        pass

@@ -34,7 +34,7 @@ class MavenJavaNewProjectWizard : BuildSystemJavaNewProjectWizard {
     MavenNewProjectWizardStep<JavaNewProjectWizard.Step>(parent),
     BuildSystemJavaNewProjectWizardData by parent {
 
-    private val addSampleCodeProperty = propertyGraph.property(true)
+    private val addSampleCodeProperty = propertyGraph.property(false)
       .bindBooleanStorage("NewProjectWizard.addSampleCodeState")
 
     var addSampleCode by addSampleCodeProperty

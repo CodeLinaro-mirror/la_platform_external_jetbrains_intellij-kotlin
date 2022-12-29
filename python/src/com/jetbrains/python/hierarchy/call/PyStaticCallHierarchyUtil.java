@@ -8,7 +8,6 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.usageView.UsageInfo;
 import com.intellij.util.ArrayUtil;
 import com.intellij.util.CommonProcessors;
-import com.intellij.util.containers.MultiMap;
 import com.jetbrains.python.PyNames;
 import com.jetbrains.python.findUsages.PyClassFindUsagesHandler;
 import com.jetbrains.python.findUsages.PyFunctionFindUsagesHandler;
@@ -20,14 +19,16 @@ import one.util.streamex.StreamEx;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * @author novokrest
  */
 public class PyStaticCallHierarchyUtil {
-  public static Map<PsiElement, Collection<PsiElement>> getCallees(@NotNull PyElement element) {
-    final MultiMap<PsiElement, PsiElement> callees = MultiMap.createOrderedSet();
+  public static Collection<PsiElement> getCallees(@NotNull PyElement element) {
+    final List<PsiElement> callees = new ArrayList<>();
 
     final PyResolveContext resolveContext =
       PyResolveContext.implicitContext(TypeEvalContext.userInitiated(element.getProject(), element.getContainingFile()));
@@ -58,18 +59,18 @@ public class PyStaticCallHierarchyUtil {
         StreamEx
           .of(node.multiResolveCalleeFunction(resolveContext))
           .select(PyFunction.class)
-          .forEach(function -> callees.putValue(function, node));
+          .forEach(callees::add);
       }
     };
 
     visitor.visitElement(element);
 
-    return callees.freezeValues();
+    return callees;
   }
 
   @NotNull
-  public static Map<PsiElement, Collection<PsiElement>> getCallers(@NotNull PyElement pyElement) {
-    final MultiMap<PsiElement, PsiElement> callers = MultiMap.createOrderedSet();
+  public static Collection<PsiElement> getCallers(@NotNull PyElement pyElement) {
+    final List<PsiElement> callers = new ArrayList<>();
     final Collection<UsageInfo> usages = findUsages(pyElement);
 
     for (UsageInfo usage : usages) {
@@ -90,19 +91,19 @@ public class PyStaticCallHierarchyUtil {
         }
         final PsiElement caller = PsiTreeUtil.getParentOfType(element, PyParameterList.class, PyFunction.class);
         if (caller instanceof PyFunction) {
-          callers.putValue(caller, element);
+          callers.add(caller);
         }
         else if (caller instanceof PyParameterList) {
           final PsiElement innerFunction = PsiTreeUtil.getParentOfType(caller, PyFunction.class);
           final PsiElement outerFunction = PsiTreeUtil.getParentOfType(innerFunction, PyFunction.class);
           if (innerFunction != null && outerFunction != null) {
-            callers.putValue(outerFunction, element);
+            callers.add(outerFunction);
           }
         }
       }
     }
 
-    return callers.freezeValues();
+    return callers;
   }
 
   private static Collection<UsageInfo> findUsages(@NotNull final PsiElement element) {

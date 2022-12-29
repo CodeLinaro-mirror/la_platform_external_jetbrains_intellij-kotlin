@@ -20,7 +20,6 @@ class AndroidPlugin(context: Context) : Plugin(context) {
 
     override val settings: List<PluginSetting<*, *>> = listOf(
         androidSdkPath,
-        addAndroidExtensionPlugin,
     )
     override val pipelineTasks: List<PipelineTask> = listOf(
         addAndroidSdkToLocalProperties
@@ -40,6 +39,7 @@ class AndroidPlugin(context: Context) : Plugin(context) {
             shouldExists()
         }
 
+        @Deprecated("Kotlin Android Extensions compiler plugin")
         val addAndroidExtensionPlugin by booleanSetting(
             "<ADD_ANDROID_EXTENSIONS_PLUGIN>>",
             neededAtPhase = GenerationPhase.PROJECT_GENERATION,

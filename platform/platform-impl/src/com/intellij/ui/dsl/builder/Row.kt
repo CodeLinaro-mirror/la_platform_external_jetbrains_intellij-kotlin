@@ -113,11 +113,9 @@ interface Row {
 
   /**
    * Adds comment after the row with appropriate color and font size (macOS and Linux use smaller font).
-   * * [comment] can contain HTML tags except &lt;html&gt;, which is added automatically
-   * * \n does not work as new line in html, use &lt;br&gt; instead
-   * * Links with href to http/https are automatically marked with additional arrow icon
-   * * Use bundled icons with `<code>` tag, for example `<icon src='AllIcons.General.Information'>`
-   *
+   * [comment] can contain HTML tags except &lt;html&gt;, which is added automatically.
+   * \n does not work as new line in html, use &lt;br&gt; instead.
+   * Links with href to http/https are automatically marked with additional arrow icon.
    * Visibility and enabled state of the row affects row comment as well.
    *
    * @see MAX_LINE_LENGTH_WORD_WRAP
@@ -250,12 +248,9 @@ interface Row {
                 action: HyperlinkEventAction = HyperlinkEventAction.HTML_HYPERLINK_INSTANCE): Cell<JEditorPane>
 
   /**
-   * Adds text
-   * * [text] can contain HTML tags except &lt;html&gt;, which is added automatically
-   * * \n does not work as new line in html, use &lt;br&gt; instead
-   * * Links with href to http/https are automatically marked with additional arrow icon
-   * * Use bundled icons with `<code>` tag, for example `<icon src='AllIcons.General.Information'>`
-   *
+   * Adds text. [text] can contain HTML tags except &lt;html&gt;, which is added automatically.
+   * \n does not work as new line in html, use &lt;br&gt; instead.
+   * Links with href to http/https are automatically marked with additional arrow icon.
    * It is preferable to use [label] method for short plain single-lined strings because labels use less resources and simpler
    *
    * @see DEFAULT_COMMENT_WIDTH
@@ -271,10 +266,9 @@ interface Row {
 
   /**
    * Adds comment with appropriate color and font size (macOS and Linux use smaller font).
-   * * [comment] can contain HTML tags except &lt;html&gt;, which is added automatically
-   * * \n does not work as new line in html, use &lt;br&gt; instead
-   * * Links with href to http/https are automatically marked with additional arrow icon
-   * * Use bundled icons with `<code>` tag, for example `<icon src='AllIcons.General.Information'>`
+   * [comment] can contain HTML tags except &lt;html&gt;, which is added automatically.
+   * \n does not work as new line in html, use &lt;br&gt; instead.
+   * Links with href to http/https are automatically marked with additional arrow icon.
    *
    * @see DEFAULT_COMMENT_WIDTH
    * @see MAX_LINE_LENGTH_WORD_WRAP

@@ -76,7 +76,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.nio.charset.Charset;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 
@@ -361,7 +360,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
     pythonExecution.setWorkingDir(getPythonExecutionWorkingDir(targetEnvironmentRequest));
     initEnvironment(myConfig.getProject(), pythonExecution, myConfig, createRemotePathMapper(), isDebug(), helpersAwareTargetRequest);
     customizePythonExecutionEnvironmentVars(helpersAwareTargetRequest, pythonExecution.getEnvs(), myConfig.isPassParentEnvs());
-    PythonScripts.ensureProjectSdkAndModuleDirsAreOnTarget(targetEnvironmentRequest, myConfig.getProject(), myConfig.getModule());
+    PythonScripts.ensureProjectAndModuleDirsAreOnTarget(targetEnvironmentRequest, myConfig.getProject(), myConfig.getModule());
     return pythonExecution;
   }
 
@@ -377,7 +376,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
     // the following working directory is located on the local machine
     String workingDir = myConfig.getWorkingDirectory();
     if (!StringUtil.isEmptyOrSpaces(workingDir)) {
-      return getTargetPath(targetEnvironmentRequest, Path.of(workingDir));
+      return getTargetPath(targetEnvironmentRequest, workingDir);
     }
     return null;
   }
@@ -628,6 +627,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
                                       boolean isDebug,
                                       @NotNull HelpersAwareTargetEnvironmentRequest helpersAwareTargetRequest) {
     Map<String, String> env = Maps.newHashMap();
+
     if (runParams.getEnvs() != null) {
       env.putAll(runParams.getEnvs());
     }
@@ -755,10 +755,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
     Sdk pythonSdk = PythonSdkUtil.findSdkByPath(sdkHome);
     if (pythonSdk != null) {
       List<Function<TargetEnvironment, String>> pathList = new ArrayList<>();
-      var data = pythonSdk.getSdkAdditionalData();
-      if (data != null) {
-        pathList.addAll(TargetedPythonPaths.getAddedPaths(data));
-      }
+      pathList.addAll(TargetedPythonPaths.getAddedPaths(pythonSdk));
       pathList.addAll(TargetedPythonPaths.collectPythonPath(project, module, sdkHome, pathMapper,
                                                             shouldAddContentRoots, shouldAddSourceRoots, isDebug));
       initPythonPath(pythonScript, passParentEnvs, pathList, sdkHome, targetEnvironmentRequest);
@@ -1036,7 +1033,7 @@ public abstract class PythonCommandLineState extends CommandLineState {
 
   @NotNull
   protected Function<TargetEnvironment, String> getTargetPath(@NotNull TargetEnvironmentRequest targetEnvironmentRequest,
-                                                              @NotNull Path scriptPath) {
+                                                              @NotNull String scriptPath) {
     return PySdkTargetPaths.getTargetPathForPythonScriptExecution(targetEnvironmentRequest, myConfig.getProject(), myConfig.getSdk(),
                                                                   createRemotePathMapper(), scriptPath);
   }

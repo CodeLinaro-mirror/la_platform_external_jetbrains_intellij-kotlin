@@ -207,13 +207,13 @@ public final class HighlightUtil {
   }
 
 
-  static List<HighlightInfo> checkInstanceOfApplicable(@NotNull PsiInstanceOfExpression expression) {
+  static HighlightInfo checkInstanceOfApplicable(@NotNull PsiInstanceOfExpression expression) {
     PsiExpression operand = expression.getOperand();
     PsiTypeElement typeElement = expression.getCheckType();
-    if (typeElement == null) return Collections.emptyList();
+    if (typeElement == null) return null;
     PsiType checkType = typeElement.getType();
     PsiType operandType = operand.getType();
-    if (operandType == null) return Collections.emptyList();
+    if (operandType == null) return null;
     if (TypeConversionUtil.isPrimitiveAndNotNull(operandType)
         || TypeConversionUtil.isPrimitiveAndNotNull(checkType)
         || !TypeConversionUtil.areTypesConvertible(operandType, checkType)) {
@@ -224,14 +224,9 @@ public final class HighlightUtil {
       if (TypeConversionUtil.isPrimitiveAndNotNull(checkType)) {
         QuickFixAction.registerQuickFixAction(info, getFixFactory().createReplacePrimitiveWithBoxedTypeAction(operandType, typeElement));
       }
-      return Collections.singletonList(info);
+      return info;
     }
-    PsiPrimaryPattern pattern = expression.getPattern();
-    if (pattern instanceof PsiDeconstructionPattern) {
-      PsiDeconstructionPattern deconstruction = (PsiDeconstructionPattern)pattern;
-      return PatternHighlightingModel.createDeconstructionErrors(deconstruction);
-    }
-    return Collections.emptyList();
+    return null;
   }
 
 

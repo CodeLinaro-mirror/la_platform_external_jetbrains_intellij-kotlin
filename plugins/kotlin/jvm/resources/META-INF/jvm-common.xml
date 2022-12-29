@@ -142,17 +142,8 @@
                         serviceImplementation="org.jetbrains.uast.kotlin.internal.IdeaKotlinUastResolveProviderService"/>
 
         <applicationService
-            serviceInterface="org.jetbrains.kotlin.platform.DefaultIdeTargetPlatformKindProvider"
-            serviceImplementation="org.jetbrains.kotlin.platform.impl.IdeaDefaultIdeTargetPlatformKindProvider"/>
-
-        <applicationService
             serviceInterface="org.jetbrains.kotlin.idea.j2k.J2KPostProcessingRegistrar"
             serviceImplementation="org.jetbrains.kotlin.idea.j2k.J2KPostProcessingRegistrarImpl"/>
-
-      <registryKey key="kotlin.use.ultra.light.classes"
-                   description="Whether to use an experimental implementation of Kotlin-as-Java classes"
-                   defaultValue="true"
-                   restartRequired="false"/>
 
       <registryKey key="kotlin.ultra.light.classes.empty.text.range"
                    description="Return 'null' text range as in old light class implementation"

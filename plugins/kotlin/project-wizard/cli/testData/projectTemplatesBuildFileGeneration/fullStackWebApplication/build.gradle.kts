@@ -7,8 +7,11 @@ group = "me.user"
 version = "1.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     jcenter()
     mavenCentral()
+    maven("KOTLIN_BOOTSTRAP_REPO")
+    maven("KOTLIN_REPO")
     maven("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven")
 }
 
@@ -22,11 +25,13 @@ kotlin {
             useJUnitPlatform()
         }
     }
-    js(LEGACY) {
+    js(IR) {
         binaries.executable()
         browser {
             commonWebpackConfig {
-                cssSupport.enabled = true
+                cssSupport {
+                    enabled.set(true)
+                }
             }
         }
     }
@@ -39,17 +44,17 @@ kotlin {
         }
         val jvmMain by getting {
             dependencies {
-                implementation("io.ktor:ktor-server-netty:2.0.2")
-                implementation("io.ktor:ktor-server-html-builder-jvm:2.0.2")
+                implementation("io.ktor:ktor-server-netty:2.1.1")
+                implementation("io.ktor:ktor-server-html-builder-jvm:2.1.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.2")
             }
         }
         val jvmTest by getting
         val jsMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react:18.2.0-pre.346")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom:18.2.0-pre.346")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-emotion:11.9.3-pre.346")
+                implementation("org.jetbrains.kotlin-wrappers:kotlin-react:18.2.0-pre.385")
+                implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom:18.2.0-pre.385")
+                implementation("org.jetbrains.kotlin-wrappers:kotlin-emotion:11.10.4-pre.385")
             }
         }
         val jsTest by getting

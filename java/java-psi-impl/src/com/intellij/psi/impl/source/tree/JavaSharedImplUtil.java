@@ -195,8 +195,7 @@ public final class JavaSharedImplUtil {
   @NotNull
   public static PsiElement getPatternVariableDeclarationScope(@NotNull PsiPatternVariable variable) {
     PsiElement parent = variable.getPattern().getParent();
-    if (!(parent instanceof PsiInstanceOfExpression) && !(parent instanceof PsiCaseLabelElementList) && !(parent instanceof PsiPattern)
-        && !(parent instanceof PsiDeconstructionList) && !(parent instanceof PsiPatternGuard)) {
+    if (!(parent instanceof PsiInstanceOfExpression) && !(parent instanceof PsiCaseLabelElementList) && !(parent instanceof PsiPattern)) {
       return parent;
     }
     boolean negated = false;
@@ -232,7 +231,7 @@ public final class JavaSharedImplUtil {
         }
         return nextParent.getParent();
       }
-      if (nextParent instanceof PsiPattern || nextParent instanceof PsiCaseLabelElementList || nextParent instanceof PsiPatternGuard ||
+      if (nextParent instanceof PsiPattern || nextParent instanceof PsiCaseLabelElementList ||
           (parent instanceof PsiPattern && nextParent instanceof PsiInstanceOfExpression)) {
         continue;
       }

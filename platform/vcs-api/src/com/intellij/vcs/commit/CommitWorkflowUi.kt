@@ -8,6 +8,7 @@ import com.intellij.openapi.vcs.FilePath
 import com.intellij.openapi.vcs.changes.Change
 import com.intellij.openapi.vcs.changes.CommitExecutor
 import com.intellij.openapi.vcs.changes.InclusionListener
+import com.intellij.openapi.vcs.checkin.CheckinHandler
 import com.intellij.ui.TextAccessor
 import java.util.*
 
@@ -34,7 +35,7 @@ interface CommitWorkflowUi : DataProvider, Disposable {
   fun addInclusionListener(listener: InclusionListener, parent: Disposable)
 
   fun startBeforeCommitChecks()
-  fun endBeforeCommitChecks(result: CommitChecksResult)
+  fun endBeforeCommitChecks(result: CheckinHandler.ReturnResult)
 }
 
 //TODO Unify with CommitMessageI

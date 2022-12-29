@@ -20,8 +20,8 @@ import com.intellij.psi.PsiElement;
 import com.jetbrains.python.psi.PyElement;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.Collection;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author novokrest
@@ -33,8 +33,8 @@ public class PyCalleeFunctionTreeStructure extends PyCallHierarchyTreeStructureB
 
   @NotNull
   @Override
-  protected Map<PsiElement, Collection<PsiElement>> getChildren(@NotNull PyElement element) {
+  protected List<PsiElement> getChildren(@NotNull PyElement element) {
     // TODO: Add callees from the dynamic call data manager
-    return PyStaticCallHierarchyUtil.getCallees(element);
+    return new ArrayList<>(PyStaticCallHierarchyUtil.getCallees(element));
   }
 }

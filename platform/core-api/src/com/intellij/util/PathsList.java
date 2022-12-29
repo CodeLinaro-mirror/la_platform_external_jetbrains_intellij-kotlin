@@ -10,7 +10,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.containers.JBIterable;
 import com.intellij.util.io.URLUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.*;
@@ -38,7 +37,7 @@ public final class PathsList  {
     return myPathSet.isEmpty();
   }
 
-  public void add(@Nullable String path) {
+  public void add(String path) {
     addAllLast(chooseFirstTimeItems(path), myPath);
   }
 
@@ -75,8 +74,7 @@ public final class PathsList  {
     addAllLast(chooseFirstTimeItems(path), myPathTail);
   }
 
-  @NotNull
-  private Iterable<String> chooseFirstTimeItems(@Nullable String path) {
+  private Iterable<String> chooseFirstTimeItems(String path) {
     if (path == null) {
       return Collections.emptyList();
     }

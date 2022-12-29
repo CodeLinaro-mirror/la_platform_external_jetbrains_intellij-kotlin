@@ -508,7 +508,8 @@ public final class ActionUtil {
                                   @Nullable InputEvent inputEvent,
                                   @Nullable Runnable onDone) {
     Presentation presentation = action.getTemplatePresentation().clone();
-    AnActionEvent event = AnActionEvent.createFromInputEvent(inputEvent, place, presentation, dataContext);
+    AnActionEvent event = new AnActionEvent(
+      inputEvent, dataContext, place, presentation, ActionManager.getInstance(), 0);
     event.setInjectedContext(action.isInInjectedContext());
     if (lastUpdateAndCheckDumb(action, event, false)) {
       try {

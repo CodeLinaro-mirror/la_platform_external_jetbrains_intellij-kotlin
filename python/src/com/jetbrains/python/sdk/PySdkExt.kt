@@ -46,7 +46,6 @@ import com.intellij.webcore.packaging.PackagesNotificationPanel
 import com.jetbrains.python.PyBundle
 import com.jetbrains.python.packaging.ui.PyPackageManagementService
 import com.jetbrains.python.psi.LanguageLevel
-import com.jetbrains.python.remote.PyRemoteSdkAdditionalData
 import com.jetbrains.python.remote.PyRemoteSdkAdditionalDataBase
 import com.jetbrains.python.sdk.flavors.CondaEnvSdkFlavor
 import com.jetbrains.python.sdk.flavors.PythonSdkFlavor
@@ -408,11 +407,7 @@ val Sdk.targetEnvConfiguration get():TargetEnvironmentConfiguration? = targetAdd
  * Where "remote_sources" folder for certain SDK is stored
  */
 val Sdk.remoteSourcesLocalPath: Path
-  get() =
-    Path.of(PathManager.getSystemPath()) /
-    Path.of(PythonSdkUtil.REMOTE_SOURCES_DIR_NAME) /
-    Path.of(when (val data = sdkAdditionalData) {
-              is PyTargetAwareAdditionalData -> data.uuid.toString()
-              is PyRemoteSdkAdditionalData -> homePath!!
-              else -> error("Only legacy and remote SDK and target-based SDKs are supported")
-            }.hashCode().toString())
+  get() {
+    val sdkUniqueId = (homePath!! + targetEnvConfiguration?.uuid).hashCode().toString()
+    return Path.of(PathManager.getSystemPath()) / PythonSdkUtil.REMOTE_SOURCES_DIR_NAME / sdkUniqueId
+  }

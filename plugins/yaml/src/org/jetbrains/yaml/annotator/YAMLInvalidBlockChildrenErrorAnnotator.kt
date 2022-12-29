@@ -107,7 +107,7 @@ private class YAMLInvalidBlockChildrenErrorAnnotator : Annotator {
     val kvParent = findNeededParent(element) ?: return false
     val kvGrandParent = kvParent.parentOfType<YAMLKeyValueImpl>(withSelf = false) ?: return false
 
-    return YAMLUtil.psiAreAtTheSameLine(kvGrandParent, element)
+    return psiAreAtTheSameLine(kvGrandParent, element)
   }
 
   private fun findNeededParent(element: PsiElement) = PsiTreeUtil.findFirstParent(element, true) {
@@ -120,7 +120,7 @@ private class YAMLInvalidBlockChildrenErrorAnnotator : Annotator {
     val key = keyValue.key ?: return false
     if (value is YAMLBlockMappingImpl) {
       val firstSubValue = value.firstKeyValue
-      if (YAMLUtil.psiAreAtTheSameLine(key, firstSubValue)) {
+      if (psiAreAtTheSameLine(key, firstSubValue)) {
         reportAboutSameLine(holder, value)
         return true
       }
@@ -132,7 +132,7 @@ private class YAMLInvalidBlockChildrenErrorAnnotator : Annotator {
         return true
       }
       val firstItem = items[0]
-      if (YAMLUtil.psiAreAtTheSameLine(key, firstItem)) {
+      if (psiAreAtTheSameLine(key, firstItem)) {
         reportAboutSameLine(holder, value)
         return true
       }
@@ -145,8 +145,26 @@ private class YAMLInvalidBlockChildrenErrorAnnotator : Annotator {
   }
 
   private fun reportSubElementProblem(holder: AnnotationHolder, message: @Nls String, subElement: PsiElement) {
-    val firstLeaf = TreeUtil.findFirstLeaf(subElement.node)?.psi ?: return
+    val firstLeaf = firstLeaf(subElement) ?: return
     holder.newAnnotation(HighlightSeverity.ERROR, message)
       .range(TextRange.create(subElement.startOffset, endOfLine(firstLeaf, subElement))).create()
   }
+
+  private fun psiAreAtTheSameLine(psi1: PsiElement, psi2: PsiElement): Boolean {
+    var leaf = firstLeaf(psi1)
+    val lastLeaf = firstLeaf(psi2)
+    while (leaf != null) {
+      if (PsiUtilCore.getElementType(leaf) === YAMLTokenTypes.EOL) {
+        return false
+      }
+      if (leaf === lastLeaf) {
+        return true
+      }
+      leaf = PsiTreeUtil.nextLeaf(leaf)
+    }
+    // It is a kind of magic, normally we should return from the `while` above
+    return false
+  }
+
+  private fun firstLeaf(psi1: PsiElement) = TreeUtil.findFirstLeaf(psi1.node)?.psi
 }

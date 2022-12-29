@@ -76,7 +76,7 @@ class ModuleManagerComponentBridge(private val project: Project) : ModuleManager
           }
           for (change in event.getChanges(FacetEntity::class.java)) {
             LOG.debug { "Fire 'before' events for facet change $change" }
-            FacetEntityChangeListener.getInstance(project).processBeforeChange(change, event)
+            FacetEntityChangeListener.getInstance(project).processBeforeChange(change)
           }
           val moduleMap = event.storageBefore.moduleMap
           for (change in event.getChanges(ModuleEntity::class.java)) {

@@ -9,7 +9,6 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.InvalidDataException;
@@ -184,9 +183,6 @@ public final class WorkingContextManager {
         action.consume(entry);
         return true;
       }
-    }
-    catch (ProcessCanceledException e) {
-      throw e;
     }
     catch (Exception e) {
       LOG.error(e);

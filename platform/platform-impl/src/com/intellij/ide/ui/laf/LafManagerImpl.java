@@ -2,7 +2,6 @@
 package com.intellij.ide.ui.laf;
 
 import com.intellij.CommonBundle;
-import com.intellij.application.options.RegistryManager;
 import com.intellij.diagnostic.Activity;
 import com.intellij.diagnostic.ActivityCategory;
 import com.intellij.diagnostic.LoadingState;
@@ -1059,11 +1058,7 @@ public final class LafManagerImpl extends LafManager implements PersistentStateC
   }
 
   private static boolean useInterFont() {
-    return forceToUseInterFont() || ExperimentalUI.isNewUI() && SystemInfo.isJetBrainsJvm && Runtime.version().feature() >= 17;
-  }
-
-  private static boolean forceToUseInterFont() {
-    return RegistryManager.getInstance().is("ide.ui.font.force.use.inter.font");
+    return ExperimentalUI.isNewUI() && SystemInfo.isJetBrainsJvm && Runtime.version().feature() >= 17;
   }
 
   private void restoreOriginalFontDefaults(UIDefaults defaults) {

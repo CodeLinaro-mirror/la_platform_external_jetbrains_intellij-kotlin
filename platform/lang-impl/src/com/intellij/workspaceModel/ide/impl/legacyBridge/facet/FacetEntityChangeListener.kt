@@ -13,19 +13,17 @@ import com.intellij.openapi.util.JDOMUtil
 import com.intellij.workspaceModel.ide.impl.legacyBridge.facet.FacetModelBridge.Companion.facetMapping
 import com.intellij.workspaceModel.storage.EntityChange
 import com.intellij.workspaceModel.storage.EntityStorage
-import com.intellij.workspaceModel.storage.VersionedStorageChange
 import com.intellij.workspaceModel.storage.bridgeEntities.api.FacetEntity
 import com.intellij.workspaceModel.storage.bridgeEntities.api.ModuleEntity
 import org.jdom.Element
 
 internal class FacetEntityChangeListener(private val project: Project) {
 
-  fun processBeforeChange(change: EntityChange<FacetEntity>, event: VersionedStorageChange) {
+  fun processBeforeChange(change: EntityChange<FacetEntity>) {
     when (change) {
       is EntityChange.Added -> {
         val manager = getFacetManager(change.entity.module) ?: return
-        val bridge = event.storageAfter.facetMapping().getDataByEntity(change.entity) ?: manager.model.getOrCreateFacet(change.entity)
-        publisher.fireBeforeFacetAdded(bridge)
+        publisher.fireBeforeFacetAdded(manager.model.getOrCreateFacet(change.entity))
       }
       is EntityChange.Removed -> {
         val manager = getFacetManager(change.entity.module) ?: return

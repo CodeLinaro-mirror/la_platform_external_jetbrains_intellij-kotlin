@@ -67,6 +67,7 @@ sealed class GithubApiRequestExecutor {
       check(!service<GHRequestExecutorBreaker>().isRequestsShouldFail) {
         "Request failure was triggered by user action. This a pretty long description of this failure that should resemble some long error which can go out of bounds."
       }
+      service<GHEServerVersionChecker>().checkVersionSupported(request.url)
 
       indicator.checkCanceled()
       return createRequestBuilder(request)
@@ -106,7 +107,6 @@ sealed class GithubApiRequestExecutor {
             LOG.debug("Request: ${connection.requestMethod} ${connection.url} : Connected")
           }
           checkResponseCode(connection)
-          checkServerVersion(connection)
           indicator.checkCanceled()
           val result = request.extractResult(createResponse(it, indicator))
           LOG.debug("Request: ${connection.requestMethod} ${connection.url} : Result extracted")
@@ -176,12 +176,6 @@ sealed class GithubApiRequestExecutor {
           }
         }
       }
-    }
-
-    private fun checkServerVersion(connection: HttpURLConnection) {
-      // let's assume it's not ghe if header is missing
-      val versionHeader = connection.getHeaderField(GHEServerVersionChecker.ENTERPRISE_VERSION_HEADER) ?: return
-      GHEServerVersionChecker.checkVersionSupported(versionHeader)
     }
 
     private fun getErrorText(connection: HttpURLConnection): String? {

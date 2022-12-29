@@ -925,7 +925,7 @@ public class ChangesViewManager implements ChangesViewEx,
     };
   }
 
-  public static @NotNull @Nls String getLocalChangesToolWindowName(@NotNull Project project) {
+  static @NotNull @Nls String getLocalChangesToolWindowName(@NotNull Project project) {
     return isCommitToolWindowShown(project) ? VcsBundle.message("tab.title.commit") : VcsBundle.message("local.changes.tab");
   }
 }

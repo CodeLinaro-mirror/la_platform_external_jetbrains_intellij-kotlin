@@ -93,7 +93,6 @@ class PyTargetsSkeletonGenerator(skeletonPath: String, pySdk: Sdk, currentFolder
           generatorScriptExecution.addParameter(myTargetModulePath)
         }
       }
-      // TODO: Unify code
       if (!isLocalTarget()) {
         val existingStateFile = Paths.get(skeletonsPath) / STATE_MARKER_FILE
         if (existingStateFile.exists()) {

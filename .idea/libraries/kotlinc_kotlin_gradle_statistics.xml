@@ -1,11 +1,12 @@
 <component name="libraryTable">
-  <library name="kotlinc.kotlin-gradle-statistics">
+  <library name="kotlinc.kotlin-gradle-statistics" type="repository">
+    <properties include-transitive-deps="false" maven-id="org.jetbrains.kotlin:kotlin-gradle-statistics-for-ide:1.8.0-Beta-release-224" />
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-gradle-statistics-for-ide/1.7.21-release/kotlin-gradle-statistics-for-ide-1.7.21-release.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-gradle-statistics-for-ide/1.8.0-Beta-release-224/kotlin-gradle-statistics-for-ide-1.8.0-Beta-release-224.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-gradle-statistics-for-ide/1.7.21-release/kotlin-gradle-statistics-for-ide-1.7.21-release-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-gradle-statistics-for-ide/1.8.0-Beta-release-224/kotlin-gradle-statistics-for-ide-1.8.0-Beta-release-224-sources.jar!/" />
     </SOURCES>
   </library>
 </component>

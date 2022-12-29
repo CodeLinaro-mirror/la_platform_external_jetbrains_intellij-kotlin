@@ -1,9 +1,11 @@
 // Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.psi.impl.source.tree.java;
 
-import com.intellij.psi.*;
+import com.intellij.psi.JavaElementVisitor;
+import com.intellij.psi.PsiDeconstructionList;
+import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.PsiPattern;
 import com.intellij.psi.impl.source.tree.CompositePsiElement;
-import com.intellij.psi.scope.PsiScopeProcessor;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,7 +27,7 @@ public class PsiDeconstructionListImpl extends CompositePsiElement implements Ps
   }
 
   @Override
-  public @NotNull PsiPattern @NotNull [] getDeconstructionComponents() {
+  public @NotNull PsiPattern @NotNull [] getRecordComponents() {
     PsiPattern[] children = PsiTreeUtil.getChildrenOfType(this, PsiPattern.class);
     if (children == null) {
       return PsiPattern.EMPTY;
@@ -36,17 +38,5 @@ public class PsiDeconstructionListImpl extends CompositePsiElement implements Ps
   @Override
   public String toString() {
     return "PsiDeconstructionList";
-  }
-
-  @Override
-  public boolean processDeclarations(@NotNull PsiScopeProcessor processor,
-                                     @NotNull ResolveState state,
-                                     PsiElement lastParent,
-                                     @NotNull PsiElement place) {
-    PsiPattern[] components = getDeconstructionComponents();
-    for (PsiPattern component : components) {
-      component.processDeclarations(processor, state, null, place);
-    }
-    return true;
   }
 }

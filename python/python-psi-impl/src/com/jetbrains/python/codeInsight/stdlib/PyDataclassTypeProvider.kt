@@ -7,11 +7,7 @@ import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.jetbrains.python.PyNames
-import com.jetbrains.python.codeInsight.PyDataclassNames.Attrs
-import com.jetbrains.python.codeInsight.PyDataclassNames.Dataclasses
-import com.jetbrains.python.codeInsight.PyDataclassParameters
-import com.jetbrains.python.codeInsight.parseDataclassParameters
-import com.jetbrains.python.codeInsight.parseStdDataclassParameters
+import com.jetbrains.python.codeInsight.*
 import com.jetbrains.python.codeInsight.typing.PyTypingTypeProvider
 import com.jetbrains.python.psi.*
 import com.jetbrains.python.psi.impl.PyCallExpressionNavigator
@@ -33,8 +29,9 @@ class PyDataclassTypeProvider : PyTypeProviderBase() {
       referenceTarget is PyParameter && referenceTarget.isSelf && anchor is PyCallExpression -> {
         PsiTreeUtil.getParentOfType(referenceTarget, PyFunction::class.java)
           ?.takeIf { it.modifier == PyFunction.Modifier.CLASSMETHOD }
-          ?.containingClass
-          ?.let { getDataclassTypeForClass(it, context) }
+          ?.let {
+            it.containingClass?.let { getDataclassTypeForClass(it, context) }
+          }
       }
       else -> null
     }
@@ -43,8 +40,7 @@ class PyDataclassTypeProvider : PyTypeProviderBase() {
   }
 
   override fun getParameterType(param: PyNamedParameter, func: PyFunction, context: TypeEvalContext): Ref<PyType>? {
-    if (func.name != Dataclasses.DUNDER_POST_INIT) return null
-    if (!param.isPositionalContainer && !param.isKeywordContainer && param.annotationValue == null) {
+    if (!param.isPositionalContainer && !param.isKeywordContainer && param.annotationValue == null && func.name == DUNDER_POST_INIT) {
       val cls = func.containingClass
       val name = param.name
 
@@ -80,8 +76,8 @@ class PyDataclassTypeProvider : PyTypeProviderBase() {
 
     private fun getDataclassesReplaceType(resolvedCallee: PyCallable, call: PyCallExpression, context: TypeEvalContext): PyCallableType? {
       val instanceName = when (resolvedCallee.qualifiedName) {
-        Dataclasses.DATACLASSES_REPLACE -> "obj"
-        in Attrs.ATTRS_ASSOC, in Attrs.ATTRS_EVOLVE -> "inst"
+        "dataclasses.replace" -> "obj"
+        "attr.assoc", "attr.evolve" -> "inst"
         else -> return null
       }
 
@@ -215,8 +211,7 @@ class PyDataclassTypeProvider : PyTypeProviderBase() {
       val parameter = PyCallableParameterImpl.nonPsi(
         parameterName,
         getTypeForParameter(cls, field, dataclassType, context),
-        getDefaultValueForParameter(cls, field, fieldStub, dataclassType, ellipsis, context),
-        field
+        getDefaultValueForParameter(cls, field, fieldStub, dataclassType, ellipsis, context)
       )
 
       return Triple(parameterName, fieldStub?.kwOnly() == true, parameter)
@@ -234,7 +229,7 @@ class PyDataclassTypeProvider : PyTypeProviderBase() {
       }
 
       val type = context.getType(field)
-      if (type is PyCollectionType && type.classQName == Dataclasses.DATACLASSES_INITVAR) {
+      if (type is PyCollectionType && type.classQName == DATACLASSES_INITVAR_TYPE) {
         return type.elementTypes.firstOrNull()
       }
 

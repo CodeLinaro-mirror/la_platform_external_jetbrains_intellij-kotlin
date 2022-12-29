@@ -243,30 +243,12 @@ public class KeymapPanel extends JPanel implements SearchableConfigurable, Confi
       if (shortcuts.length != 0) {
         String newActionId = newQuickList.getActionId();
         for (Shortcut shortcut : shortcuts) {
-          removeShortcut(keymap, actionId, shortcut);
-          addShortcut(keymap, newActionId, shortcut);
+          keymap.removeShortcut(actionId, shortcut);
+          keymap.addShortcut(newActionId, shortcut);
         }
       }
     });
     myQuickListsModified = true;
-  }
-
-  private static void addShortcut(Keymap keymap, String actionId, Shortcut shortcut) {
-    if (keymap instanceof KeymapImpl) {
-      ((KeymapImpl)keymap).addShortcut(actionId, shortcut, true);
-    }
-    else {
-      keymap.addShortcut(actionId, shortcut);
-    }
-  }
-
-  private static void removeShortcut(Keymap keymap, String actionId, Shortcut shortcut) {
-    if (keymap instanceof KeymapImpl) {
-      ((KeymapImpl)keymap).removeShortcut(actionId, shortcut, true);
-    }
-    else {
-      keymap.removeShortcut(actionId, shortcut);
-    }
   }
 
   @Override
@@ -794,9 +776,9 @@ public class KeymapPanel extends JPanel implements SearchableConfigurable, Confi
           return;
         }
       }
-      addShortcut(keymap, actionId, newShortcut);
+      keymap.addShortcut(actionId, newShortcut);
       if (StringUtil.startsWithChar(actionId, '$')) {
-        addShortcut(keymap, KeyMapBundle.message("editor.shortcut", actionId.substring(1)), newShortcut);
+        keymap.addShortcut(KeyMapBundle.message("editor.shortcut", actionId.substring(1)), newShortcut);
       }
       if (manager != null) manager.apply();
     }

@@ -11,10 +11,7 @@ import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 import com.jetbrains.python.PyNames
-import com.jetbrains.python.codeInsight.PyDataclassNames.Attrs
-import com.jetbrains.python.codeInsight.PyDataclassNames.Dataclasses
-import com.jetbrains.python.codeInsight.PyDataclassParameters
-import com.jetbrains.python.codeInsight.parseDataclassParameters
+import com.jetbrains.python.codeInsight.*
 import com.jetbrains.python.extensions.afterDefInMethod
 import com.jetbrains.python.extensions.inParameterList
 import com.jetbrains.python.psi.PyParameter
@@ -52,7 +49,7 @@ class PyDataclassCompletionContributor : CompletionContributor(), DumbAware {
             if (name != null && annotationValue != null) {
               val type = typeEvalContext.getType(element)
 
-              if (type is PyClassType && type.classQName == Dataclasses.DATACLASSES_INITVAR) {
+              if (type is PyClassType && type.classQName == DATACLASSES_INITVAR_TYPE) {
                 val typeHint = annotationValue.indexExpression.let { if (it == null) "" else ": ${it.text}" }
                 postInitParameters.add(name + typeHint)
               }
@@ -62,11 +59,10 @@ class PyDataclassCompletionContributor : CompletionContributor(), DumbAware {
           true
         }
 
-        addMethodToResult(result, cls, typeEvalContext,
-                          Dataclasses.DUNDER_POST_INIT, postInitParameters.joinToString(prefix = "(", postfix = ")"))
+        addMethodToResult(result, cls, typeEvalContext, DUNDER_POST_INIT, postInitParameters.joinToString(prefix = "(", postfix = ")"))
       }
       else if (dataclassParameters.type.asPredefinedType == PyDataclassParameters.PredefinedType.ATTRS) {
-        addMethodToResult(result, cls, typeEvalContext, Attrs.DUNDER_POST_INIT)
+        addMethodToResult(result, cls, typeEvalContext, DUNDER_ATTRS_POST_INIT)
       }
     }
   }

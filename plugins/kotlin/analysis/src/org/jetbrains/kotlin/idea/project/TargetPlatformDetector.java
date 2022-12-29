@@ -61,7 +61,7 @@ public class TargetPlatformDetector {
             }
         }
 
-        return DefaultIdeTargetPlatformKindProvider.Companion.getDefaultPlatform();
+        return JvmPlatforms.INSTANCE.getDefaultJvmPlatform();
     }
 
     @NotNull
@@ -95,6 +95,11 @@ public class TargetPlatformDetector {
         }
 
         String platformNameFromScriptDefinition = scriptDefinition.getPlatform();
+
+        if ("JVM".equals(platformNameFromScriptDefinition)) { // optional compiler arg "-jvmTarget" is considered in getScriptSettings()
+            return JvmPlatforms.INSTANCE.getDefaultJvmPlatform();
+        }
+
         for (TargetPlatform compilerPlatform : CommonPlatforms.INSTANCE.getAllSimplePlatforms()) {
             // FIXME(dsavvinov): get rid of matching by name
             SimplePlatform simplePlatform = CollectionsKt.single(compilerPlatform);
@@ -103,6 +108,6 @@ public class TargetPlatformDetector {
             }
         }
 
-        return DefaultIdeTargetPlatformKindProvider.Companion.getDefaultPlatform();
+        return JvmPlatforms.INSTANCE.getDefaultJvmPlatform();
     }
 }
