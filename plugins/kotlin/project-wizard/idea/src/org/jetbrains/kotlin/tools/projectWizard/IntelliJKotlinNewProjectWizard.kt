@@ -38,7 +38,7 @@ internal class IntelliJKotlinNewProjectWizard : BuildSystemKotlinNewProjectWizar
         BuildSystemKotlinNewProjectWizardData by parent {
 
         private val sdkProperty = propertyGraph.property<Sdk?>(null)
-        private val addSampleCodeProperty = propertyGraph.property(true)
+        private val addSampleCodeProperty = propertyGraph.property(false)
             .bindBooleanStorage("NewProjectWizard.addSampleCodeState")
 
         private val sdk by sdkProperty

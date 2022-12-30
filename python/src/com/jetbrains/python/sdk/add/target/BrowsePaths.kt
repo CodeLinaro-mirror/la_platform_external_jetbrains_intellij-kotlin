@@ -2,7 +2,6 @@
 package com.jetbrains.python.sdk.add.target
 
 import com.intellij.execution.target.BrowsableTargetEnvironmentType
-import com.intellij.execution.target.TargetBrowserHints
 import com.intellij.execution.target.TargetEnvironmentConfiguration
 import com.intellij.execution.target.getTargetType
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
@@ -35,7 +34,6 @@ fun TextFieldWithBrowseButton.withTargetBrowser(targetType: BrowsableTargetEnvir
                                          title,
                                          com.intellij.openapi.ui.TextComponentAccessor.TEXT_FIELD_WHOLE_TEXT,
                                          textField,
-                                         targetSupplier,
-                                         TargetBrowserHints(true))
+                                         targetSupplier)
   addActionListener(browser)
 }

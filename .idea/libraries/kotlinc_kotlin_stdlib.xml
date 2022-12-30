@@ -4,17 +4,17 @@
       <root url="file://$PROJECT_DIR$/lib/annotations/kotlin" />
     </ANNOTATIONS>
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.7.21-release/kotlin-stdlib-jdk8-1.7.21-release.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib/1.7.21-release/kotlin-stdlib-1.7.21-release.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-common/1.7.21-release/kotlin-stdlib-common-1.7.21-release.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.7.21-release/kotlin-stdlib-jdk7-1.7.21-release.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.0-release/kotlin-stdlib-jdk8-1.8.0-release.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib/1.8.0-release/kotlin-stdlib-1.8.0-release.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.0-release/kotlin-stdlib-common-1.8.0-release.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.0-release/kotlin-stdlib-jdk7-1.8.0-release.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.7.21-release/kotlin-stdlib-jdk8-1.7.21-release-sources.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib/1.7.21-release/kotlin-stdlib-1.7.21-release-sources.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-common/1.7.21-release/kotlin-stdlib-common-1.7.21-release-sources.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.7.21-release/kotlin-stdlib-jdk7-1.7.21-release-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.0-release/kotlin-stdlib-jdk8-1.8.0-release-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib/1.8.0-release/kotlin-stdlib-1.8.0-release-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.0-release/kotlin-stdlib-common-1.8.0-release-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.0-release/kotlin-stdlib-jdk7-1.8.0-release-sources.jar!/" />
     </SOURCES>
   </library>
 </component>

@@ -77,7 +77,7 @@ public class EditMemorySettingsDialog extends DialogWrapper {
       if (suggested <= 0) suggested = MIN_VALUE;
     }
 
-    Path file = EditMemorySettingsService.getInstance().getUserOptionsFile();
+    Path file = VMOptions.getUserOptionsFile();
     if (file == null) throw new IllegalStateException();
 
     JPanel panel = new JPanel(new GridBagLayout());
@@ -168,7 +168,7 @@ public class EditMemorySettingsDialog extends DialogWrapper {
   private boolean save() {
     try {
       int value = Integer.parseInt(myNewValueField.getText());
-      EditMemorySettingsService.getInstance().save(myOption, value);
+      VMOptions.setOption(myOption, value);
       return true;
     }
     catch (IOException e) {

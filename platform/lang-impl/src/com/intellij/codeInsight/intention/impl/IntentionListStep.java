@@ -20,7 +20,6 @@ import com.intellij.openapi.util.NlsContexts;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiUtilBase;
-import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.TestOnly;
@@ -110,7 +109,7 @@ public class IntentionListStep implements ListPopupStep<IntentionActionWithTextC
     myFinalRunnable = () -> {
       HintManager.getInstance().hideAllHints();
       if (myProject.isDisposed()) return;
-      if (myEditor != null && (myEditor.isDisposed() || (!UIUtil.isShowing(myEditor.getComponent()) && !ApplicationManager.getApplication().isUnitTestMode()))) return;
+      if (myEditor != null && (myEditor.isDisposed() || (!myEditor.getComponent().isShowing() && !ApplicationManager.getApplication().isUnitTestMode()))) return;
 
       if (DumbService.isDumb(myProject) && !DumbService.isDumbAware(cachedAction)) {
         DumbService.getInstance(myProject).showDumbModeNotification(

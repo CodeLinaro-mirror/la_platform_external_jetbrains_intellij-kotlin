@@ -42,10 +42,6 @@ class ComposeMppModuleTemplate : Template() {
         +RepositoryIR(DefaultRepository.GOOGLE)
     }
 
-    override fun Reader.updateBuildFileIRs(irs: List<BuildSystemIR>): List<BuildSystemIR> = irs.filterNot {
-        it.safeAs<GradleOnlyPluginByNameIR>()?.pluginId == AndroidModuleConfigurator.DEPENDENCIES.KOTLIN_ANDROID_EXTENSIONS_NAME
-    }
-
     override fun Reader.updateModuleIR(module: ModuleIR): ModuleIR = when (module.originalModule.configurator) {
         CommonTargetConfigurator -> module.withIrs(
             CustomGradleDependencyDependencyIR("compose.runtime", DependencyType.MAIN, DependencyKind.api),
@@ -53,8 +49,8 @@ class ComposeMppModuleTemplate : Template() {
             CustomGradleDependencyDependencyIR("compose.material", DependencyType.MAIN, DependencyKind.api),
         )
         AndroidTargetConfigurator -> module.withIrs(
-            AndroidSinglePlatformModuleConfigurator.DEPENDENCIES.APP_COMPAT.withDependencyKind(DependencyKind.api),
-            DEPENDENCIES.ANDROID_KTX.withDependencyKind(DependencyKind.api)
+            DEPENDENCIES.APP_COMPAT_FOR_COMPOSE_OLD.withDependencyKind(DependencyKind.api),
+            DEPENDENCIES.ANDROID_KTX_FOR_COMPOSE_OLD.withDependencyKind(DependencyKind.api)
         ).withoutIrs { it == AndroidModuleConfigurator.DEPENDENCIES.MATERIAL }
         JvmTargetConfigurator -> module.withIrs(
             CustomGradleDependencyDependencyIR("compose.preview", DependencyType.MAIN, DependencyKind.api),
@@ -88,9 +84,20 @@ class ComposeMppModuleTemplate : Template() {
     }
 
     object DEPENDENCIES {
+        @Suppress("unused")
         val ANDROID_KTX = ArtifactBasedLibraryDependencyIR(
             MavenArtifact(DefaultRepository.GOOGLE, "androidx.core", "core-ktx"),
             version = Versions.ANDROID.ANDROIDX_KTX,
+            dependencyType = DependencyType.MAIN
+        )
+        val ANDROID_KTX_FOR_COMPOSE_OLD = ArtifactBasedLibraryDependencyIR(
+            MavenArtifact(DefaultRepository.GOOGLE, "androidx.core", "core-ktx"),
+            version = Versions.ANDROIDX_KTX_VERSION_FOR_COMPOSE_OLD,
+            dependencyType = DependencyType.MAIN
+        )
+        val APP_COMPAT_FOR_COMPOSE_OLD = ArtifactBasedLibraryDependencyIR(
+            MavenArtifact(DefaultRepository.GOOGLE, "androidx.appcompat", "appcompat"),
+            version = Versions.ANDROIDX_APPCOMPAT_VERSION_FOR_COMPOSE_OLD,
             dependencyType = DependencyType.MAIN
         )
     }

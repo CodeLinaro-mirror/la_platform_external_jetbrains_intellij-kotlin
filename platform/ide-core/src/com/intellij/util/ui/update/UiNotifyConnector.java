@@ -6,7 +6,6 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,7 +24,7 @@ public class UiNotifyConnector implements Disposable, HierarchyListener {
   public UiNotifyConnector(@NotNull Component component, @NotNull Activatable target) {
     myComponent = new WeakReference<>(component);
     myTarget = target;
-    if (UIUtil.isShowing(component, false)) {
+    if (component.isShowing()) {
       showNotify();
     }
     else {
@@ -54,7 +53,7 @@ public class UiNotifyConnector implements Disposable, HierarchyListener {
         return;
       }
 
-      if (UIUtil.isShowing(c, false)) {
+      if (c.isShowing()) {
         showNotify();
       }
       else {

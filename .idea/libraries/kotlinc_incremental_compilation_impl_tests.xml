@@ -1,11 +1,11 @@
 <component name="libraryTable">
   <library name="kotlinc.incremental-compilation-impl-tests">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/incremental-compilation-impl-tests-for-ide/1.7.21-release/incremental-compilation-impl-tests-for-ide-1.7.21-release.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/incremental-compilation-impl-tests-for-ide/1.8.0-release/incremental-compilation-impl-tests-for-ide-1.8.0-release.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/incremental-compilation-impl-tests-for-ide/1.7.21-release/incremental-compilation-impl-tests-for-ide-1.7.21-release-sources.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../kotlin/build/repo/org/jetbrains/kotlin/incremental-compilation-impl-tests-for-ide/1.8.0-release/incremental-compilation-impl-tests-for-ide-1.8.0-release-sources.jar!/" />
     </SOURCES>
   </library>
 </component>

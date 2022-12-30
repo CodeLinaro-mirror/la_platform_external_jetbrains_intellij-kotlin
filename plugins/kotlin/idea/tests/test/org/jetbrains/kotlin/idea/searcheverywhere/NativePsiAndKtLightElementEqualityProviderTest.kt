@@ -13,13 +13,12 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.parentOfType
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase
-import org.jetbrains.kotlin.asJava.LightClassGenerationSupport
+import org.jetbrains.kotlin.asJava.toLightClass
 import org.jetbrains.kotlin.asJava.toLightMethods
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.utils.addToStdlib.cast
-import org.jetbrains.kotlin.utils.keysToMap
 
 /**
  * @see KtSearchEverywhereEqualityProvider
@@ -28,7 +27,7 @@ class NativePsiAndKtLightElementEqualityProviderTest : LightJavaCodeInsightFixtu
     fun `test only class presented`() {
         val file = myFixture.configureByText("MyKotlinClassWithStrangeName.kt", "class MyKotlinClassWithStrangeName")
         val klass = file.findElementAt(myFixture.caretOffset)?.parentOfType<KtClass>()!!
-        val ulc = LightClassGenerationSupport.getInstance(project).createUltraLightClass(klass)!!
+        val ulc = klass.toLightClass()!!
         findByPattern("MyKotlinClassWithStrangeName") { results ->
             assertTrue(klass in results)
             assertFalse(file in results)
@@ -44,8 +43,8 @@ class NativePsiAndKtLightElementEqualityProviderTest : LightJavaCodeInsightFixtu
 
         val klass = file.declarations.first() as KtClass
         val klass2 = file.declarations.last() as KtClass
-        val ulc = LightClassGenerationSupport.getInstance(project).createUltraLightClass(klass)!!
-        val ulc2 = LightClassGenerationSupport.getInstance(project).createUltraLightClass(klass2)!!
+        val ulc = klass.toLightClass()!!
+        val ulc2 = klass2.toLightClass()!!
         findByPattern("MyKotlinClassWithStrangeName") { results ->
             assertTrue(klass in results)
             assertTrue(klass2 in results)
@@ -62,7 +61,7 @@ class NativePsiAndKtLightElementEqualityProviderTest : LightJavaCodeInsightFixtu
         ) as KtFile
 
         val klass = file.findElementAt(myFixture.caretOffset)?.parentOfType<KtClass>()!!
-        val ulc = LightClassGenerationSupport.getInstance(project).createUltraLightClass(klass)!!
+        val ulc = klass.toLightClass()!!
         val syntheticClass = file.declarations.last().cast<KtNamedFunction>().toLightMethods().single().parent
         findByPattern("MyKotlinClassWithStrangeName") { results ->
             assertTrue(results.toString(), results.size == 1)

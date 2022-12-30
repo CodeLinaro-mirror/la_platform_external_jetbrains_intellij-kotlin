@@ -261,9 +261,8 @@ public final class IncProjectBuilder {
   }
 
   private void checkRebuildRequired(final CompileScope scope) throws RebuildRequestedException {
-    if (myIsTestMode || isAutoBuild()) {
+    if (myIsTestMode) {
       // do not use the heuristic in tests in order to properly test all cases
-      // automatic builds should not cause start full project rebuilds to avoid situations when rebuild is not expected by user
       return;
     }
     final BuildTargetsState targetsState = myProjectDescriptor.getTargetsState();
@@ -388,12 +387,9 @@ public final class IncProjectBuilder {
     }
   }
 
-  private boolean isAutoBuild() {
-    return Boolean.parseBoolean(myBuilderParams.get(BuildParametersKeys.IS_AUTOMAKE));
-  }
-
-  private boolean isParallelBuild() {
-    return isAutoBuild() ? BuildRunner.isParallelBuildAutomakeEnabled() : BuildRunner.isParallelBuildEnabled();
+  private static boolean isParallelBuild(CompileContext context) {
+    return Boolean.parseBoolean(context.getBuilderParameter(BuildParametersKeys.IS_AUTOMAKE)) ?
+           BuildRunner.isParallelBuildAutomakeEnabled() : BuildRunner.isParallelBuildEnabled();
   }
 
   private void runBuild(final CompileContextImpl context, boolean forceCleanCaches) throws ProjectBuildException {
@@ -404,7 +400,7 @@ public final class IncProjectBuilder {
              "; isMake:" +
              context.isMake() +
              " parallel compilation:" +
-             isParallelBuild());
+             isParallelBuild(context));
 
     context.addBuildListener(new ChainedTargetsBuildListener(context));
 
@@ -869,7 +865,7 @@ public final class IncProjectBuilder {
   private void buildChunks(final CompileContextImpl context, BuildProgress buildProgress) throws ProjectBuildException {
     try {
 
-      boolean compileInParallel = isParallelBuild();
+      boolean compileInParallel = isParallelBuild(context);
       if (compileInParallel && MAX_BUILDER_THREADS <= 1) {
         LOG.info("Switched off parallel compilation because maximum number of builder threads is less than 2. Set '"
                  + GlobalOptions.COMPILE_PARALLEL_MAX_THREADS_OPTION + "' system property to a value greater than 1 to really enable parallel compilation.");

@@ -174,13 +174,6 @@ public class FacetManagerTest extends FacetTestCase {
     assertEquals("newName", mockFacet.getName());
   }
 
-  public void testFacetIsCreatedOnlyOnce() {
-    MockFacet.setConstructorCounter(0);
-    addFacet("facet");
-
-    assertEquals(1, MockFacet.getConstructorCounter());
-  }
-
   public void testListeners() {
     final FacetManager manager = getFacetManager();
     final MyFacetManagerListener listener = new MyFacetManagerListener();

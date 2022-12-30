@@ -323,7 +323,7 @@ class B {}""")
     assert recordPattern.patternVariable.name == "r"
     def structurePattern = recordPattern.deconstructionList
     assert structurePattern != null
-    def components = structurePattern.deconstructionComponents
+    def components = structurePattern.recordComponents
     def pattern = (PsiTypeTestPattern)components[1]
     assert pattern.patternVariable.name == "b"
   }

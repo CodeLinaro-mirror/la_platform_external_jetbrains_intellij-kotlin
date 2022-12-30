@@ -40,6 +40,4 @@ interface ModuleBridge : ModuleEx {
                          listenerCallbacks: MutableList<in Runnable>?)
 
   fun callCreateComponents()
-
-  fun initFacets()
 }

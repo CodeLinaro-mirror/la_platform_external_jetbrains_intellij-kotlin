@@ -13,7 +13,7 @@ class PyDevDisplayHook(DisplayHook):
                                                             **kwargs)
             return
         add_new_line_to_text(format_dict)
-        format_dict["execution_count"] = str(get_current_exec_count(self.shell))
+        format_dict["execution_count"] = str(self.shell.execution_count)
         send_rich_output(format_dict)
 
 
@@ -24,15 +24,8 @@ class PyDevDisplayPub(DisplayPublisher):
             super(PyDevDisplayPub, self).publish(data, *args, **kwargs)
             return
         add_new_line_to_text(data)
-        data["execution_count"] = str(get_current_exec_count(self.shell))
+        data["execution_count"] = str(self.shell.execution_count)
         send_rich_output(data)
-
-
-def get_current_exec_count(shell):
-    if hasattr(shell, "pydev_curr_exec_line") and shell.pydev_curr_exec_line != 0:
-        return shell.pydev_curr_exec_line
-    else:
-        return shell.execution_count
 
 
 def add_new_line_to_text(format_dict):

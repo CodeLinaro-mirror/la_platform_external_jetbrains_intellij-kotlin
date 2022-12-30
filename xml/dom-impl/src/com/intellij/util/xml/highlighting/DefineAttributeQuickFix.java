@@ -19,7 +19,6 @@ import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.ide.util.PsiNavigationSupport;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.xml.XmlDomBundle;
@@ -57,11 +56,8 @@ public class DefineAttributeQuickFix implements LocalQuickFix {
   public void applyFix(@NotNull final Project project, @NotNull final ProblemDescriptor descriptor) {
     XmlTag tag = (XmlTag)descriptor.getPsiElement();
     XmlAttribute attribute = tag.setAttribute(myAttrName, myNamespace.equals(tag.getNamespace())? "": myNamespace, "");
-    VirtualFile virtualFile = tag.getContainingFile().getVirtualFile();
-    if (virtualFile != null) {
-      PsiNavigationSupport.getInstance().createNavigatable(project, virtualFile,
-                                                           attribute.getValueElement().getTextRange().getStartOffset() +
-                                                           1).navigate(true);
-    }
+    PsiNavigationSupport.getInstance().createNavigatable(project, tag.getContainingFile().getVirtualFile(),
+                                                         attribute.getValueElement().getTextRange().getStartOffset() +
+                                                         1).navigate(true);
   }
 }

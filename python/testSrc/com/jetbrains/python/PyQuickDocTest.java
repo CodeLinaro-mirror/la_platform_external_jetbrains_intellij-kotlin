@@ -661,66 +661,6 @@ public class PyQuickDocTest extends LightMarkedTestCase {
     runWithLanguageLevel(LanguageLevel.getLatest(), this::checkHTMLOnly);
   }
 
-  // PY-52281
-  public void testElseInsideIfStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testElseInsideForStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testElseInsideTryExceptStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testElseInsideWhileStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testAsInsideWithStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testAsInsideImportStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testAsInsideExceptStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testFromInsideImportStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testFromInsideYieldStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testFromInsideRaiseStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testInInsideForStatement() {
-    checkHTMLOnly();
-  }
-
-  // PY-52281
-  public void testInInsideIfStatement() {
-    checkHTMLOnly();
-  }
-
   @Override
   protected String getTestDataPath() {
     return super.getTestDataPath() + "/quickdoc/";

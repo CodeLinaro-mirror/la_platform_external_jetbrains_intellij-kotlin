@@ -12,7 +12,6 @@ import org.intellij.plugins.markdown.lang.MarkdownElementTypes
 import org.intellij.plugins.markdown.lang.MarkdownTokenTypeSets
 import org.intellij.plugins.markdown.lang.formatter.settings.MarkdownCustomCodeStyleSettings
 import org.intellij.plugins.markdown.lang.psi.util.children
-import org.intellij.plugins.markdown.lang.psi.util.hasType
 import org.intellij.plugins.markdown.lang.psi.util.parents
 import org.intellij.plugins.markdown.util.MarkdownPsiUtil
 
@@ -67,10 +66,8 @@ internal open class MarkdownFormattingBlock(
   }
 
   override fun buildChildren(): List<Block> {
-    if (!node.canBeFormatted()) {
-      return emptyList()
-    }
     val newAlignment = Alignment.createAlignment()
+
     return when (node.elementType) {
       //Code fence alignment is not supported for now because of manipulator problems
       // and the fact that when end of code fence is in blockquote -- parser
@@ -89,9 +86,5 @@ internal open class MarkdownFormattingBlock(
         MarkdownBlocks.create(node.children(), settings, spacing) { alignment }.toList()
       }
     }
-  }
-
-  private fun ASTNode.canBeFormatted(): Boolean {
-    return parents(withSelf = true).none { it.hasType(MarkdownElementTypes.TABLE_CELL) }
   }
 }

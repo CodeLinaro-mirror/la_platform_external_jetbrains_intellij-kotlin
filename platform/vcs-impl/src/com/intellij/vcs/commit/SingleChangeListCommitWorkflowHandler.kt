@@ -10,6 +10,7 @@ import com.intellij.openapi.vcs.changes.ChangesUtil.getAffectedVcses
 import com.intellij.openapi.vcs.changes.ChangesUtil.getAffectedVcsesForFilePaths
 import com.intellij.openapi.vcs.changes.CommitExecutor
 import com.intellij.openapi.vcs.changes.CommitResultHandler
+import com.intellij.openapi.vcs.checkin.CheckinHandler
 import com.intellij.openapi.vcs.impl.LineStatusTrackerManager
 
 class SingleChangeListCommitWorkflowHandler(
@@ -75,9 +76,9 @@ class SingleChangeListCommitWorkflowHandler(
     updateCommitOptions()
   }
 
-  override fun beforeCommitChecksEnded(isDefaultCommit: Boolean, result: CommitChecksResult) {
+  override fun beforeCommitChecksEnded(isDefaultCommit: Boolean, result: CheckinHandler.ReturnResult) {
     super.beforeCommitChecksEnded(isDefaultCommit, result)
-    if (result.shouldCommit) {
+    if (result == CheckinHandler.ReturnResult.COMMIT) {
       // commit message could be changed during before-commit checks - ensure updated commit message is used for commit
       workflow.commitState = workflow.commitState.copy(getCommitMessage())
 

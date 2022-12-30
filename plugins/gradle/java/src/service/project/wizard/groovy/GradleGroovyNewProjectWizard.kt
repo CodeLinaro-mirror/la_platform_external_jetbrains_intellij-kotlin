@@ -36,7 +36,7 @@ class GradleGroovyNewProjectWizard : BuildSystemGroovyNewProjectWizard {
     GradleNewProjectWizardStep<GroovyNewProjectWizard.Step>(parent),
     BuildSystemGroovyNewProjectWizardData by parent {
 
-    private val addSampleCodeProperty = propertyGraph.property(true)
+    private val addSampleCodeProperty = propertyGraph.property(false)
       .bindBooleanStorage("NewProjectWizard.addSampleCodeState")
 
     var addSampleCode by addSampleCodeProperty

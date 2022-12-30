@@ -63,21 +63,8 @@ abstract class TargetEnvironment(
     }
   }
 
-  /**
-   * Mapping of localPath -> Something
-   */
-  interface MappingWithLocalPath {
-    val localRootPath: Path
-  }
-
-  /**
-   * Unonditional map between local and remote root.
-   * Targets API do not create this mapping, it just exists
-   */
-  data class SynchronizedVolume(override val localRootPath: Path, val targetPath: String): MappingWithLocalPath
-
   data class UploadRoot @JvmOverloads constructor(
-    override val localRootPath: Path,
+    val localRootPath: Path,
 
     val targetRootPath: TargetPath,
 
@@ -86,7 +73,7 @@ abstract class TargetEnvironment(
      * TODO maybe get rid of it? It causes a race between two environments using the same upload root.
      */
     val removeAtShutdown: Boolean = false
-  ): MappingWithLocalPath {
+  ) {
     var volumeData: TargetEnvironmentType.TargetSpecificVolumeData? = null  // excluded from equals / hashcode
   }
 

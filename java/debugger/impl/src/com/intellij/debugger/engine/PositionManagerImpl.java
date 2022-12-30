@@ -1,4 +1,4 @@
-// Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
+// Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package com.intellij.debugger.engine;
 
 import com.intellij.debugger.MultiRequestPositionManager;
@@ -15,7 +15,6 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.project.IndexNotReadyException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.util.Pair;
@@ -604,27 +603,19 @@ public class PositionManagerImpl implements PositionManager, MultiRequestPositio
     @Override public void visitMethod(PsiMethod method) {
       if (myCompiledMethod == null) {
         try {
+          String methodName = JVMNameUtil.getJVMMethodName(method);
           PsiClass containingClass = method.getContainingClass();
 
           if (containingClass != null &&
               containingClass.equals(myCompiledClass) &&
-              JVMNameUtil.getJVMMethodName(method).equals(myMethodName) &&
-              checkSignature(method)) {
+              methodName.equals(myMethodName) &&
+              JVMNameUtil.getJVMSignature(method).getName(myDebugProcess).equals(myMethodSignature)) {
             myCompiledMethod = method;
           }
         }
         catch (EvaluateException e) {
           LOG.debug(e);
         }
-      }
-    }
-
-    private boolean checkSignature(@NotNull PsiMethod method) throws EvaluateException {
-      try {
-        return JVMNameUtil.getJVMSignature(method).getName(myDebugProcess).equals(myMethodSignature);
-      }
-      catch (IndexNotReadyException e) {
-        return true; // fallback: do not care about the signature
       }
     }
 

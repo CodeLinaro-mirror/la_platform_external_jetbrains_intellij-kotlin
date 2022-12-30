@@ -21,7 +21,6 @@ import com.intellij.util.ReflectionUtil;
 import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.keyFMap.KeyFMap;
 import com.intellij.util.ui.EDT;
-import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
@@ -145,7 +144,7 @@ public class EdtDataContext implements DataContext, UserDataHolder, AnActionEven
 
   private @Nullable Object calcData(@NotNull String dataId, @Nullable Component component) {
     try (AccessToken ignored = ProhibitAWTEvents.start("getData")) {
-      for (Component c = component; c != null; c = UIUtil.getParent(c)) {
+      for (Component c = component; c != null; c = c.getParent()) {
         DataProvider dataProvider = getDataProviderEx(c);
         if (dataProvider == null) continue;
         Object data = myDataManager.getDataFromProviderAndRules(dataId, GetDataRuleType.PROVIDER, dataProvider);

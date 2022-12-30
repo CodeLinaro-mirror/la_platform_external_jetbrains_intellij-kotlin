@@ -6,14 +6,12 @@ package com.jetbrains.python.run
 import com.intellij.execution.target.TargetEnvironment
 import com.intellij.execution.target.TargetEnvironmentRequest
 import com.intellij.execution.target.local.LocalTargetEnvironmentRequest
-import com.intellij.execution.target.value.TargetEnvironmentFunction
 import com.intellij.execution.target.value.constant
 import com.intellij.execution.target.value.getTargetEnvironmentValueForLocalPath
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.projectRoots.Sdk
-import com.intellij.openapi.projectRoots.SdkAdditionalData
 import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.roots.LibraryOrderEntry
 import com.intellij.openapi.roots.ModuleRootManager
@@ -22,7 +20,6 @@ import com.intellij.openapi.roots.impl.libraries.LibraryEx
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.remote.RemoteSdkProperties
 import com.intellij.util.PlatformUtils
 import com.jetbrains.python.PythonHelpersLocator
 import com.jetbrains.python.facet.LibraryContributingFacet
@@ -35,7 +32,6 @@ import com.jetbrains.python.sdk.PythonSdkUtil
 import com.jetbrains.python.sdk.flavors.JythonSdkFlavor
 import com.jetbrains.python.sdk.flavors.PythonSdkFlavor
 import java.io.File
-import java.nio.file.Path
 import java.util.function.Function
 
 fun initPythonPath(envs: MutableMap<String, Function<TargetEnvironment, String>>,
@@ -90,7 +86,7 @@ private fun collectPythonPath(pathConverter: LocalPathToTargetPathConverter,
     //that fixes Jython problem changing sys.argv on execfile, see PY-8164
     for (helpersResource in listOf("pycharm", "pydev")) {
       val helperPath = PythonHelpersLocator.getHelperPath(helpersResource)
-      val targetHelperPath = getTargetEnvironmentValueForLocalPath(Path.of(helperPath))
+      val targetHelperPath = getTargetEnvironmentValueForLocalPath(helperPath)
       pythonPath.add(targetHelperPath)
     }
   }
@@ -127,20 +123,13 @@ private fun collectPythonPath(pathConverter: LocalPathToTargetPathConverter,
   return pythonPathList
 }
 
-/**
- * List of [target->targetPath] functions. TargetPaths are to be added to ``PYTHONPATH`` because user did so
- */
-fun getAddedPaths(sdkAdditionalData: SdkAdditionalData): List<Function<TargetEnvironment, String>> {
+fun getAddedPaths(pythonSdk: Sdk): List<Function<TargetEnvironment, String>> {
   val pathList: MutableList<Function<TargetEnvironment, String>> = ArrayList()
+  val sdkAdditionalData = pythonSdk.sdkAdditionalData
   if (sdkAdditionalData is PythonSdkAdditionalData) {
-    val addedPaths = if (sdkAdditionalData is RemoteSdkProperties) {
-      sdkAdditionalData.addedPathFiles.map { sdkAdditionalData.pathMappings.convertToRemote(it.path) }
-    }
-    else {
-      sdkAdditionalData.addedPathFiles.map { it.path }
-    }
+    val addedPaths = sdkAdditionalData.addedPathFiles
     for (file in addedPaths) {
-      pathList.add(constant(file))
+      addToPythonPath(LocalPathToTargetPathConverterImpl(), file, pathList)
     }
   }
   return pathList
@@ -163,15 +152,12 @@ private fun addToPythonPath(pathConverter: LocalPathToTargetPathConverter,
 private fun addIfNeeded(pathConverter: LocalPathToTargetPathConverter,
                         file: VirtualFile,
                         pathList: MutableCollection<Function<TargetEnvironment, String>>) {
-  val filePath = Path.of(FileUtil.toSystemDependentName(file.path))
+  val filePath = FileUtil.toSystemDependentName(file.path)
   pathList.add(pathConverter.getTargetPath(filePath))
 }
 
-/**
- * Adds all libs from [module] to [pythonPathList] as [target,targetPath] func
- */
 private fun addLibrariesFromModule(module: Module,
-                                   pythonPathList: MutableCollection<TargetEnvironmentFunction<String>>) {
+                                   list: MutableCollection<Function<TargetEnvironment, String>>) {
   val entries = ModuleRootManager.getInstance(module).orderEntries
   for (entry in entries) {
     if (entry is LibraryOrderEntry) {
@@ -180,15 +166,15 @@ private fun addLibrariesFromModule(module: Module,
         // skip libraries from Python facet
         continue
       }
-      for (root in entry.getRootFiles(OrderRootType.CLASSES).map { it.toNioPath() }) {
+      for (root in entry.getRootFiles(OrderRootType.CLASSES)) {
         val library = entry.library
         if (!PlatformUtils.isPyCharm()) {
-          pythonPathList += getTargetEnvironmentValueForLocalPath(root)
+          addToPythonPath(LocalPathToTargetPathConverterImpl(), root, list)
         }
         else if (library is LibraryEx) {
           val kind = library.kind
           if (kind === PythonLibraryType.getInstance().kind) {
-            pythonPathList += getTargetEnvironmentValueForLocalPath(root)
+            addToPythonPath(LocalPathToTargetPathConverterImpl(), root, list)
           }
         }
       }
@@ -220,14 +206,20 @@ private fun addRoots(pathConverter: LocalPathToTargetPathConverter,
 }
 
 private fun interface LocalPathToTargetPathConverter {
-  fun getTargetPath(localPath: Path): Function<TargetEnvironment, String>
+  fun getTargetPath(localPath: String): Function<TargetEnvironment, String>
+}
+
+private class LocalPathToTargetPathConverterImpl : LocalPathToTargetPathConverter {
+  override fun getTargetPath(localPath: String): Function<TargetEnvironment, String> {
+    return getTargetEnvironmentValueForLocalPath(localPath)
+  }
 }
 
 private class LocalPathToTargetPathConverterSdkAware(private val project: Project,
                                                      private val sdk: Sdk?,
                                                      private val pathMapper: PyRemotePathMapper?)
   : LocalPathToTargetPathConverter {
-  override fun getTargetPath(localPath: Path): Function<TargetEnvironment, String> {
+  override fun getTargetPath(localPath: String): Function<TargetEnvironment, String> {
     return getTargetPathForPythonConsoleExecution(project, sdk, pathMapper, localPath)
   }
 }

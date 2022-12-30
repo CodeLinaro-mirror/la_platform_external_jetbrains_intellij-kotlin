@@ -10,5 +10,5 @@ import org.jetbrains.annotations.NotNull;
 @ApiStatus.Experimental
 public interface PsiDeconstructionList extends PsiElement {
   @NotNull
-  PsiPattern @NotNull [] getDeconstructionComponents();
+  PsiPattern @NotNull [] getRecordComponents();
 }

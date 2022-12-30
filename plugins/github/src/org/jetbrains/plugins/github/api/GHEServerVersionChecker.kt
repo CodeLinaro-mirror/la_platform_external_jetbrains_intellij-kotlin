@@ -1,18 +1,25 @@
 // Copyright 2000-2020 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 package org.jetbrains.plugins.github.api
 
-object GHEServerVersionChecker {
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.progress.util.ProgressIndicatorUtils
+import org.jetbrains.plugins.github.util.GHEnterpriseServerMetadataLoader
 
-  private const val REQUIRED_VERSION_MAJOR = 2
-  private const val REQUIRED_VERSION_MINOR = 21
 
-  const val ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version"
+private const val REQUIRED_VERSION_MAJOR = 2
+private const val REQUIRED_VERSION_MINOR = 21
 
-  fun checkVersionSupported(versionValue: String) {
+@Service
+class GHEServerVersionChecker {
+
+  fun checkVersionSupported(endpointUrl: String) {
     val majorVersion: Int
     val minorVersion: Int
     try {
-      val versionSplit = versionValue.split('.')
+      val metadataRequest = service<GHEnterpriseServerMetadataLoader>().findRequestByEndpointUrl(endpointUrl) ?: return
+      val serverMeta = ProgressIndicatorUtils.awaitWithCheckCanceled(metadataRequest) ?: return
+      val versionSplit = serverMeta.installedVersion.split('.')
       majorVersion = versionSplit[0].toInt()
       minorVersion = versionSplit[1].toInt()
     }

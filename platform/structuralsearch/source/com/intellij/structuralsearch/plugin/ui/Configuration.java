@@ -79,7 +79,7 @@ public abstract class Configuration implements JDOMExternalizable {
     suppressId = configuration.suppressId;
     problemDescriptor = configuration.problemDescriptor;
     order = configuration.order;
-    refName = null; // copy never has a refName
+    refName = configuration.refName;
   }
 
   @NotNull
@@ -279,11 +279,11 @@ public abstract class Configuration implements JDOMExternalizable {
 
   @NotNull @NonNls
   public String getRefName() {
-    return refName == null || !predefined ? name : refName;
+    return refName == null ? name : refName;
   }
 
   public void setRefName(String refName) {
-    if (predefined)
+    if (isPredefined())
       this.refName = refName;
   }
 }

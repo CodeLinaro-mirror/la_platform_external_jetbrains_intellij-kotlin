@@ -31,8 +31,6 @@ import kotlin.io.path.nameWithoutExtension
 import kotlin.math.min
 import kotlin.streams.asSequence
 
-private const val DIAGNOSTIC_LIMIT_OF_FILES_PROPERTY = "intellij.indexes.diagnostics.limit.of.files"
-
 class IndexDiagnosticDumper : Disposable {
   companion object {
     @JvmStatic
@@ -41,8 +39,7 @@ class IndexDiagnosticDumper : Disposable {
     private const val fileNamePrefix = "diagnostic-"
 
     @JvmStatic
-    val projectIndexingHistoryListenerEpName =
-      ExtensionPointName.create<ProjectIndexingHistoryListener>("com.intellij.projectIndexingHistoryListener")
+    val projectIndexingHistoryListenerEpName = ExtensionPointName.create<ProjectIndexingHistoryListener>("com.intellij.projectIndexingHistoryListener")
 
     @JvmStatic
     private val shouldDumpDiagnosticsForInterruptedUpdaters: Boolean
@@ -51,34 +48,8 @@ class IndexDiagnosticDumper : Disposable {
 
     @JvmStatic
     private val indexingDiagnosticsLimitOfFiles: Int
-      get() = SystemProperties.getIntProperty(DIAGNOSTIC_LIMIT_OF_FILES_PROPERTY, 300)
-
-    private fun hasProvidedDiagnosticsLimitOfFilesValue(): Boolean {
-      val providedLimitOfFilesValue = System.getProperty(DIAGNOSTIC_LIMIT_OF_FILES_PROPERTY)
-      if (providedLimitOfFilesValue == null) return false
-      try {
-        providedLimitOfFilesValue.toInt()
-      }
-      catch (ignored: NumberFormatException) {
-        return false
-      }
-      return true
-    }
-
-    @JvmStatic
-    private val indexingDiagnosticsSizeLimitOfFilesInMiBPerProject: Int
-      get() {
-        val providedValue = System.getProperty("intellij.indexes.diagnostics.size.limit.of.files.MiB.per.project")
-        if (providedValue != null) {
-          try {
-            return providedValue.toInt()
-          }
-          catch (ignored: NumberFormatException) {
-          }
-        }
-
-        return if (hasProvidedDiagnosticsLimitOfFilesValue()) 0 else 10
-      }
+      get() =
+        SystemProperties.getIntProperty("intellij.indexes.diagnostics.limit.of.files", 300)
 
     @JvmStatic
     private val indexingDiagnosticsSizeLimitOfFilesInMBPerProject: Int

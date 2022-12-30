@@ -39,7 +39,6 @@ import org.jetbrains.plugins.gradle.service.project.wizard.GradleJavaNewProjectW
 import org.jetbrains.plugins.gradle.service.project.wizard.GradleJavaNewProjectWizardData.Companion.parentData
 import org.jetbrains.plugins.gradle.service.project.wizard.GradleJavaNewProjectWizardData.Companion.useKotlinDsl
 import org.jetbrains.plugins.gradle.service.project.wizard.GradleJavaNewProjectWizardData.Companion.version
-import org.jetbrains.plugins.gradle.service.project.wizard.GradleJavaNewProjectWizardData.Companion.addSampleCode
 import org.jetbrains.plugins.gradle.settings.GradleSettings
 import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.jetbrains.plugins.gradle.util.isSupported
@@ -150,7 +149,6 @@ abstract class GradleCreateProjectTestCase : UsefulTestCase() {
     moduleInfo.groupId?.let { step.groupId = it }
     step.artifactId = moduleInfo.artifactId
     moduleInfo.version?.let { step.version = it }
-    step.addSampleCode = false
   }
 
   private fun createProject(directory: String, configure: (NewProjectWizardStep) -> Unit): Project {

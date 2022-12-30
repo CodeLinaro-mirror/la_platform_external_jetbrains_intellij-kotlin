@@ -21,8 +21,4 @@ public interface KeymapManagerListener {
 
   default void shortcutChanged(@NotNull Keymap keymap, @NonNls @NotNull String actionId) {
   }
-
-  default void shortcutChanged(@NotNull Keymap keymap, @NonNls @NotNull String actionId, boolean fromSettings) {
-    shortcutChanged(keymap, actionId);
-  }
 }

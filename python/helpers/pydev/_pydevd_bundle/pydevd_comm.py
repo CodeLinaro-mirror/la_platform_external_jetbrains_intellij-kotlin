@@ -793,7 +793,7 @@ class NetCommandFactory:
 
         cmd_text_list.append('<xml>')
         if message:
-            message = make_valid_xml_value(quote(message, '/>_= '))
+            message = make_valid_xml_value(message)
 
         append('<thread id="%s"' % (thread_id,))
         if stop_reason is not None:

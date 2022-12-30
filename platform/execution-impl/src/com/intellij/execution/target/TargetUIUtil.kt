@@ -19,15 +19,13 @@ fun textFieldWithBrowseTargetButton(row: Row,
                                     targetSupplier: Supplier<out TargetEnvironmentConfiguration>,
                                     project: Project,
                                     @NlsContexts.DialogTitle title: String,
-                                    property: PropertyBinding<String>,
-                                    targetBrowserHints: TargetBrowserHints): CellBuilder<TextFieldWithBrowseButton> {
+                                    property: PropertyBinding<String>): CellBuilder<TextFieldWithBrowseButton> {
   val textFieldWithBrowseButton = TextFieldWithBrowseButton()
   val browser = targetType.createBrowser(project,
                                          title,
                                          TextComponentAccessor.TEXT_FIELD_WHOLE_TEXT,
                                          textFieldWithBrowseButton.textField,
-                                         targetSupplier,
-                                         targetBrowserHints)
+                                         targetSupplier)
   textFieldWithBrowseButton.addActionListener(browser)
   textFieldWithBrowseButton.text = property.get()
   return row.component(textFieldWithBrowseButton).withBinding(TextFieldWithBrowseButton::getText,

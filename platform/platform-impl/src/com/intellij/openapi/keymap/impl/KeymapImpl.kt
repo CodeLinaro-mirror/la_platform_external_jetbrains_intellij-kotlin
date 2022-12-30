@@ -166,10 +166,6 @@ open class KeymapImpl @JvmOverloads constructor(private var dataHolder: SchemeDa
   final override fun canModify(): Boolean = canModify
 
   override fun addShortcut(actionId: String, shortcut: Shortcut) {
-    addShortcut(actionId, shortcut, false)
-  }
-
-  fun addShortcut(actionId: String, shortcut: Shortcut, fromSettings: Boolean) {
     val list = actionIdToShortcuts.getOrPut(actionId) {
       val result = SmartList<Shortcut>()
       val boundShortcuts = keymapManager.getActionBinding(actionId)?.let { actionIdToShortcuts[it] }
@@ -191,7 +187,7 @@ open class KeymapImpl @JvmOverloads constructor(private var dataHolder: SchemeDa
     }
 
     cleanShortcutsCache()
-    fireShortcutChanged(actionId, fromSettings)
+    fireShortcutChanged(actionId)
   }
 
   private fun cleanShortcutsCache() {
@@ -208,10 +204,6 @@ open class KeymapImpl @JvmOverloads constructor(private var dataHolder: SchemeDa
   }
 
   override fun removeShortcut(actionId: String, toDelete: Shortcut) {
-    removeShortcut(actionId, toDelete, false)
-  }
-
-  fun removeShortcut(actionId: String, toDelete: Shortcut, fromSettings: Boolean) {
     val list = actionIdToShortcuts[actionId]
     if (list == null) {
       val inherited = keymapManager.getActionBinding(actionId)?.let { actionIdToShortcuts[it] }
@@ -256,7 +248,7 @@ open class KeymapImpl @JvmOverloads constructor(private var dataHolder: SchemeDa
     }
 
     cleanShortcutsCache()
-    fireShortcutChanged(actionId, fromSettings)
+    fireShortcutChanged(actionId)
   }
 
   private fun MutableList<Shortcut>.areShortcutsEqualToParent(actionId: String) =
@@ -628,8 +620,8 @@ open class KeymapImpl @JvmOverloads constructor(private var dataHolder: SchemeDa
 
   protected open fun convertShortcut(shortcut: Shortcut): Shortcut = shortcut
 
-  private fun fireShortcutChanged(actionId: String, fromSettings: Boolean) {
-    ApplicationManager.getApplication().messageBus.syncPublisher(KeymapManagerListener.TOPIC).shortcutChanged(this, actionId, fromSettings)
+  private fun fireShortcutChanged(actionId: String) {
+    ApplicationManager.getApplication().messageBus.syncPublisher(KeymapManagerListener.TOPIC).shortcutChanged(this, actionId)
   }
 
   override fun toString(): String = presentableName
